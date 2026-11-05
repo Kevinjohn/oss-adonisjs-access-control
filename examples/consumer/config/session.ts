@@ -1,6 +1,7 @@
 import env from '#start/env'
 import app from '@adonisjs/core/services/app'
 import { defineConfig, stores } from '@adonisjs/session'
+import { protectManagedSessionConfig } from '@kevinjohn/adonisjs-account-kit/http'
 
 const sessionConfig = defineConfig({
   enabled: true,
@@ -19,4 +20,12 @@ const sessionConfig = defineConfig({
   },
 })
 
-export default sessionConfig
+/**
+ * Account Kit's session guard needs a server-side store that forgets a destroyed session id. The
+ * package's built-in memory store does (`SESSION_DRIVER=memory`); pick a database or Redis store
+ * in production and attest it the same way.
+ */
+export default protectManagedSessionConfig(sessionConfig, {
+  verifyStore: (store) =>
+    (store as { constructor?: { name?: string } }).constructor?.name === 'MemoryStore',
+})

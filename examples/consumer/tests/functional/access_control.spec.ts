@@ -63,6 +63,23 @@ test.group('Scoped routes with the package middleware and Bouncer abilities', (g
     })
   })
 
+  test('the kit middleware alone leaves ctx.auth.user for the scope middleware and Bouncer', async ({
+    client,
+  }) => {
+    // The session carries the kit's revision stamp, as a kit sign-in would store it.
+    const response = await client
+      .get(`/teams/${scopeId}/kit-only`)
+      .loginAs(editor)
+      .withSession({ accountKitRevision: '' })
+    response.assertStatus(200)
+    response.assertBodyContains({
+      membership: { scopeId: String(scopeId), role: 'editor' },
+      canWrite: true,
+    })
+    const guest = await client.get(`/teams/${scopeId}/kit-only`)
+    guest.assertStatus(401)
+  })
+
   test('authorize refuses an editor with 403 and allows the owner', async ({ client }) => {
     const refused = await client.post(`/teams/${scopeId}/archive`).loginAs(editor)
     refused.assertStatus(403)
