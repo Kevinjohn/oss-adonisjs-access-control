@@ -6,6 +6,7 @@ export default defineConfig({
     () => import('@adonisjs/lucid/commands'),
     () => import('@adonisjs/bouncer/commands'),
     () => import('@kevinjohn/adonisjs-account-kit/commands'),
+    () => import('@kevinjohn/adonisjs-access-control/commands'),
   ],
 
   providers: [

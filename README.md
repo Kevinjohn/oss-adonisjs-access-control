@@ -32,31 +32,31 @@ node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 The release asset is `kevinjohn-adonisjs-access-control-0.1.0.tgz`; verify it against the SHA-256
 in the [release notes](https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/tag/v0.1.0).
 
-## Quick example
+## Quick start
 
 ```ts
-// config/access_control.ts
-import { defineAccessControl } from '@kevinjohn/adonisjs-access-control'
-
+// config/access_control.ts (written by configure)
 export default defineAccessControl({
   roles: ['viewer', 'editor', 'admin', 'owner'],
   ownerRole: 'owner',
   users: { table: 'users', keyType: 'integer' },
   scope: { table: 'teams', keyType: 'integer' },
   permissions: {
-    project: { read: 'viewer', write: 'editor', archive: 'admin' },
+    project: { read: 'viewer', write: 'editor' },
     members: { list: 'admin', manage: 'admin' },
     invitations: { manage: 'admin' },
   },
 })
-```
-
-```ts
+// start/routes.ts
 router
   .put('/teams/:scopeId/projects/:id', [ProjectsController, 'update'])
   .use([middleware.auth(), middleware.scope()])
-// in the controller: await bouncer.authorize('project:write')
+// in the controller
+await bouncer.authorize('project:write')
 ```
+
+The [setup guide](docs/guide/setup.md) covers the two manual steps (the Bouncer initializer and
+the Account Kit callbacks) and `node ace access-control:doctor`.
 
 ## Tested against
 
@@ -72,6 +72,8 @@ router
 ## Documentation
 
 - [Documentation index](docs/README.md)
+- [Guides](docs/guide/setup.md): setup, roles, rules, memberships, Bouncer, Account Kit, the
+  client payload and changing roles
 - [API reference](docs/reference/README.md)
 - [Technical contract](docs/maintainers/design/spec-access-control.md)
 - [Notes for coding agents](README-AGENTS.md)

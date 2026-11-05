@@ -25,7 +25,11 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.isFunction(provider.default)
     assert.isFunction(commands.getMetaData)
     assert.isFunction(commands.getCommand)
-    assert.deepEqual(await commands.getMetaData(), [])
+    const metadata = await commands.getMetaData()
+    assert.deepEqual(
+      metadata.map((command) => command.commandName),
+      ['access-control:doctor']
+    )
     for (const subpath of [services, middleware, accountKit]) assert.equal(typeof subpath, 'object')
   })
 

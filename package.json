@@ -153,8 +153,7 @@
     "exclude": [
       "tests/**",
       "bin/**",
-      "tmp/**",
-      "configure.ts"
+      "tmp/**"
     ],
     "check-coverage": true,
     "statements": 92,

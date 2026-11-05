@@ -157,3 +157,25 @@ test('relative links in packed Markdown stay inside the package', async ({ asser
   }
   assert.deepEqual(broken, [])
 })
+
+test('every guide page from the specification exists and is in the sidebar', async ({ assert }) => {
+  const pages = [
+    'setup',
+    'roles',
+    'rules',
+    'memberships',
+    'bouncer',
+    'account-kit',
+    'client',
+    'changing-roles',
+  ]
+  const navigation = await readFile(join(repoRoot, 'docs/.vitepress/navigation.mts'), 'utf8')
+  const index = await readFile(join(repoRoot, 'docs/README.md'), 'utf8')
+  for (const page of pages) {
+    assert.isTrue(existsSync(join(repoRoot, `docs/guide/${page}.md`)), page)
+    assert.include(navigation, `'/guide/${page}'`)
+    assert.include(index, `guide/${page}.md`)
+  }
+  assert.isTrue(existsSync(join(repoRoot, 'docs/reference/errors.md')))
+  assert.include(navigation, "'/reference/errors'")
+})

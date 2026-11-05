@@ -5,19 +5,27 @@ on Account Kit. The application declares its roles and permission keys in code; 
 memberships, enforces the management rules and generates Bouncer abilities for the current
 request's membership.
 
-## Get started
+## Guides
 
-The user guides (setup, roles, rules, memberships, Bouncer, Account Kit and the client payload)
-arrive with the documentation milestone. Until then the
-[technical specification](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/maintainers/design/spec-access-control.md)
-is the reference for configuration, rules, the database contract and the public API.
+- [Setup](guide/setup.md): install, `configure`, the two manual steps and the doctor.
+- [Roles and permission keys](guide/roles.md): the configuration, boot validation and the
+  deployment contract.
+- [Management rules](guide/rules.md): who may change, suspend, remove or leave, in prose.
+- [Memberships](guide/memberships.md): the service, trusted operations, events and transactions.
+- [Scope middleware and Bouncer](guide/bouncer.md): scoped routes and generated abilities.
+- [Account Kit](guide/account-kit.md): invitation, acceptance, deletion and export callbacks.
+- [Client payload](guide/client.md): what a frontend receives and the type-only imports.
+- [Changing roles and the doctor](guide/changing-roles.md): renames, owner changes and upgrades.
 
 ## Reference
 
 - [Public API reference](reference/README.md): supported package imports and the generated API
   pages.
-- [Recipes](recipes/index.md): task-focused examples, added as the guides land.
+- [Errors](reference/errors.md): every error code with its status and message.
+- [Recipes](recipes/index.md): task-focused examples.
 
 The package is a pre-release distributed as GitHub prereleases and is not published to a package
 registry. The [maintainer records](https://github.com/Kevinjohn/oss-adonisjs-access-control/tree/main/docs/maintainers)
-hold the conventions, verification and release procedure.
+hold the conventions, verification and release procedure, and the
+[technical specification](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/maintainers/design/spec-access-control.md)
+is the contract the package is built against.
