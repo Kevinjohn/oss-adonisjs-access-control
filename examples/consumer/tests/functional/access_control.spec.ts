@@ -222,6 +222,8 @@ test.group('Scoped invitations through Account Kit', () => {
       joined.map((m) => [String(m.scopeId), m.role]),
       [[String(scopeId), 'editor']]
     )
+  })
+})
 
 test.group('access-control:doctor in the consumer', () => {
   test('the doctor runs through ace against the migrated database and exits 0', async ({

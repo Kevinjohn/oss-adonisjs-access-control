@@ -33,8 +33,8 @@ router
 ```
 
 Under Account Kit's admission or managed-account middleware the kit leaves the authenticated user
-on `ctx.auth.user`, so `middleware.auth()` is not needed in front of `middleware.scope()` once the
-kit ships that behaviour. Under Masquerade the effective guard is the business guard, so the user,
+on `ctx.auth.user`, so `middleware.auth()` is not needed in front of `middleware.scope()`; the
+example consumer's `/teams/:scopeId/kit-only` route runs that way. Under Masquerade the effective guard is the business guard, so the user,
 the membership and the Bouncer subject are the same customer.
 
 ## Generated abilities

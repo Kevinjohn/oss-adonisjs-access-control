@@ -1,8 +1,10 @@
 # Setup
 
-Access Control needs an AdonisJS 7 application that already runs Account Kit, a users table and
-a table for the scope your members belong to (teams, organisations, workspaces). Install the
-release tarball, then let `configure` write the files.
+Access Control needs an AdonisJS 7 application that already runs Account Kit (a build that
+includes its pull requests #777 to #780: the `./transaction` export, scoped invitations and
+`ctx.auth.user` after its middleware), a users table and a table for the scope your members belong
+to (teams, organisations, workspaces). Install the release tarball, then let `configure` write the
+files.
 
 ```sh
 pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.0/kevinjohn-adonisjs-access-control-0.1.0.tgz
