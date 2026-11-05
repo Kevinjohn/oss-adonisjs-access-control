@@ -1,11 +1,6 @@
 import env from '#start/env'
-import {
-  createLucidAdapter,
-  defineConfig,
-  type AccountUser,
-  type Invitation,
-  type Trx,
-} from '@kevinjohn/adonisjs-account-kit'
+import { createLucidAdapter, defineConfig } from '@kevinjohn/adonisjs-account-kit'
+import { accessControlKitCallbacks } from '@kevinjohn/adonisjs-access-control/account-kit'
 
 /**
  * A trailing slash keeps any APP_URL path, for example https://example.com/portal.
@@ -22,6 +17,11 @@ const users = createLucidAdapter(async () => {
 const notConfigured = (method: string) => async () => {
   throw new Error('account_kit: configure notify.' + method)
 }
+
+/**
+ * Team invitations, acceptance, account deletion and export, backed by the memberships table.
+ */
+const accessControl = accessControlKitCallbacks()
 
 export default defineConfig({
   /**
@@ -50,13 +50,9 @@ export default defineConfig({
   limiterSecret: env.get('APP_KEY'),
 
   /**
-   * Who may send, manage and list invitations. Everything is denied until you decide.
+   * Who may send, manage and list team invitations: active members holding invitations:manage.
    */
-  authorize: {
-    invite: async () => false,
-    manageInvitation: async () => false,
-    listInvitations: async () => false,
-  },
+  authorize: accessControl.authorize,
 
   /**
    * Links sent in account emails. Point them at your own routes.
@@ -90,9 +86,13 @@ export default defineConfig({
   },
 
   /**
-   * Grants the invited role inside the acceptance transaction.
+   * Grants the invited team role inside the acceptance transaction.
    */
-  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
-    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.ts')
-  },
+  onInvitationAccepted: accessControl.onInvitationAccepted,
+
+  /**
+   * Removes the user's memberships before the account row goes, and exports them on request.
+   */
+  onAccountDeletingTransaction: accessControl.onAccountDeletingTransaction,
+  exportAccountData: accessControl.exportAccountData,
 })

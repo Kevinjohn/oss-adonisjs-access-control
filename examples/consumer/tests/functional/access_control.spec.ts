@@ -113,3 +113,31 @@ test.group('Scoped routes with the package middleware and Bouncer abilities', (g
     response.assertStatus(401)
   })
 })
+
+test.group('Account Kit callbacks wired in config/account_kit.ts', () => {
+  test('the kit config carries the package callbacks and they answer from the memberships table', async ({
+    assert,
+  }) => {
+    const { default: kitConfig } = await import('#config/account_kit')
+    const [team] = await db
+      .table('teams')
+      .returning('id')
+      .insert({ name: 'Kit team', created_at: new Date() })
+    const scopeId = Number(typeof team === 'object' ? team.id : team)
+    const owner = await createUser('kit-owner@example.com')
+    await accessControl.memberships.createFirstMember({ scopeId, userId: owner.id })
+    const actor = { id: owner.id, email: owner.email } as never
+    assert.isTrue(
+      await kitConfig.authorize.invite(actor, 'editor', { scope: String(scopeId) } as never)
+    )
+    assert.isFalse(
+      await kitConfig.authorize.invite(actor, 'owner', { scope: String(scopeId) } as never)
+    )
+    assert.isFalse(await kitConfig.authorize.invite(actor, 'editor'))
+    const exported = await db.transaction((trx) => kitConfig.exportAccountData!(actor, trx))
+    assert.deepInclude((exported as { memberships: unknown[] }).memberships[0], {
+      scopeId,
+      role: 'owner',
+    })
+  })
+})

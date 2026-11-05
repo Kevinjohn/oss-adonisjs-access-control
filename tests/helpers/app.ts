@@ -8,9 +8,10 @@ import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import type { Database } from '@adonisjs/lucid/database'
 import type { ApplicationService } from '@adonisjs/core/types'
 import { defineAccessControl } from '../../index.js'
+import type { MembershipEvent, PermissionMap, Trx } from '../../src/types.js'
 import { connectionConfig, testClient, testEngine } from './database.js'
 import { createSchema, dropSchema, type SchemaNames } from './schema.js'
-import { permissions, roles } from './fixture.js'
+import { permissions, roles, type Role } from './fixture.js'
 
 export interface TestApp {
   app: ApplicationService
@@ -21,7 +22,12 @@ export interface TestApp {
 
 /** Boots core providers, Lucid and the package provider with the given `access_control` config value. */
 export async function bootTestApp(
-  options: { accessControl?: unknown; withProvider?: boolean } = {}
+  options: {
+    accessControl?: unknown
+    withProvider?: boolean
+    onMembershipChanged?: (event: MembershipEvent<string>, trx: Trx) => Promise<void>
+    permissions?: PermissionMap<Role>
+  } = {}
 ): Promise<TestApp> {
   const client = testClient()
   const suffix = randomBytes(4).toString('hex')
@@ -46,7 +52,8 @@ export async function bootTestApp(
           users: { table: names.users, keyType: 'integer' },
           scope: { table: names.scope, keyType: 'integer' },
           membershipsTable: names.memberships,
-          permissions,
+          permissions: options.permissions ?? permissions,
+          onMembershipChanged: options.onMembershipChanged,
         })
   const factory = new IgnitorFactory()
     .withCoreProviders()
