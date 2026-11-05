@@ -1,0 +1,165 @@
+{
+  "name": "@kevinjohn/adonisjs-access-control",
+  "description": "Team memberships and a ranked role matrix for AdonisJS applications built on Account Kit, with generated Bouncer abilities",
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.0.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "files": [
+    "build",
+    "!build/bin",
+    "!build/tests",
+    "README-AGENTS.md",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "main": "build/index.js",
+  "exports": {
+    ".": "./build/index.js",
+    "./types": "./build/src/types.js",
+    "./access_control_provider": "./build/providers/access_control_provider.js",
+    "./services/main": "./build/services/main.js",
+    "./middleware": "./build/middleware/main.js",
+    "./account-kit": "./build/account_kit/main.js",
+    "./commands": "./build/commands/main.js"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "git ls-files -z | xargs -0 prettier --check --ignore-unknown --no-error-on-unmatched-pattern",
+    "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
+    "pretest": "pnpm lint",
+    "test": "c8 pnpm quick:test",
+    "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts",
+    "test:consumer": "node --import=@poppinss/ts-exec --enable-source-maps bin/test_consumer.ts",
+    "test:pg": "bash bin/pg.sh test",
+    "pg:start": "bash bin/pg.sh start",
+    "pg:stop": "bash bin/pg.sh stop",
+    "test:mysql": "cross-env DB_CLIENT=mysql2 pnpm quick:test",
+    "check": "node --import=@poppinss/ts-exec --enable-source-maps bin/check.ts",
+    "check:changed": "node --import=@poppinss/ts-exec --enable-source-maps bin/check_changed.ts",
+    "precompile": "pnpm lint",
+    "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
+    "postcompile": "pnpm copy:templates",
+    "build": "pnpm compile",
+    "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
+    "docs:api": "typedoc",
+    "docs:dev": "pnpm docs:api && vitepress dev docs",
+    "docs:build": "pnpm docs:api && vitepress build docs"
+  },
+  "keywords": [
+    "adonisjs",
+    "authorization",
+    "roles",
+    "permissions",
+    "teams",
+    "bouncer"
+  ],
+  "author": "Kevinjohn Gallagher",
+  "license": "MIT",
+  "homepage": "https://kevinjohn.github.io/oss-adonisjs-access-control/",
+  "bugs": {
+    "url": "https://github.com/Kevinjohn/oss-adonisjs-access-control/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kevinjohn/oss-adonisjs-access-control.git"
+  },
+  "devDependencies": {
+    "@adonisjs/assembler": "^8.6.0",
+    "@adonisjs/auth": "^10.0.0",
+    "@adonisjs/bouncer": "^4.0.0",
+    "@adonisjs/core": "^7.0.1",
+    "@adonisjs/eslint-config": "^3.0.0",
+    "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/prettier-config": "^1.4.5",
+    "@adonisjs/session": "^8.3.0",
+    "@adonisjs/tsconfig": "^2.0.0",
+    "@japa/api-client": "^3.2.1",
+    "@japa/assert": "^4.2.0",
+    "@japa/runner": "^5.3.0",
+    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.2.0/kevinjohn-adonisjs-account-kit-0.2.0.tgz",
+    "@poppinss/ts-exec": "^1.5.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/luxon": "^3.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "@vinejs/vine": "^4.4.0",
+    "better-sqlite3": "^13.0.0",
+    "c8": "^12.0.0",
+    "copyfiles": "^2.4.1",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.14.0",
+    "luxon": "^3.0.0",
+    "mysql2": "^3.24.6",
+    "pg": "^8.0.0",
+    "prettier": "^3.8.1",
+    "tsdown": "^0.23.4",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.14.1",
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4"
+  },
+  "peerDependencies": {
+    "@adonisjs/auth": "^10.0.0",
+    "@adonisjs/bouncer": "^4.0.0",
+    "@adonisjs/core": "^7.0.0",
+    "@adonisjs/lucid": "^22.4.2",
+    "@kevinjohn/adonisjs-account-kit": "0.2.0",
+    "luxon": "^3.4.4",
+    "typescript": "^5.9.3 || ^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "tsdown": {
+    "entry": [
+      "./index.ts",
+      "./configure.ts",
+      "./stubs/main.ts",
+      "./src/types.ts",
+      "./providers/access_control_provider.ts",
+      "./services/main.ts",
+      "./middleware/main.ts",
+      "./account_kit/main.ts",
+      "./commands/main.ts"
+    ],
+    "outDir": "./build",
+    "clean": true,
+    "format": "esm",
+    "minify": "dce-only",
+    "fixedExtension": false,
+    "dts": false,
+    "treeshake": false,
+    "sourcemaps": false,
+    "target": "esnext"
+  },
+  "c8": {
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "exclude": [
+      "tests/**",
+      "bin/**"
+    ],
+    "check-coverage": true,
+    "statements": 0,
+    "lines": 0,
+    "branches": 0,
+    "functions": 0
+  },
+  "prettier": "@adonisjs/prettier-config",
+  "packageManager": "pnpm@11.23.0"
+}

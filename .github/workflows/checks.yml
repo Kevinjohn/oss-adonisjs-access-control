@@ -1,0 +1,104 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/FUNDING.yml'
+      - '.github/pull_request_template.md'
+      - '.github/dependabot.yml'
+      - '.github/workflows/codeql.yml'
+      - '.github/workflows/docs.yml'
+      - '.github/workflows/scorecard.yml'
+  pull_request:
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/FUNDING.yml'
+      - '.github/pull_request_template.md'
+      - '.github/dependabot.yml'
+      - '.github/workflows/codeql.yml'
+      - '.github/workflows/docs.yml'
+      - '.github/workflows/scorecard.yml'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its stale run. The workflow name is spelt out because
+# `github.workflow` is the caller's name when the release workflow calls this one.
+concurrency:
+  group: checks-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    # Push and pull request runs start once the repository is public, where hosted minutes are
+    # free. Manual and release runs always start.
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [better-sqlite3, pg, mysql2]
+    env:
+      DB_CLIENT: ${{ matrix.database }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.database == 'mysql2' && 3306 || 5432 }}
+      DB_USER: ${{ matrix.database == 'mysql2' && 'root' || 'postgres' }}
+      DB_PASSWORD: ${{ matrix.database == 'mysql2' && 'root' || 'postgres' }}
+      DB_DATABASE: package_test
+    services:
+      postgres:
+        image: ${{ matrix.database == 'pg' && 'postgres:16' || '' }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: package_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mysql:
+        image: ${{ matrix.database == 'mysql2' && 'mysql:8.4' || '' }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: package_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            examples/consumer/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Check formatting
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm format:check
+      - name: Lint
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm lint
+      - name: Typecheck
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm typecheck
+      - run: pnpm test
+      - name: Build
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm build
+      - name: Test built package exports
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm test:built-exports

@@ -1,0 +1,93 @@
+import env from '#start/env'
+import {
+  createLucidAdapter,
+  defineConfig,
+  type AccountUser,
+  type Invitation,
+  type Trx,
+} from '@kevinjohn/adonisjs-account-kit'
+
+/**
+ * A trailing slash keeps any APP_URL path, for example https://example.com/portal.
+ */
+const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('APP_URL') + '/'
+const accountUrl = (path: string, token: string) =>
+  new URL('account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
+
+const users = createLucidAdapter(async () => {
+  const { default: User } = await import('#models/user')
+  return User
+})
+
+const notConfigured = (method: string) => async () => {
+  throw new Error('account_kit: configure notify.' + method)
+}
+
+export default defineConfig({
+  /**
+   * Reads and writes accounts through the application's Lucid User model.
+   */
+  users,
+
+  /**
+   * Account flows the application exposes.
+   */
+  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
+
+  /**
+   * Choose admission in the application before exposing a public signup route.
+   */
+  registration: { availability: 'open' },
+
+  /**
+   * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
+   */
+  limiterSecret: env.get('APP_KEY'),
+
+  /**
+   * Who may send, manage and list invitations. Everything is denied until you decide.
+   */
+  authorize: {
+    invite: async () => false,
+    manageInvitation: async () => false,
+    listInvitations: async () => false,
+  },
+
+  /**
+   * Links sent in account emails. Point them at your own routes.
+   */
+  urls: {
+    passwordReset: (token) => accountUrl('recovery', token),
+    emailVerification: (token) => accountUrl('verification', token),
+    invitation: (token) => accountUrl('invitation', token),
+    emailChange: (token) => accountUrl('email-change', token),
+  },
+
+  /**
+   * Delivers account notices. Each one throws until you connect your mailer.
+   */
+  notify: {
+    passwordResetProvision: notConfigured('passwordResetProvision'),
+    accountActivationProvision: notConfigured('accountActivationProvision'),
+    invitationProvision: notConfigured('invitationProvision'),
+    emailChangeProvision: notConfigured('emailChangeProvision'),
+    emailChanged: notConfigured('emailChanged'),
+    passwordResetCompleted: notConfigured('passwordResetCompleted'),
+    passwordChanged: notConfigured('passwordChanged'),
+  },
+
+  /**
+   * Choose your revocation policy explicitly. For API tokens/outbox, see examples/api.
+   * Applications without revocable credentials may deliberately replace this with a no-op.
+   */
+  onCredentialsChangedTransaction: async () => {
+    throw new Error('account_kit: implement the application credential-revocation policy')
+  },
+
+  /**
+   * Grants the invited role inside the acceptance transaction.
+   */
+  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
+    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.ts')
+  },
+})

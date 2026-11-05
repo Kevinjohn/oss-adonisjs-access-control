@@ -1,0 +1,45 @@
+# Maintainer source map
+
+Start with the owning module and its focused test. Read the relevant
+[specification](design/spec-access-control.md) section when changing behaviour.
+
+## Public entry points and reference coverage
+
+The `exports` map in [package.json](../../package.json) defines supported imports. Generated API
+routes below are relative to the documentation site's base. Run `pnpm docs:api` to regenerate
+their Markdown sources under `docs/reference/api/`.
+
+| Public subpath              | Source                                 | Reference coverage                                      |
+| --------------------------- | -------------------------------------- | ------------------------------------------------------- |
+| package root                | `index.ts`                             | `reference/api/index/index`                             |
+| `./types`                   | `src/types.ts`                         | `reference/api/src/types/index`                         |
+| `./access_control_provider` | `providers/access_control_provider.ts` | `reference/api/providers/access_control_provider/index` |
+| `./services/main`           | `services/main.ts`                     | `reference/api/services/main/index`                     |
+| `./middleware`              | `middleware/main.ts`                   | `reference/api/middleware/main/index`                   |
+| `./account-kit`             | `account_kit/main.ts`                  | `reference/api/account_kit/main/index`                  |
+| `./commands`                | `commands/main.ts`                     | `reference/api/commands/main/index`                     |
+
+TypeDoc requires comments on classes, functions, interfaces, type aliases and variables. Comments
+should explain a contract, ordering or non-obvious constraint.
+
+## Modules by task
+
+| Task                            | Module                                        | Focused tests                                               | Specification |
+| ------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | ------------- |
+| Configure the package in an app | `configure.ts`, `stubs/`                      | `tests/configure.spec.ts` (M5)                              | 11            |
+| Validate the configuration      | `src/define.ts` (M1)                          | `tests/define.spec.ts` (M1)                                 | 2             |
+| Pure rules and truth tables     | `src/rules.ts` (M1)                           | `tests/rules.spec.ts` (M1)                                  | 3             |
+| Memberships table               | `stubs/migrations/` (M2)                      | `tests/migration_stubs.spec.ts` (M2)                        | 4.1, 17.1     |
+| Lock process and transactions   | `src/locks.ts`, `src/kit_transaction.ts` (M2) | `tests/memberships.spec.ts` (M2)                            | 4.2, 4.3      |
+| Membership service              | `src/memberships.ts` (M2)                     | `tests/memberships.spec.ts` (M2)                            | 5             |
+| Errors and responses            | `src/errors.ts` (M2)                          | `tests/errors.spec.ts` (M2)                                 | 6             |
+| Scope middleware                | `middleware/main.ts` (M3)                     | `tests/middleware.spec.ts` (M3)                             | 7             |
+| Bouncer abilities               | `src/abilities.ts` (M3)                       | `tests/abilities.spec.ts` (M3)                              | 8             |
+| Account Kit callbacks           | `account_kit/main.ts` (M4)                    | `tests/account_kit.spec.ts` (M4)                            | 9             |
+| Client payload                  | `src/payload.ts` (M3)                         | `tests/payload.spec.ts` (M3)                                | 10            |
+| Doctor command                  | `commands/` (M5)                              | `tests/doctor.spec.ts` (M5)                                 | 17.2          |
+| Package exports and docs links  | `index.ts`, `docs/`                           | `tests/package_exports.spec.ts`, `tests/docs_links.spec.ts` | 1.5           |
+| Check scripts                   | `bin/`                                        | `tests/tooling/` (as added)                                 | 1.5           |
+
+Rows marked with a milestone name the module and test that milestone adds; until then the row is
+a plan, not a map.
