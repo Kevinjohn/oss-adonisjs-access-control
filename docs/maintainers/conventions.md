@@ -16,8 +16,11 @@ target outside `main`. Its final gate checks the tag and dated changelog, builds
 package, and creates release notes with an install command and SHA-256 digest. See
 [releasing](releasing.md) for the procedure and local dry-run command.
 
-Account Kit is a required peer at an exact version. The dev dependency is the GitHub release
-tarball of that version; update the URL, version and peer range together.
+Account Kit is a required peer at an exact version. The dev dependency is normally the GitHub
+release tarball of that version; update the URL, version and peer range together. Until a release
+ships the `./transaction` export, scoped invitations and `ctx.auth.user` after the kit middleware,
+it is a `github:` pin of one kit commit, and `pnpm-workspace.yaml` and the consumer's
+`allowScripts` allow that pin's build.
 
 ## Architecture and boundaries
 
@@ -60,13 +63,12 @@ together.
 
 ## SQLite writes
 
-The local transaction runner (`src/kit_transaction.ts`, used until Account Kit exports its
-helpers) takes SQLite's write lock as the first statement of every transaction by touching the
-kit's `account_transaction_lock` row with the busy handler off, retrying in code for up to five
-seconds. SQLite never invokes the busy handler for a connection that already holds a shared lock,
-so waiting inside SQLite would deadlock two writers until their timeouts. The connection's
-`busy_timeout` is restored before the callback runs; keep better-sqlite3's default (5 seconds) so a
-commit can wait for readers.
+Account Kit's transaction runner (`@kevinjohn/adonisjs-account-kit/transaction`, re-exported by
+`src/kit_transaction.ts`) takes SQLite's write lock as the first statement of every transaction by
+touching the kit's `account_transaction_lock` row on a dedicated connection with the busy handler
+off, retrying in code until its deadline, so the package's writes and the kit's serialise on the
+same row. Keep better-sqlite3's default `busy_timeout` (5 seconds) so a commit can wait for
+readers.
 
 Do not add Docker support or use npm, npx, yarn or yarn dlx. `better-sqlite3` requires the pinned
 Node 24 runtime.

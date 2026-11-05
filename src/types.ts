@@ -196,10 +196,10 @@ export interface DialectDatabase {
 
 /**
  * The transaction helpers of specification 0.2, as `@kevinjohn/adonisjs-account-kit/transaction`
- * exports them. `source` says whether the kit's export or the package's local runner is in use.
+ * exports them.
  */
 export interface TransactionRunner {
-  source: 'account-kit' | 'local'
+  source: 'account-kit'
   /** Runs a database-only callback in its own transaction; SQLite writers serialise on the kit's lock row. */
   transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T>
   /** Locks one row by `id`; a no-op on SQLite, where the runner already holds the writer lock. */

@@ -2,24 +2,24 @@ import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { loadRunner } from '../src/kit_transaction.js'
-import { codeOf } from './helpers/fixture.js'
 import { testDatabase } from './helpers/database.js'
 import { createLockRow, LOCK_TABLE } from './helpers/schema.js'
 
 test.group('kit transaction bridge (spec 0.2)', () => {
-  test('prefers the kit export and otherwise uses the local runner', async ({ assert }) => {
+  test('is the kit export, resolved once', async ({ assert }) => {
     const kit = JSON.parse(
       await readFile(
         new URL('../node_modules/@kevinjohn/adonisjs-account-kit/package.json', import.meta.url),
         'utf8'
       )
     )
-    const expected = './transaction' in kit.exports ? 'account-kit' : 'local'
+    assert.include(Object.keys(kit.exports), './transaction')
+    const exported = await import('@kevinjohn/adonisjs-account-kit/transaction')
     const runner = await loadRunner()
-    assert.equal(runner.source, expected)
+    assert.equal(runner.source, 'account-kit')
     assert.strictEqual(await loadRunner(), runner)
     for (const name of ['transaction', 'lockRow', 'sqlTimestamp', 'readTimestamp'] as const)
-      assert.isFunction(runner[name])
+      assert.strictEqual(runner[name], exported[name])
   })
 
   test('sqlTimestamp writes UTC ISO 8601, or SQL wall time on MySQL', async ({ assert }) => {
@@ -108,15 +108,15 @@ test.group('kit transaction bridge (spec 0.2)', () => {
         assert.isTrue(true)
         return
       }
-      assert.equal(
-        await codeOf(runner.transaction(patient.db, async () => {})),
-        'E_ACCESS_CONTROL_INVALID_CONFIG'
+      await assert.rejects(
+        () => runner.transaction(patient.db, async () => {}),
+        /transaction lock is missing/
       )
       await createLockRow(patient.db)
       await patient.db.from(LOCK_TABLE).delete()
-      assert.equal(
-        await codeOf(runner.transaction(patient.db, async () => {})),
-        'E_ACCESS_CONTROL_INVALID_CONFIG'
+      await assert.rejects(
+        () => runner.transaction(patient.db, async () => {}),
+        /lock row is missing/
       )
       await patient.db.table(LOCK_TABLE).insert({ id: 1, version: 0 })
       const table = `probe_${patient.suffix}`
@@ -158,10 +158,7 @@ test.group('kit transaction bridge (spec 0.2)', () => {
         assert.isTrue(true)
         return
       }
-      assert.equal(
-        await codeOf(runner.transaction(database.db, async () => {})),
-        'E_ACCESS_CONTROL_INVALID_CONFIG'
-      )
+      await assert.rejects(() => runner.transaction(database.db, async () => {}), /timezone: 'Z'/)
     } finally {
       await database.cleanup()
     }

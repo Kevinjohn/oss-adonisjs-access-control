@@ -16,9 +16,9 @@
   `identityRoles`, `assertCanAdministerIdentity`, `prepareAccountDeletion`, `removeAllForScope`
   and `exportFor`. Every write runs under the lock process (user rows ascending by `String(key)`,
   then the scope row) and reports through `onMembershipChanged` inside the transaction.
-- Transaction runner bridge: Account Kit's `transaction` export when the installed kit ships it,
-  otherwise a local runner with the same contract that serialises SQLite writers on the kit's
-  `account_transaction_lock` row and runs MySQL at READ COMMITTED with a UTC connection.
+- Transaction runner: Account Kit's `transaction` export, which serialises SQLite writers on the
+  kit's `account_transaction_lock` row and runs MySQL at READ COMMITTED with a UTC connection.
+  Account Kit is pinned at a `main` commit until a release ships that export.
 - `AccessControlError.handle`: the table status, `Cache-Control: no-store` and
   `{ errors: [{ code, message }] }`, translated through `ctx.i18n` when present.
 - `docs/reference/errors.md` listing every code.
