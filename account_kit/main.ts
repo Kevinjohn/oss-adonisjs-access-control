@@ -7,42 +7,12 @@ import app from '@adonisjs/core/services/app'
 import type {
   AccountKitConfig,
   AccountUser,
-  AuthorizationContext,
-  Invitation,
+  AuthorizationCallbacks,
   Trx,
 } from '@kevinjohn/adonisjs-account-kit'
 import { AccessControl } from '../src/define.js'
 import { AccessControlError } from '../src/errors.js'
 import type { Membership, UserKey } from '../src/types.js'
-
-/** The kit's authorization context with the scope Account Kit #768 adds: a string or null. */
-export interface ScopedAuthorizationContext extends AuthorizationContext {
-  /** The scope the invitation belongs to, or null for an invitation outside any scope. */
-  scope?: string | null
-}
-
-/** A kit invitation with the scope Account Kit #768 stores on it. */
-export interface ScopedInvitation extends Invitation {
-  /** The scope the invitation grants a role in, or null for an invitation outside any scope. */
-  scope?: string | null
-}
-
-/**
- * The kit's `authorize` callbacks with the scope Account Kit #768 passes. Assignable to the kit's
- * `AuthorizationCallbacks` as they stand today, where the scope is simply absent.
- */
-export interface ScopedAuthorizationCallbacks {
-  /** Whether `actor` may invite someone with `role` into `context.scope`. */
-  invite(actor: AccountUser, role: string, context?: ScopedAuthorizationContext): Promise<boolean>
-  /** Whether `actor` may resend or revoke `invitation` in its scope. */
-  manageInvitation(
-    actor: AccountUser,
-    invitation: ScopedInvitation,
-    context?: ScopedAuthorizationContext
-  ): Promise<boolean>
-  /** Whether `actor` may list the invitations of `context.scope`. */
-  listInvitations(actor: AccountUser, context?: ScopedAuthorizationContext): Promise<boolean>
-}
 
 /** Options of `accessControlKitCallbacks`. */
 export interface AccessControlKitCallbackOptions {
@@ -55,7 +25,7 @@ export interface AccessControlKitCallbackOptions {
 /** The callbacks to spread into `defineConfig` in `config/account_kit.ts`. */
 export interface AccessControlKitCallbacks {
   /** `invite`, `manageInvitation` and `listInvitations`, each a plain read that never locks. */
-  authorize: ScopedAuthorizationCallbacks
+  authorize: AuthorizationCallbacks
   /** Creates the membership an accepted team invitation grants, then runs the app's callback. */
   onInvitationAccepted: NonNullable<AccountKitConfig['onInvitationAccepted']>
   /** Removes the user's memberships, or refuses while the user is an active owner. */
@@ -154,8 +124,8 @@ export function accessControlKitCallbacks(
         return membership !== null
       },
     },
-    async onInvitationAccepted(user, invitation: ScopedInvitation, trx) {
-      if (invitation.scope !== null && invitation.scope !== undefined) {
+    async onInvitationAccepted(user, invitation, trx) {
+      if (invitation.scope !== null) {
         const access = await resolveAccessControl()
         await access.memberships.acceptInvitation({
           scopeId: invitation.scope,

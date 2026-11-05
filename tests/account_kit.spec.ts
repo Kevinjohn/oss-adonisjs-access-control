@@ -3,7 +3,6 @@ import { test } from '@japa/runner'
 import type { AccountUser, Invitation, Trx } from '@kevinjohn/adonisjs-account-kit'
 import { withInvitationEvidence } from '@kevinjohn/adonisjs-account-kit/admission'
 import { accessControlKitCallbacks } from '../account_kit/main.js'
-import type { ScopedInvitation } from '../account_kit/main.js'
 import { AccessControl } from '../index.js'
 import type { MembershipEvent } from '../src/types.js'
 import { bootTestApp, type TestApp } from './helpers/app.js'
@@ -30,7 +29,7 @@ function invitation(input: {
     inviterId: null,
     expiresAt: null as never,
     scope: input.scope,
-  } as unknown as ScopedInvitation
+  } as unknown as Invitation
   return scoped
 }
 
