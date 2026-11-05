@@ -24,22 +24,22 @@ should explain a contract, ordering or non-obvious constraint.
 
 ## Modules by task
 
-| Task                            | Module                                        | Focused tests                                               | Specification |
-| ------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | ------------- |
-| Configure the package in an app | `configure.ts`, `stubs/`                      | `tests/configure.spec.ts` (M5)                              | 11            |
-| Validate the configuration      | `src/define.ts`                               | `tests/define.spec.ts`, `tests/types/define.ts`             | 2             |
-| Pure rules and truth tables     | `src/rules.ts`                                | `tests/rules.spec.ts`                                       | 3             |
-| Memberships table               | `stubs/migrations/` (M2)                      | `tests/migration_stubs.spec.ts` (M2)                        | 4.1, 17.1     |
-| Lock process and transactions   | `src/locks.ts`, `src/kit_transaction.ts` (M2) | `tests/memberships.spec.ts` (M2)                            | 4.2, 4.3      |
-| Membership service              | `src/memberships.ts` (M2)                     | `tests/memberships.spec.ts` (M2)                            | 5             |
-| Errors and responses            | `src/errors.ts` (M2)                          | `tests/errors.spec.ts` (M2)                                 | 6             |
-| Scope middleware                | `middleware/main.ts` (M3)                     | `tests/middleware.spec.ts` (M3)                             | 7             |
-| Bouncer abilities               | `src/abilities.ts` (M3)                       | `tests/abilities.spec.ts` (M3)                              | 8             |
-| Account Kit callbacks           | `account_kit/main.ts` (M4)                    | `tests/account_kit.spec.ts` (M4)                            | 9             |
-| Client payload                  | `src/payload.ts` (M3)                         | `tests/payload.spec.ts` (M3)                                | 10            |
-| Doctor command                  | `commands/` (M5)                              | `tests/doctor.spec.ts` (M5)                                 | 17.2          |
-| Package exports and docs links  | `index.ts`, `docs/`                           | `tests/package_exports.spec.ts`, `tests/docs_links.spec.ts` | 1.5           |
-| Check scripts                   | `bin/`                                        | `tests/tooling/` (as added)                                 | 1.5           |
+| Task                            | Module                                                                                                  | Focused tests                                                                                   | Specification      |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------ |
+| Configure the package in an app | `configure.ts`, `stubs/`                                                                                | `tests/configure.spec.ts` (M5)                                                                  | 11                 |
+| Validate the configuration      | `src/define.ts`                                                                                         | `tests/define.spec.ts`, `tests/types/define.ts`                                                 | 2                  |
+| Pure rules and truth tables     | `src/rules.ts`                                                                                          | `tests/rules.spec.ts`                                                                           | 3                  |
+| Memberships table               | `stubs/migrations/create_memberships.stub`, `stubs/migrations/released.json`, `src/migration_schema.ts` | `tests/migration_stubs.spec.ts`, `tests/helpers/schema.ts`                                      | 4.1, 17.1          |
+| Lock process and transactions   | `src/locks.ts`, `src/kit_transaction.ts`, `src/keys.ts`                                                 | `tests/locks.spec.ts`, `tests/kit_transaction.spec.ts`, `tests/memberships_concurrency.spec.ts` | 0.2, 4.2, 4.3, 5.1 |
+| Membership service              | `src/memberships.ts`, `src/pagination.ts`                                                               | `tests/memberships.spec.ts`, `tests/memberships_trusted.spec.ts`, `tests/pagination.spec.ts`    | 5                  |
+| Errors and responses            | `src/errors.ts`                                                                                         | `tests/errors.spec.ts`                                                                          | 6                  |
+| Scope middleware                | `middleware/main.ts` (M3)                                                                               | `tests/middleware.spec.ts` (M3)                                                                 | 7                  |
+| Bouncer abilities               | `src/abilities.ts` (M3)                                                                                 | `tests/abilities.spec.ts` (M3)                                                                  | 8                  |
+| Account Kit callbacks           | `account_kit/main.ts` (M4)                                                                              | `tests/account_kit.spec.ts` (M4)                                                                | 9                  |
+| Client payload                  | `src/payload.ts` (M3)                                                                                   | `tests/payload.spec.ts` (M3)                                                                    | 10                 |
+| Doctor command                  | `commands/` (M5)                                                                                        | `tests/doctor.spec.ts` (M5)                                                                     | 17.2               |
+| Package exports and docs links  | `index.ts`, `docs/`                                                                                     | `tests/package_exports.spec.ts`, `tests/docs_links.spec.ts`                                     | 1.5                |
+| Check scripts                   | `bin/`                                                                                                  | `tests/tooling/` (as added)                                                                     | 1.5                |
 
 Rows marked with a milestone name the module and test that milestone adds; until then the row is
 a plan, not a map.

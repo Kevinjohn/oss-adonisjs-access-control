@@ -1,4 +1,5 @@
 import { Exception } from '@adonisjs/core/exceptions'
+import type { HttpContext } from '@adonisjs/core/http'
 import type { AccessControlErrorCode } from './types.js'
 
 /** HTTP status and English fallback message per code (specification section 6). */
@@ -60,4 +61,22 @@ export class AccessControlError extends Exception {
       cause: options.cause,
     })
   }
+
+  /**
+   * The response: the table's status, `Cache-Control: no-store` and `{ errors: [{ code, message }] }`.
+   * The message is `ctx.i18n.t('errors.<code>', {}, <English>)` when `ctx.i18n` exists.
+   */
+  async handle(error: this, ctx: HttpContext): Promise<void> {
+    const i18n = (ctx as { i18n?: Translator }).i18n
+    const message = i18n ? i18n.t(`errors.${error.code}`, {}, error.message) : error.message
+    ctx.response
+      .status(error.status)
+      .header('Cache-Control', 'no-store')
+      .json({ errors: [{ code: error.code, message }] })
+  }
+}
+
+/** The slice of `@adonisjs/i18n`'s translator the error handler uses. */
+interface Translator {
+  t(key: string, data: Record<string, unknown>, fallback: string): string
 }

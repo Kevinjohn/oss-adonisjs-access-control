@@ -1,4 +1,7 @@
+import type { Database } from '@adonisjs/lucid/database'
 import { AccessControlError } from './errors.js'
+import { MembershipService } from './memberships.js'
+import { sqlIdentifierPattern } from './identifiers.js'
 import * as rules from './rules.js'
 import type { RoleMatrix } from './rules.js'
 import type {
@@ -9,11 +12,11 @@ import type {
   ResolvedAccessControlConfig,
   RuleResult,
   ScopeKey,
+  TransactionRunner,
 } from './types.js'
 
 const rolePattern = /^[a-z][a-z0-9_-]*$/
 const namePattern = /^[a-z][a-zA-Z0-9]*$/
-const identifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/
 const keyTypes: readonly KeyType[] = ['integer', 'string', 'uuid']
 const reservedKeys = ['members:list', 'members:manage', 'invitations:manage'] as const
 
@@ -24,7 +27,7 @@ function invalid(detail: string): AccessControlError {
 }
 
 function assertIdentifier(name: string, value: unknown): void {
-  if (typeof value !== 'string' || !identifierPattern.test(value))
+  if (typeof value !== 'string' || !sqlIdentifierPattern.test(value))
     throw invalid(`${name} ${JSON.stringify(value)} is not a plain SQL identifier`)
 }
 
@@ -108,6 +111,7 @@ export class AccessControl<
   /** Every permission key, in declaration order. */
   readonly permissionKeys: readonly PermissionKeyOf<P>[]
   readonly #matrix: RoleMatrix
+  #service: MembershipService<R[number]> | undefined
 
   constructor(config: AccessControlConfig<R, P>) {
     this.#matrix = validate(config)
@@ -121,6 +125,25 @@ export class AccessControl<
       ...this.#matrix.minimumRole.keys(),
     ] as PermissionKeyOf<P>[])
     Object.freeze(this)
+  }
+
+  /**
+   * Binds the database and transaction runner; the provider calls this at boot. The instance
+   * stays frozen, so the binding lives in a private field.
+   */
+  attach(db: Database, runner: TransactionRunner): this {
+    this.#service = new MembershipService<R[number]>(this, db, runner)
+    return this
+  }
+
+  /** The membership service (specification section 5); available once a database is attached. */
+  get memberships(): MembershipService<R[number]> {
+    if (!this.#service)
+      throw new AccessControlError('E_ACCESS_CONTROL_INVALID_CONFIG', {
+        message:
+          'access-control: no database is attached; register the provider or call attach(db, runner) first',
+      })
+    return this.#service
   }
 
   /** The index of the role in `roles`, -1 when unknown. */

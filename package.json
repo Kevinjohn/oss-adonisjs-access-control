@@ -152,13 +152,15 @@
     ],
     "exclude": [
       "tests/**",
-      "bin/**"
+      "bin/**",
+      "tmp/**",
+      "configure.ts"
     ],
     "check-coverage": true,
-    "statements": 0,
-    "lines": 0,
-    "branches": 0,
-    "functions": 0
+    "statements": 92,
+    "lines": 92,
+    "branches": 95,
+    "functions": 91
   },
   "prettier": "@adonisjs/prettier-config",
   "packageManager": "pnpm@11.23.0"

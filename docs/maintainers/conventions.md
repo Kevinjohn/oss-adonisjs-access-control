@@ -52,10 +52,21 @@ PostgreSQL, MySQL, coverage, the docs build and the packed SQLite consumer.
 and exercises SQLite and PostgreSQL consumers; `--package=<path>` skips the rebuild and installs
 that tarball as given.
 
-The `c8` block in `package.json` has `check-coverage: true`. Its floors are placeholders (`0`)
-until the membership service milestone, which sets each floor to the lower of the SQLite and
-PostgreSQL results, rounded down, and records the derivation here. Lowering a floor afterwards is
-a reviewed change to the config and this paragraph together.
+The `c8` block in `package.json` has `check-coverage: true`. Each floor is the lower of the SQLite
+and PostgreSQL results at the membership service milestone, rounded down to a whole number and
+then lowered by two points so engine-specific branches do not fail a single-engine run:
+**FLOORS**. Lowering a floor afterwards is a reviewed change to the config and this paragraph
+together.
+
+## SQLite writes
+
+The local transaction runner (`src/kit_transaction.ts`, used until Account Kit exports its
+helpers) takes SQLite's write lock as the first statement of every transaction by touching the
+kit's `account_transaction_lock` row with the busy handler off, retrying in code for up to five
+seconds. SQLite never invokes the busy handler for a connection that already holds a shared lock,
+so waiting inside SQLite would deadlock two writers until their timeouts. The connection's
+`busy_timeout` is restored before the callback runs; keep better-sqlite3's default (5 seconds) so a
+commit can wait for readers.
 
 Do not add Docker support or use npm, npx, yarn or yarn dlx. `better-sqlite3` requires the pinned
 Node 24 runtime.
