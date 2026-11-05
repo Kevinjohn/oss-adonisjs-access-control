@@ -22,6 +22,7 @@ export default defineConfig({
     () => import('@adonisjs/limiter/limiter_provider'),
     () => import('@adonisjs/bouncer/bouncer_provider'),
     () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
+    () => import('@kevinjohn/adonisjs-access-control/access_control_provider'),
   ],
 
   preloads: [() => import('#start/routes'), () => import('#start/kernel')],

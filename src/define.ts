@@ -1,12 +1,16 @@
 import type { Database } from '@adonisjs/lucid/database'
 import { AccessControlError } from './errors.js'
 import { MembershipService } from './memberships.js'
+import { abilities, type AbilityMap, type MembershipResolver } from './abilities.js'
+import { clientPayload } from './payload.js'
 import { sqlIdentifierPattern } from './identifiers.js'
 import * as rules from './rules.js'
 import type { RoleMatrix } from './rules.js'
 import type {
   AccessControlConfig,
+  ClientPayload,
   KeyType,
+  Membership,
   PermissionKeyOf,
   PermissionMap,
   ResolvedAccessControlConfig,
@@ -144,6 +148,21 @@ export class AccessControl<
           'access-control: no database is attached; register the provider or call attach(db, runner) first',
       })
     return this.#service
+  }
+
+  /**
+   * Bouncer abilities, one per permission key (section 8). `resolve` is read on every check, so
+   * pass a closure over the request, for example `() => ctx.membership`.
+   */
+  abilities(resolve: MembershipResolver): AbilityMap<P> {
+    return abilities<P>(this, resolve)
+  }
+
+  /** The payload a client receives for a membership (section 10); `null` when none or suspended. */
+  clientPayload(
+    membership: Membership | null | undefined
+  ): ClientPayload<R[number], PermissionKeyOf<P>> | null {
+    return clientPayload(this, membership) as ClientPayload<R[number], PermissionKeyOf<P>> | null
   }
 
   /** The index of the role in `roles`, -1 when unknown. */
