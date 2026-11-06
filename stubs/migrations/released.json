@@ -1,6 +1,6 @@
 [
   {
-    "name": "create_memberships",
+    "name": "access_control_create_memberships",
     "sha256": "74a47e2b9395fe4fcf6be544095af4ba3c25320020cd68a41c976d1dd9bc4286"
   }
 ]
