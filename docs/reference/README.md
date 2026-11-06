@@ -18,9 +18,9 @@ This reference describes the `0.1.0` pre-release. Its provider entry is
 | `@kevinjohn/adonisjs-access-control/account-kit`             | Account Kit callbacks: invitations, acceptance, account deletion and export                           | <a href="/oss-adonisjs-access-control/reference/api/account_kit/main/">Account Kit reference</a>               |
 | `@kevinjohn/adonisjs-access-control/commands`                | Ace command discovery loader                                                                          | <a href="/oss-adonisjs-access-control/reference/api/commands/main/">Commands reference</a>                     |
 
-The exports above are the complete supported surface. The scaffold release exports `configure`
-and `stubsRoot` from the root; the other entries fill in milestone by milestone, as recorded in
-the changelog.
+The exports above are the complete supported surface. The root exports `defineAccessControl`,
+`AccessControl`, `AccessControlError`, the `errors` namespace, `configure` and `stubsRoot`; the
+subpath entries fill in milestone by milestone, as recorded in the changelog.
 
 ## Generated signatures and imports
 

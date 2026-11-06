@@ -27,8 +27,8 @@ should explain a contract, ordering or non-obvious constraint.
 | Task                            | Module                                        | Focused tests                                               | Specification |
 | ------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | ------------- |
 | Configure the package in an app | `configure.ts`, `stubs/`                      | `tests/configure.spec.ts` (M5)                              | 11            |
-| Validate the configuration      | `src/define.ts` (M1)                          | `tests/define.spec.ts` (M1)                                 | 2             |
-| Pure rules and truth tables     | `src/rules.ts` (M1)                           | `tests/rules.spec.ts` (M1)                                  | 3             |
+| Validate the configuration      | `src/define.ts`                               | `tests/define.spec.ts`, `tests/types/define.ts`             | 2             |
+| Pure rules and truth tables     | `src/rules.ts`                                | `tests/rules.spec.ts`                                       | 3             |
 | Memberships table               | `stubs/migrations/` (M2)                      | `tests/migration_stubs.spec.ts` (M2)                        | 4.1, 17.1     |
 | Lock process and transactions   | `src/locks.ts`, `src/kit_transaction.ts` (M2) | `tests/memberships.spec.ts` (M2)                            | 4.2, 4.3      |
 | Membership service              | `src/memberships.ts` (M2)                     | `tests/memberships.spec.ts` (M2)                            | 5             |

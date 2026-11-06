@@ -20,10 +20,14 @@ Legend: `-` not started; `M<n>` the milestone that delivers it.
 
 ## Configuration and rules (sections 2, 3)
 
-| Requirement                                                         | Evidence | Implemented | Verified | Shipped |
-| ------------------------------------------------------------------- | -------- | ----------- | -------- | ------- |
-| 2.3 boot validation, each failure                                   | -        | M1          | -        | -       |
-| 3 `can`, `assignableRoles`, tables 3.1, 3.2, identity predicate 3.4 | -        | M1          | -        | -       |
+| Requirement                                                                                             | Evidence                                                                                                                                                           | Implemented | Verified                                          | Shipped |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- | ------------------------------------------------- | ------- |
+| 2.3 boot validation, each failure (1-6), frozen instance                                                | `tests/define.spec.ts` · "2.3.1 rejects empty roles" … "2.3.6 rejects a key type outside integer, string and uuid", "returns a frozen instance for a valid config" | M1          | `pnpm quick:test` on SQLite, PostgreSQL and MySQL | -       |
+| 2.2 compile-time role and key inference                                                                 | `tests/types/define.ts` (`@ts-expect-error` cases compiled by `pnpm typecheck`)                                                                                    | M1          | `pnpm typecheck`                                  | -       |
+| 3 `rank`, `can` per key per role, `permissionsFor`, `assignableRoles` with and without an owner role    | `tests/rules.spec.ts` · groups "rules: rank, can and permissionsFor", "rules: assignableRoles"                                                                     | M1          | `pnpm quick:test`                                 | -       |
+| 3.1 every `canManage` row, first-match order                                                            | `tests/rules.spec.ts` · group "rules: canManage truth table", one case per row                                                                                     | M1          | `pnpm quick:test`                                 | -       |
+| 3.2 every `canAssign` row, `canManage` first                                                            | `tests/rules.spec.ts` · group "rules: canAssign"                                                                                                                   | M1          | `pnpm quick:test`                                 | -       |
+| 3.4 identity predicate: empty target, self, missing actor scope, suspended target scope, admin on owner | `tests/rules.spec.ts` · group "rules: canAdministerIdentity"                                                                                                       | M1          | `pnpm quick:test`                                 | -       |
 
 ## Database and membership service (sections 4, 5, 6, 17.1)
 
