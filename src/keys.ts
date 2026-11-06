@@ -36,3 +36,15 @@ export function normaliseKey(keyType: KeyType, value: unknown, what: string): nu
     throw invalid(what, 'must be 1 to 254 characters long')
   return value
 }
+
+/**
+ * Whether a string is the normalised form of a key of this type, so a system that stores and
+ * orders keys as given (Account Kit's invitation scope) agrees with the package's lock order.
+ */
+export function isCanonicalKey(keyType: KeyType, value: string): boolean {
+  try {
+    return String(normaliseKey(keyType, value, 'key')) === value
+  } catch {
+    return false
+  }
+}

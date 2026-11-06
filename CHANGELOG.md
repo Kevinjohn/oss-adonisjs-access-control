@@ -4,7 +4,7 @@
 
 ### Migrations
 
-- `create_memberships`: the memberships table with `RESTRICT` foreign keys to the users and scope
+- `access_control_create_memberships`: the memberships table with `RESTRICT` foreign keys to the users and scope
   tables, a unique `(scope_id, user_id)` key and the paging index. Recorded in
   `stubs/migrations/released.json`.
 

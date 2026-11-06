@@ -23,6 +23,8 @@ export interface FixtureOptions {
   owner?: boolean
   membershipsTable?: string
   sqliteBusyTimeout?: number
+  /** String keys compared case-insensitively: SQLite `NOCASE`; MySQL's default collation already is. */
+  caseInsensitiveKeys?: boolean
   onMembershipChanged?: (event: MembershipEvent<Role>, trx: Trx) => Promise<void>
 }
 
@@ -40,7 +42,12 @@ export async function membershipFixture(options: FixtureOptions = {}) {
     memberships: options.membershipsTable ?? `memberships_${database.suffix}`,
   }
   try {
-    await createSchema(database.db, names, { users: userKeyType, scope: scopeKeyType })
+    await createSchema(
+      database.db,
+      names,
+      { users: userKeyType, scope: scopeKeyType },
+      { caseInsensitiveKeys: options.caseInsensitiveKeys }
+    )
   } catch (error) {
     await database.cleanup()
     throw error
@@ -77,6 +84,8 @@ export async function membershipFixture(options: FixtureOptions = {}) {
   return {
     db: database.db,
     engine: database.engine,
+    /** Whether the parent tables compare string keys case-insensitively on this engine. */
+    caseInsensitiveKeys: options.caseInsensitiveKeys === true && database.engine !== 'pg',
     names,
     config,
     memberships: config.memberships,
