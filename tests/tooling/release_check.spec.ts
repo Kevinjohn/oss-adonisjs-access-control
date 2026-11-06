@@ -102,7 +102,7 @@ test('release gate accepts only the release tarball of the declared Account Kit 
   assert,
 }) => {
   const changelog = '# Changelog\n\n## Unreleased\n\n## 9.9.9 - 2026-01-01\n\n- A\n'
-  const peerDependencies = { '@kevinjohn/adonisjs-account-kit': '0.3.0' }
+  const peerDependencies = { '@kevinjohn/adonisjs-account-kit': '0.3.1' }
   for (const pin of [
     'github:Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce',
     'Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce',
@@ -112,7 +112,7 @@ test('release gate accepts only the release tarball of the declared Account Kit 
     'https://github.com/Kevinjohn/oss-adonisjs-account-kit/archive/17e7a02b.tar.gz',
     'file:../oss-adonisjs-account-kit',
     'link:../oss-adonisjs-account-kit',
-    kitRelease('0.2.0'),
+    kitRelease('0.3.0'),
     undefined,
   ]) {
     const result = await releaseCheck(changelog, {
@@ -120,11 +120,11 @@ test('release gate accepts only the release tarball of the declared Account Kit 
       ...(pin === undefined ? {} : { devDependencies: { '@kevinjohn/adonisjs-account-kit': pin } }),
     })
     assert.notEqual(result.status, 0, String(pin))
-    assert.include(result.stderr, 'is not the v0.3.0 release tarball', String(pin))
+    assert.include(result.stderr, 'is not the v0.3.1 release tarball', String(pin))
   }
   const release = await releaseCheck(changelog, {
     peerDependencies,
-    devDependencies: { '@kevinjohn/adonisjs-account-kit': kitRelease('0.3.0') },
+    devDependencies: { '@kevinjohn/adonisjs-account-kit': kitRelease('0.3.1') },
   })
   assert.equal(release.status, 0, release.stderr)
 }).timeout(60_000)
