@@ -345,9 +345,7 @@ export class MembershipService<Role extends string = string> {
     return this.#run(input.trx, async (trx) => {
       await this.#lock(trx, scopeId, [actorId, userId])
       const actor = await this.#requireManager(trx, scopeId, actorId)
-      const user = await trx.from(this.#usersTable).select('id').where('id', userId).first()
-      if (!user) throw error('E_ACCESS_CONTROL_USER_NOT_FOUND')
-      if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
+      // The role rows depend on the actor and the input alone, so they come before the user lookup.
       allow(
         this.#access.canAssign({
           actorRole: actor.role,
@@ -356,6 +354,9 @@ export class MembershipService<Role extends string = string> {
           isSelf: actorId === userId,
         })
       )
+      const user = await trx.from(this.#usersTable).select('id').where('id', userId).first()
+      if (!user) throw error('E_ACCESS_CONTROL_USER_NOT_FOUND')
+      if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
       const membership = await this.#insert(trx, scopeId, userId, input.role)
       await this.#emit(
         { type: 'membership.added', scopeId, userId, actorId, role: input.role as Role },
