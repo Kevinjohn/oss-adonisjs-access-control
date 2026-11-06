@@ -53,6 +53,29 @@ test.group('defineAccessControl: boot validation (spec 2.3)', () => {
     )
   })
 
+  test('freezes copies: the caller keeps writable objects and the instance keeps the validated values', ({
+    assert,
+  }) => {
+    type Role = 'viewer' | 'editor' | 'admin' | 'owner'
+    const roles = ['viewer', 'editor', 'admin', 'owner'] as const
+    const permissions: {
+      project: { read: Role; write: Role; archive: Role }
+      members: { list: Role; manage: Role }
+      invitations: { manage: Role }
+    } = {
+      project: { read: 'viewer', write: 'editor', archive: 'admin' },
+      members: { list: 'admin', manage: 'admin' },
+      invitations: { manage: 'admin' },
+    }
+    const config = { ...base, roles, permissions }
+    const ac = defineAccessControl(config)
+    permissions.project.read = 'admin'
+    assert.isFalse(Object.isFrozen(permissions.project))
+    assert.isFalse(Object.isFrozen(roles))
+    assert.isTrue(ac.can('viewer', 'project:read'))
+    assert.equal(ac.config.permissions.project.read, 'viewer')
+  })
+
   test('2.3.1 rejects empty roles', ({ assert }) => {
     assertInvalidConfig(assert, invalid({ roles: [] }), /roles/)
   })

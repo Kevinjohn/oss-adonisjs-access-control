@@ -17,6 +17,7 @@ package-lock.json
 # Private planning and review documents, never committed or packed
 PLAN*.md
 __*.md
+/plan/
 /plans/
 docs/maintainers/reviews/
 docs/reference/api
