@@ -190,6 +190,12 @@ test.group('configure (spec 11)', (group) => {
       assert.isTrue(
         badType.logs.some((line) => line.includes('scopeKeyType must be integer, string or uuid'))
       )
+      const bareFlag = await app.run('--scope-table=teams', '--memberships-table')
+      assert.equal(bareFlag.exitCode, 1)
+      assert.isTrue(
+        bareFlag.logs.some((line) => line.includes('--memberships-table=<value> needs a value'))
+      )
+      assert.deepEqual(await readdir(join(app.root, 'config')), ['account_kit.ts'])
       assert.deepEqual(await app.migrations(), [])
       assert.notInclude(await app.read('adonisrc.ts'), 'access_control_provider')
     } finally {

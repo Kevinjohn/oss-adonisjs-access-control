@@ -20,9 +20,16 @@ export async function releasedMigrations(root: string): Promise<string[]> {
   return released.map((entry) => entry.name)
 }
 
-function flagString(command: Configure, name: string, fallback: string): string {
+/** The flag's value, `fallback` when absent, or `undefined` after reporting a value-less flag. */
+function flagString(command: Configure, name: string, fallback: string): string | undefined {
   const value: unknown = command.parsedFlags[name]
-  return value === undefined ? fallback : String(value)
+  if (value === undefined) return fallback
+  if (typeof value !== 'string' || value === '') {
+    command.logger.error(`access-control: --${name}=<value> needs a value`)
+    command.exitCode = 1
+    return undefined
+  }
+  return value
 }
 
 /** The Bouncer and Account Kit changes `configure` prints instead of editing application files. */
@@ -48,8 +55,7 @@ Then run node ace migration:run and node ace access-control:doctor.`
  * provider, command and named middleware. Existing files are skipped, never rewritten.
  */
 export async function configureWith(command: Configure, root: string): Promise<void> {
-  const scopeTable: unknown = command.parsedFlags['scope-table']
-  if (scopeTable === undefined || scopeTable === true) {
+  if (command.parsedFlags['scope-table'] === undefined) {
     command.logger.error(
       'access-control: --scope-table=<table> is required (the table your scope rows live in)'
     )
@@ -63,17 +69,26 @@ export async function configureWith(command: Configure, root: string): Promise<v
     command.exitCode = 1
     return
   }
+  const scopeTable = flagString(command, 'scope-table', '')
   const usersTable = flagString(command, 'users-table', 'users')
   const membershipsTable = flagString(command, 'memberships-table', 'memberships')
-  const userKeyType = flagString(command, 'user-id-type', 'integer') as KeyType
-  const scopeKeyType = flagString(command, 'scope-id-type', 'integer') as KeyType
+  const userKeyType = flagString(command, 'user-id-type', 'integer') as KeyType | undefined
+  const scopeKeyType = flagString(command, 'scope-id-type', 'integer') as KeyType | undefined
+  if (
+    scopeTable === undefined ||
+    usersTable === undefined ||
+    membershipsTable === undefined ||
+    userKeyType === undefined ||
+    scopeKeyType === undefined
+  )
+    return
   let schema: ReturnType<typeof membershipsMigrationSchema>
   try {
     schema = membershipsMigrationSchema({
       membershipsTable,
       usersTable,
       userKeyType,
-      scopeTable: String(scopeTable),
+      scopeTable,
       scopeKeyType,
     })
   } catch (error) {
@@ -88,7 +103,7 @@ export async function configureWith(command: Configure, root: string): Promise<v
   await codemods.makeUsingStub(root, 'config.stub', {
     usersTable,
     userKeyType,
-    scopeTable: String(scopeTable),
+    scopeTable,
     scopeKeyType,
     membershipsTable,
   })
