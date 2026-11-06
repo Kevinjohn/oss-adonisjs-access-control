@@ -1,0 +1,30 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "index.ts",
+    "src/types.ts",
+    "providers/access_control_provider.ts",
+    "services/main.ts",
+    "middleware/main.ts",
+    "account_kit/main.ts",
+    "commands/main.ts"
+  ],
+  "out": "docs/reference/api",
+  "plugin": ["typedoc-plugin-markdown"],
+  "entryFileName": "index",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "hidePageHeader": true,
+  "githubPages": false,
+  "gitRevision": "main",
+  "treatWarningsAsErrors": true,
+  "validation": { "notDocumented": true },
+  "requiredToBeDocumented": ["Class", "Function", "Interface", "TypeAlias", "Variable"],
+  "intentionallyNotExported": [],
+  "externalSymbolLinkMappings": {
+    "@adonisjs/ace": {
+      "CommandMetaData": "https://github.com/adonisjs/ace"
+    }
+  }
+}

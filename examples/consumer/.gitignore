@@ -1,0 +1,10 @@
+node_modules
+build
+tmp/*
+!tmp/.gitkeep
+.env
+.env.*
+!.env.example
+!.env.test
+.adonisjs
+*.tgz
