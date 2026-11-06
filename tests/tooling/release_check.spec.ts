@@ -19,12 +19,17 @@ test('released changelog headings use the form bin/release_check.sh requires', a
 })
 
 /** Run the release gate in a throwaway package with the given changelog; it builds and packs. */
-async function releaseCheck(changelog: string) {
+async function releaseCheck(changelog: string, manifest: Record<string, unknown> = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'access_control_release_check_'))
   try {
     await writeFile(
       join(directory, 'package.json'),
-      JSON.stringify({ name: 'release-fixture', version: '9.9.9', scripts: { build: 'true' } })
+      JSON.stringify({
+        name: 'release-fixture',
+        version: '9.9.9',
+        scripts: { build: 'true' },
+        ...manifest,
+      })
     )
     await writeFile(join(directory, 'CHANGELOG.md'), changelog)
     const outputs = join(directory, 'github_output')
@@ -89,3 +94,25 @@ test('release notes take only the exact version section', async ({ assert }) => 
   assert.include(result.notes, '- Current')
   assert.notInclude(result.notes, '- Other')
 }).timeout(15_000)
+
+test('release gate refuses a git-pinned Account Kit dev dependency', async ({ assert }) => {
+  const changelog = '# Changelog\n\n## Unreleased\n\n## 9.9.9 - 2026-01-01\n\n- A\n'
+  for (const pin of [
+    'github:Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce',
+    'git+https://github.com/Kevinjohn/oss-adonisjs-account-kit.git#main',
+    'https://codeload.github.com/Kevinjohn/oss-adonisjs-account-kit/tar.gz/17e7a02b',
+  ]) {
+    const result = await releaseCheck(changelog, {
+      devDependencies: { '@kevinjohn/adonisjs-account-kit': pin },
+    })
+    assert.notEqual(result.status, 0, pin)
+    assert.include(result.stderr, 'Account Kit dev dependency is a git pin')
+  }
+  const release = await releaseCheck(changelog, {
+    devDependencies: {
+      '@kevinjohn/adonisjs-account-kit':
+        'https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.0/kevinjohn-adonisjs-account-kit-0.3.0.tgz',
+    },
+  })
+  assert.equal(release.status, 0, release.stderr)
+}).timeout(30_000)
