@@ -6,12 +6,16 @@ permissions:
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
+# Every job is gated on main, so a dispatch from another branch fails before the matrix runs.
 jobs:
   checks:
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/checks.yml
   compat:
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/compat.yml
   release:
+    if: github.ref == 'refs/heads/main'
     needs: [checks, compat]
     runs-on: ubuntu-latest
     steps:
