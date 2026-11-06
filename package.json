@@ -87,7 +87,7 @@
     "@japa/api-client": "^3.2.1",
     "@japa/assert": "^4.2.0",
     "@japa/runner": "^5.3.0",
-    "@kevinjohn/adonisjs-account-kit": "github:Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce",
+    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.0/kevinjohn-adonisjs-account-kit-0.3.0.tgz",
     "@poppinss/ts-exec": "^1.5.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/luxon": "^3.0.0",
@@ -114,7 +114,7 @@
     "@adonisjs/bouncer": "^4.0.0",
     "@adonisjs/core": "^7.0.0",
     "@adonisjs/lucid": "^22.4.2",
-    "@kevinjohn/adonisjs-account-kit": "0.2.0",
+    "@kevinjohn/adonisjs-account-kit": "0.3.0",
     "luxon": "^3.4.4",
     "typescript": "^5.9.3 || ^6.0.3"
   },

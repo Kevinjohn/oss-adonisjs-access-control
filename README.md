@@ -21,10 +21,9 @@ policies).
 
 ## Install
 
-Access Control requires Node.js 24+, AdonisJS 7 and Account Kit with its `./transaction` export,
-scoped invitations and `ctx.auth.user` left set by its middleware (Account Kit pull requests #777
-to #780, not yet in a release; the package pins that commit as a dev dependency). Install the
-`0.1.0` release from GitHub:
+Access Control requires Node.js 24+, AdonisJS 7 and Account Kit 0.3.0 (exact), the release with
+the `./transaction` export, scoped invitations and `ctx.auth.user` left set by its middleware.
+Install the `0.1.0` release from GitHub:
 
 ```sh
 pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.0/kevinjohn-adonisjs-access-control-0.1.0.tgz

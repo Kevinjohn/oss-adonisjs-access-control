@@ -16,11 +16,11 @@ target outside `main`. Its final gate checks the tag and dated changelog, builds
 package, and creates release notes with an install command and SHA-256 digest. See
 [releasing](releasing.md) for the procedure and local dry-run command.
 
-Account Kit is a required peer at an exact version. The dev dependency is normally the GitHub
-release tarball of that version; update the URL, version and peer range together. Until a release
-ships the `./transaction` export, scoped invitations and `ctx.auth.user` after the kit middleware,
-it is a `github:` pin of one kit commit, and `pnpm-workspace.yaml` and the consumer's
-`allowScripts` allow that pin's build.
+Account Kit is a required peer at an exact version. The dev dependency and the example consumer
+install the GitHub release tarball of that version; update the URL, version and peer range
+together. `bin/release_check.sh` refuses to release unless the dev dependency is the release
+tarball of the exact peer version, so a kit commit or another kit release never ships as the
+declared peer.
 
 ## Architecture and boundaries
 

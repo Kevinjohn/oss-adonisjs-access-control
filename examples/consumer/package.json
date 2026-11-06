@@ -57,7 +57,7 @@
     "@adonisjs/lucid": "^22.4.2",
     "@adonisjs/session": "^8.1.0",
     "@kevinjohn/adonisjs-access-control": "file:../../tmp/consumer-package.tgz",
-    "@kevinjohn/adonisjs-account-kit": "github:Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce",
+    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.0/kevinjohn-adonisjs-account-kit-0.3.0.tgz",
     "@vinejs/vine": "^4.4.0",
     "better-sqlite3": "^13.0.0",
     "luxon": "^3.7.2",
@@ -65,7 +65,6 @@
     "reflect-metadata": "^0.2.2"
   },
   "allowScripts": {
-    "@kevinjohn/adonisjs-account-kit@https://codeload.github.com/Kevinjohn/oss-adonisjs-account-kit/tar.gz/17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce": true,
     "@swc/core": true,
     "better-sqlite3": true,
     "esbuild": true,

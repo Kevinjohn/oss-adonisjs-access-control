@@ -8,6 +8,12 @@
   tables, a unique `(scope_id, user_id)` key and the paging index. Recorded in
   `stubs/migrations/released.json`.
 
+### Changed
+
+- Account Kit peer is `0.3.0` (exact), the first release with the `./transaction` export, scoped
+  invitations and `ctx.auth.user` after the kit middleware; the dev dependency and the example
+  consumer install its release tarball.
+
 ### Added
 
 - `node ace configure @kevinjohn/adonisjs-access-control --scope-table=<table>` writes
