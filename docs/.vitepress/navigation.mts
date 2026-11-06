@@ -9,6 +9,7 @@ export const sidebar = [
     text: 'Reference',
     items: [
       { text: 'Public API', link: '/reference/' },
+      { text: 'Errors', link: '/reference/errors' },
       { text: 'Recipes', link: '/recipes/' },
     ],
   },

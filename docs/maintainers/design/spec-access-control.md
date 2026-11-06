@@ -191,7 +191,7 @@ src/abilities.ts               Bouncer ability factory
 src/payload.ts                 client payload
 stubs/main.ts                  export const stubsRoot = import.meta.dirname
 stubs/config.stub
-stubs/migrations/create_memberships.stub
+stubs/migrations/access_control_create_memberships.stub
 bin/                           check, pg.sh, release_check.sh, test.ts, test_consumer.ts
 tests/                         flat specs; tests/helpers/ shared fixtures
 examples/consumer/             packed-consumer app used by test:consumer
@@ -452,7 +452,7 @@ trx)` (section 5.3).
 
 ## 4. Database
 
-### 4.1 Migration stub (`stubs/migrations/create_memberships.stub`)
+### 4.1 Migration stub (`stubs/migrations/access_control_create_memberships.stub`)
 
 Placeholders filled by `configure`: `{{ membershipsTable }}`, `{{ usersTable }}`, `{{ userKeyType }}`,
 `{{ scopeTable }}`, `{{ scopeKeyType }}`.
@@ -912,7 +912,7 @@ Kit's own configure flags (`configure.ts:211-227`). **[repo]**
    table name or id type is invalid.
 2. Write `config/access_control.ts` from `stubs/config.stub` (the 2.1 example with the flag values),
    always including `membershipsTable: '<value>'` (default `'memberships'`).
-3. Publish `database/migrations/<timestamp>_create_memberships.ts` with placeholders filled.
+3. Publish `database/migrations/<timestamp>_access_control_create_memberships.ts` with placeholders filled.
 4. Register `@kevinjohn/adonisjs-access-control/access_control_provider` in `adonisrc.ts`.
 5. Register named middleware `scope` → `@kevinjohn/adonisjs-access-control/middleware` in
    `start/kernel.ts` (`codemods.registerMiddleware('named', ...)`).
@@ -1029,7 +1029,8 @@ fixtures. Section 17 (change over time) was added after this review and has not 
 
 - **Released migration stubs are immutable.** Once a version ships, its stubs never change. Schema
   changes ship as **new, additive** stubs.
-- Every stub has a stable name: `create_memberships` for v0.1; later ones
+- Every stub has a stable name: `access_control_create_memberships` for v0.1 (the package prefix
+  keeps the published file name clear of an app's own `create_memberships` migration); later ones
   `access_control_<YYYYMMDD>_<change>` (e.g. `access_control_20270115_add_membership_note`).
 - `stubs/migrations/released.json` records `{ name, sha256 }` for every released stub.
   `tests/migration_stubs.spec.ts` fails if a listed stub's hash changes or a listed stub is deleted.

@@ -1,0 +1,34 @@
+{{{ exports({ to: migration.destination }) }}}
+
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  protected tableName = '{{ membershipsTable }}'
+
+  async up() {
+    this.schema.createTable(this.tableName, (table) => {
+      table.increments('id')
+      {{{ scopeIdColumn }}}
+        .notNullable()
+        .references('id')
+        .inTable('{{ scopeTable }}')
+        .onDelete('RESTRICT')
+      {{{ userIdColumn }}}
+        .notNullable()
+        .references('id')
+        .inTable('{{ usersTable }}')
+        .onDelete('RESTRICT')
+      table.string('role', 32).notNullable()
+      table.string('status', 16).notNullable().defaultTo('active')
+      table.timestamp('created_at', { useTz: true }).notNullable()
+      table.timestamp('updated_at', { useTz: true }).notNullable()
+      table.unique(['scope_id', 'user_id'], { indexName: '{{ membershipsTable }}_scope_user_unique' })
+      table.index(['user_id'], '{{ membershipsTable }}_user_index')
+      table.index(['scope_id', 'created_at', 'id'], '{{ membershipsTable }}_scope_page_index')
+    })
+  }
+
+  async down() {
+    this.schema.dropTable(this.tableName)
+  }
+}

@@ -1,6 +1,26 @@
 import type { DateTime } from 'luxon'
+import type { Database } from '@adonisjs/lucid/database'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import type { AccessControl } from './define.js'
+
+export type {
+  MembershipService,
+  AddMembershipInput,
+  ChangeRoleInput,
+  SetStatusInput,
+  RemoveMembershipInput,
+  LeaveInput,
+  TransferOwnershipInput,
+  ListForScopeInput,
+  CreateFirstMemberInput,
+  AcceptInvitationInput,
+  IdentityInput,
+  IdentityRoles,
+  PrepareAccountDeletionInput,
+  RemoveAllForScopeInput,
+  ExportForInput,
+  MembershipExport,
+} from './memberships.js'
 
 /** A Lucid transaction client, as started by Account Kit's `transaction()` runner. */
 export type Trx = TransactionClientContract
@@ -159,6 +179,36 @@ export type AccessControlErrorCode =
   | 'E_ACCESS_CONTROL_INVALID_INPUT'
   | 'E_ACCESS_CONTROL_INVALID_CONFIG'
   | 'E_ACCESS_CONTROL_CONFLICT'
+
+/** Anything that can say which SQL dialect it talks to: a query client, transaction or database. */
+export type DialectSource = DialectClient | DialectDatabase
+
+/** A query client or transaction: it knows its dialect. */
+export interface DialectClient {
+  dialect: { name: string }
+}
+
+/** A Lucid `Database`: its default connection knows the dialect. */
+export interface DialectDatabase {
+  /** The default connection's query client. */
+  connection(): DialectClient
+}
+
+/**
+ * The transaction helpers of specification 0.2, as `@kevinjohn/adonisjs-account-kit/transaction`
+ * exports them.
+ */
+export interface TransactionRunner {
+  source: 'account-kit'
+  /** Runs a database-only callback in its own transaction; SQLite writers serialise on the kit's lock row. */
+  transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T>
+  /** Locks one row by `id`; a no-op on SQLite, where the runner already holds the writer lock. */
+  lockRow(trx: Trx, table: string, id: number | string): Promise<void>
+  /** The value to write or compare for a timestamp column, in UTC. */
+  sqlTimestamp(client: DialectSource, at?: DateTime): string
+  /** Reads a timestamp column whatever the driver returns. */
+  readTimestamp(value: unknown): DateTime | null
+}
 
 /** The payload a client receives for the current membership. */
 export interface ClientPayload<Role extends string = string, Key extends string = string> {

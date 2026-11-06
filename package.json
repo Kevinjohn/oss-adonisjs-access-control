@@ -87,7 +87,7 @@
     "@japa/api-client": "^3.2.1",
     "@japa/assert": "^4.2.0",
     "@japa/runner": "^5.3.0",
-    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.2.0/kevinjohn-adonisjs-account-kit-0.2.0.tgz",
+    "@kevinjohn/adonisjs-account-kit": "github:Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce",
     "@poppinss/ts-exec": "^1.5.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/luxon": "^3.0.0",
@@ -152,13 +152,15 @@
     ],
     "exclude": [
       "tests/**",
-      "bin/**"
+      "bin/**",
+      "tmp/**",
+      "configure.ts"
     ],
     "check-coverage": true,
-    "statements": 0,
-    "lines": 0,
-    "branches": 0,
-    "functions": 0
+    "statements": 92,
+    "lines": 92,
+    "branches": 95,
+    "functions": 91
   },
   "prettier": "@adonisjs/prettier-config",
   "packageManager": "pnpm@11.23.0"

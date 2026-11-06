@@ -16,8 +16,11 @@ target outside `main`. Its final gate checks the tag and dated changelog, builds
 package, and creates release notes with an install command and SHA-256 digest. See
 [releasing](releasing.md) for the procedure and local dry-run command.
 
-Account Kit is a required peer at an exact version. The dev dependency is the GitHub release
-tarball of that version; update the URL, version and peer range together.
+Account Kit is a required peer at an exact version. The dev dependency is normally the GitHub
+release tarball of that version; update the URL, version and peer range together. Until a release
+ships the `./transaction` export, scoped invitations and `ctx.auth.user` after the kit middleware,
+it is a `github:` pin of one kit commit, and `pnpm-workspace.yaml` and the consumer's
+`allowScripts` allow that pin's build.
 
 ## Architecture and boundaries
 
@@ -52,10 +55,20 @@ PostgreSQL, MySQL, coverage, the docs build and the packed SQLite consumer.
 and exercises SQLite and PostgreSQL consumers; `--package=<path>` skips the rebuild and installs
 that tarball as given.
 
-The `c8` block in `package.json` has `check-coverage: true`. Its floors are placeholders (`0`)
-until the membership service milestone, which sets each floor to the lower of the SQLite and
-PostgreSQL results, rounded down, and records the derivation here. Lowering a floor afterwards is
-a reviewed change to the config and this paragraph together.
+The `c8` block in `package.json` has `check-coverage: true`. Each floor is the lower of the SQLite
+and PostgreSQL results at the membership service milestone, rounded down to a whole number and
+then lowered by two points so engine-specific branches do not fail a single-engine run:
+**FLOORS**. Lowering a floor afterwards is a reviewed change to the config and this paragraph
+together.
+
+## SQLite writes
+
+Account Kit's transaction runner (`@kevinjohn/adonisjs-account-kit/transaction`, re-exported by
+`src/kit_transaction.ts`) takes SQLite's write lock as the first statement of every transaction by
+touching the kit's `account_transaction_lock` row on a dedicated connection with the busy handler
+off, retrying in code until its deadline, so the package's writes and the kit's serialise on the
+same row. Keep better-sqlite3's default `busy_timeout` (5 seconds) so a commit can wait for
+readers.
 
 Do not add Docker support or use npm, npx, yarn or yarn dlx. `better-sqlite3` requires the pinned
 Node 24 runtime.
@@ -101,3 +114,11 @@ GitHub-visible text. Review complete outgoing content before publication.
   `22.4.2`, the Lucid floor, itself requires `luxon ^3.4.4`, so a `3.0.0` floor cannot be
   installed alongside the required Lucid peer. The packed floor consumer installs `luxon 3.4.4`.
   Pending the owner's confirmation.
+- `leave` answers `NOT_A_MEMBER`, not `SCOPE_NOT_FOUND`, when the scope row is missing
+  (specification section 6 lists `SCOPE_NOT_FOUND` for a missing row during a lock). `leave` is
+  routed without the scope middleware, so any signed-in user may call it; one code for a missing
+  scope and a missing membership keeps team existence private. Owner-approved on 2026-11-06.
+- String keys are locked, stored and compared by the spelling the users or scope row holds, read
+  before locking, so a database that compares keys case-insensitively (MySQL's default collation)
+  cannot store an alias or reverse the lock order of specification 4.2. Integer and UUID keys
+  are canonical after normalisation (5.1) and are not read first. Owner-approved on 2026-11-06.

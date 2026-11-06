@@ -22,6 +22,8 @@ The exports above are the complete supported surface. The root exports `defineAc
 `AccessControl`, `AccessControlError`, the `errors` namespace, `configure` and `stubsRoot`; the
 subpath entries fill in milestone by milestone, as recorded in the changelog.
 
+Every error code, status and message is listed in [Errors](errors.md).
+
 ## Generated signatures and imports
 
 Generated pages may show internal or framework types in a public signature so TypeScript contracts

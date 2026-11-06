@@ -2,8 +2,26 @@
 
 ## Unreleased
 
+### Migrations
+
+- `access_control_create_memberships`: the memberships table with `RESTRICT` foreign keys to the users and scope
+  tables, a unique `(scope_id, user_id)` key and the paging index. Recorded in
+  `stubs/migrations/released.json`.
+
 ### Added
 
+- Membership service (`AccessControl.memberships` once a database is attached): `find`,
+  `listForUser`, `listForScope` with cursor paging, `add`, `changeRole`, `setStatus`, `remove`,
+  `leave`, `transferOwnership`, and the trusted `createFirstMember`, `acceptInvitation`,
+  `identityRoles`, `assertCanAdministerIdentity`, `prepareAccountDeletion`, `removeAllForScope`
+  and `exportFor`. Every write runs under the lock process (user rows ascending by `String(key)`,
+  then the scope row) and reports through `onMembershipChanged` inside the transaction.
+- Transaction runner: Account Kit's `transaction` export, which serialises SQLite writers on the
+  kit's `account_transaction_lock` row and runs MySQL at READ COMMITTED with a UTC connection.
+  Account Kit is pinned at a `main` commit until a release ships that export.
+- `AccessControlError.handle`: the table status, `Cache-Control: no-store` and
+  `{ errors: [{ code, message }] }`, translated through `ctx.i18n` when present.
+- `docs/reference/errors.md` listing every code.
 - `defineAccessControl` with boot validation of roles, permission keys, reserved keys, owner role,
   table names and key types; the frozen `AccessControl` instance exposes the pure rules (`rank`,
   `can`, `permissionsFor`, `assignableRoles`, `canManage`, `canAssign`, `canAdministerIdentity`),
