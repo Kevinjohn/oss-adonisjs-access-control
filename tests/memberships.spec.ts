@@ -341,7 +341,8 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     )
     assert.equal(
       await codeOf(f.memberships.leave({ scopeId: 999_999, userId: outsider })),
-      'E_ACCESS_CONTROL_SCOPE_NOT_FOUND'
+      'E_ACCESS_CONTROL_NOT_A_MEMBER',
+      'a missing scope reads like a missing membership: leave is open to every signed-in user'
     )
   })
 

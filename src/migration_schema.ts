@@ -4,7 +4,7 @@ import type { KeyType } from './types.js'
 
 const keyTypes: readonly KeyType[] = ['integer', 'string', 'uuid']
 
-/** The values `configure` and the tests put into `stubs/migrations/create_memberships.stub`. */
+/** The values `configure` and the tests put into `stubs/migrations/access_control_create_memberships.stub`. */
 export interface MembershipsMigrationSchema {
   membershipsTable: string
   usersTable: string

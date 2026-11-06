@@ -11,6 +11,13 @@ export function ascending<K extends ScopeKey | UserKey>(keys: Iterable<K>): K[] 
     .map(([, key]) => key)
 }
 
+/** Whether two key lists hold the same set of keys, compared element by element. */
+export function sameKeys<K extends ScopeKey | UserKey>(a: Iterable<K>, b: Iterable<K>): boolean {
+  const left = ascending(a).map(String)
+  const right = ascending(b).map(String)
+  return left.length === right.length && left.every((key, index) => key === right[index])
+}
+
 /** Locks the given user rows, ascending. A missing user row locks nothing. */
 export async function lockUsers(
   runner: TransactionRunner,
