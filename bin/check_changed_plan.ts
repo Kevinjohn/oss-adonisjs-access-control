@@ -31,7 +31,7 @@ const docsInputs = [
 ]
 // The compat workflow's pull request paths: the packed consumer reads these.
 const consumerInputs = [
-  /^(examples|providers|stubs|commands|middleware|services|account_kit)\//,
+  /^(examples|src|providers|stubs|commands|middleware|services|account_kit)\//,
   /^(index|configure)\.ts$/,
   /^bin\/test_consumer\.ts$/,
   /^bin\/helpers\/consumer_.*\.ts$/,
