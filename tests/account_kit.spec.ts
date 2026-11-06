@@ -565,3 +565,53 @@ test.group('Account Kit callbacks: admission (spec 9)', (group) => {
     )
   })
 })
+
+test.group('Account Kit callbacks: canonical scope keys (spec 5.1)', (group) => {
+  let booted: TestApp
+  group.setup(async () => {
+    booted = await bootTestApp({ keyTypes: { users: 'integer', scope: 'uuid' } })
+    return () => booted.close()
+  })
+
+  test('an invitation scope is authorised and honoured in its canonical spelling only', async ({
+    assert,
+  }) => {
+    const access = await booted.app.container.make(AccessControl)
+    const scope = '0f7b3f1e-3f5c-4f6a-9d2e-1c2b3a4d5e6f'
+    await booted.db.table(booted.names.scope).insert({ id: scope, name: 's' })
+    const [owner, invited] = await Promise.all([
+      idOf(await booted.db.table(booted.names.users).returning('id').insert({ name: 'u' })),
+      idOf(await booted.db.table(booted.names.users).returning('id').insert({ name: 'u' })),
+    ])
+    await access.memberships.createFirstMember({ scopeId: scope, userId: owner })
+    assert.isTrue(await callbacks.authorize.invite(user(owner), 'editor', { scope }))
+    assert.isFalse(
+      await callbacks.authorize.invite(user(owner), 'editor', { scope: scope.toUpperCase() })
+    )
+    assert.isFalse(
+      await callbacks.authorize.listInvitations(user(owner), { scope: scope.toUpperCase() })
+    )
+    assert.equal(
+      await codeOf(
+        booted.db.transaction((trx) =>
+          callbacks.onInvitationAccepted(
+            user(invited),
+            invitation({ id: 70, scope: scope.toUpperCase(), role: 'editor' }),
+            trx
+          )
+        )
+      ),
+      'E_ACCESS_CONTROL_INVALID_INPUT'
+    )
+    assert.isNull(await access.memberships.find(scope, invited))
+    await booted.db.transaction((trx) =>
+      callbacks.onInvitationAccepted(
+        user(invited),
+        invitation({ id: 71, scope, role: 'editor' }),
+        trx
+      )
+    )
+    const accepted = await access.memberships.find(scope, invited)
+    assert.equal(accepted?.role, 'editor')
+  })
+})
