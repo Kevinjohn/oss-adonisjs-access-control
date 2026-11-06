@@ -77,8 +77,10 @@ const rootProbe = `
   assert.equal(typeof api.configure, 'function')
   assert.equal(typeof api.stubsRoot, 'string')
   await access(join(api.stubsRoot, 'main.js'))
+  await access(join(api.stubsRoot, 'migrations', 'released.json'))
   const commands = await import('@kevinjohn/adonisjs-access-control/commands')
-  assert.equal(typeof commands.getMetaData, 'function')
+  const metadata = await commands.getMetaData()
+  assert.deepEqual(metadata.map((c) => c.commandName), ['access-control:doctor'])
   for (const subpath of ['types', 'services/main', 'middleware', 'account-kit'])
     assert.equal(typeof (await import('@kevinjohn/adonisjs-access-control/' + subpath)), 'object')
 `

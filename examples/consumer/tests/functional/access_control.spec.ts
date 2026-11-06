@@ -236,3 +236,23 @@ test.group('Scoped invitations through Account Kit', () => {
     )
   })
 })
+
+test.group('access-control:doctor in the consumer', () => {
+  test('the doctor runs through ace against the migrated database and exits 0', async ({
+    assert,
+  }) => {
+    const { default: ace } = await import('@adonisjs/core/services/ace')
+    ace.ui.switchMode('raw')
+    const command = await ace.exec('access-control:doctor', ['--json'])
+    const logs = (ace.ui.logger.getLogs() as Array<{ message: string }>).map((l) => l.message)
+    const report = JSON.parse(logs.find((line) => line.startsWith('{'))!) as {
+      checks: Array<{ name: string; ok: boolean }>
+    }
+    assert.equal(command.exitCode, 0, logs.join('\n'))
+    assert.include(
+      report.checks.map((c) => c.name),
+      'account_kit_version'
+    )
+    assert.isTrue(report.checks.every((c) => c.ok))
+  })
+})

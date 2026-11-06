@@ -10,15 +10,24 @@ Use these notes to assess Access Control and protect its guarantees. Human overv
 
 ## Requirements
 
-Core 7, Lucid 22.4.2+, Bouncer 4, Auth 10, Luxon 3 and Account Kit 0.2.0 (exact). Roles and
-permission keys are declared in `config/access_control.ts`.
+Core 7, Lucid 22.4.2+, Bouncer 4, Auth 10, Luxon 3 and Account Kit 0.2.0 (exact) with its
+`./transaction` export, scoped invitations and `ctx.auth.user` after its middleware (Account Kit
+pull requests #777 to #780; the dev dependency pins that commit). Roles and permission keys are
+declared in `config/access_control.ts`.
 
 ## Install
 
 ```sh
 pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.0/kevinjohn-adonisjs-access-control-0.1.0.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
+node ace migration:run
+node ace access-control:doctor
 ```
+
+`configure` writes `config/access_control.ts`, publishes the memberships migration, registers the
+provider, the commands and the named `scope` middleware, and prints the Bouncer initializer and
+Account Kit config changes to apply by hand. Flags: `--scope-id-type`, `--users-table`,
+`--user-id-type`, `--memberships-table`.
 
 ## Capabilities
 
@@ -49,6 +58,8 @@ database; every service method accepts a caller `trx` started by the kit's `tran
 
 ## Further reading
 
+- [Guides](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/guide/setup.md):
+  setup, roles, rules, memberships, Bouncer, Account Kit, client payload, changing roles.
 - [Technical contract](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/maintainers/design/spec-access-control.md).
 
 ## Tested against

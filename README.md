@@ -21,8 +21,10 @@ policies).
 
 ## Install
 
-Access Control requires Node.js 24+, AdonisJS 7 and Account Kit. Install the `0.1.0` release
-from GitHub:
+Access Control requires Node.js 24+, AdonisJS 7 and Account Kit with its `./transaction` export,
+scoped invitations and `ctx.auth.user` left set by its middleware (Account Kit pull requests #777
+to #780, not yet in a release; the package pins that commit as a dev dependency). Install the
+`0.1.0` release from GitHub:
 
 ```sh
 pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.0/kevinjohn-adonisjs-access-control-0.1.0.tgz
@@ -32,37 +34,36 @@ node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 The release asset is `kevinjohn-adonisjs-access-control-0.1.0.tgz`; verify it against the SHA-256
 in the [release notes](https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/tag/v0.1.0).
 
-## Quick example
+## Quick start
 
 ```ts
-// config/access_control.ts
-import { defineAccessControl } from '@kevinjohn/adonisjs-access-control'
-
+// config/access_control.ts (written by configure)
 export default defineAccessControl({
   roles: ['viewer', 'editor', 'admin', 'owner'],
   ownerRole: 'owner',
   users: { table: 'users', keyType: 'integer' },
   scope: { table: 'teams', keyType: 'integer' },
   permissions: {
-    project: { read: 'viewer', write: 'editor', archive: 'admin' },
+    project: { read: 'viewer', write: 'editor' },
     members: { list: 'admin', manage: 'admin' },
     invitations: { manage: 'admin' },
   },
 })
-```
-
-```ts
 // start/routes.ts: Account Kit's middleware (credential revision, active account or admission)
 // runs before `scope`; `middleware.auth()` alone skips those checks.
 router
   .put('/teams/:scopeId/projects/:id', [ProjectsController, 'update'])
   .use([kitAccount, middleware.scope()])
-// in the controller: await bouncer.authorize('project:write')
+// in the controller
+await bouncer.authorize('project:write')
 ```
 
 `kitAccount` is the kit's `managedAccountMiddleware` (or `admissionMiddleware`) built once in
-`start/routes.ts`; the consumer example under `examples/consumer` shows it. Build the request's
+`start/routes.ts`; the [Bouncer guide](docs/guide/bouncer.md) shows it. Build the request's
 Bouncer from `#config/access_control`, not from `services/main`, so permission keys are typed.
+
+The [setup guide](docs/guide/setup.md) covers the two manual steps (the Bouncer initializer and
+the Account Kit callbacks) and `node ace access-control:doctor`.
 
 ## Tested against
 
@@ -78,6 +79,8 @@ Bouncer from `#config/access_control`, not from `services/main`, so permission k
 ## Documentation
 
 - [Documentation index](docs/README.md)
+- [Guides](docs/guide/setup.md): setup, roles, rules, memberships, Bouncer, Account Kit, the
+  client payload and changing roles
 - [API reference](docs/reference/README.md)
 - [Technical contract](docs/maintainers/design/spec-access-control.md)
 - [Notes for coding agents](README-AGENTS.md)
