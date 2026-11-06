@@ -23,7 +23,7 @@ for path in "$ROOT/tmp" "$DATA"; do
     [ "$(cd "$path" && pwd -P)" = "$path" ] || fail "ambiguous managed directory: $path"
   fi
 done
-missing() { fail 'PostgreSQL 16 not found: brew install postgresql@16, or run DB_CLIENT=pg pnpm quick:test against your own PostgreSQL 16 (see docs/maintainers/conventions.md#external-postgresql)'; }
+missing() { fail 'PostgreSQL 16 not found: brew install postgresql@16, or run DB_CLIENT=pg pnpm quick:test against your own PostgreSQL 16 (see docs/maintainers/conventions.md#external-postgresql-and-mysql)'; }
 if prefix="$(brew --prefix --installed postgresql@16 2>/dev/null)"; then
   BIN="$prefix/bin"
 elif ctl="$(command -v pg_ctl)"; then
@@ -133,9 +133,19 @@ cleanup() {
   if [ "$result" -eq 0 ] && [ "$cleanup_result" -ne 0 ]; then result=1; fi
   exit "$result"
 }
+# Takes the lock directory; a lock whose recorded owner process is gone (a killed run) is replaced.
+acquire_lock() {
+  local owner
+  mkdir "$LOCK" 2>/dev/null && return 0
+  owner="$(cat "$LOCK/owner" 2>/dev/null || :)"
+  case "$owner" in ''|*[!0-9]*) return 1;; esac
+  if kill -0 "$owner" 2>/dev/null; then return 1; fi
+  echo "removing stale lock left by process $owner" >&2
+  rm -f "$LOCK/owner" && rmdir "$LOCK" && mkdir "$LOCK"
+}
 if [ "$COMMAND" != status ]; then
   mkdir -p "$ROOT/tmp"
-  if mkdir "$LOCK"; then locked=1; else fail "cluster lock busy: $LOCK"; fi
+  if acquire_lock; then locked=1; else fail "cluster lock busy: $LOCK"; fi
   trap cleanup EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM

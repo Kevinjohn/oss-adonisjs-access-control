@@ -30,11 +30,11 @@ body:
   - type: dropdown
     id: database
     attributes:
-      label: Control store
+      label: Database
       options:
         - PostgreSQL
         - SQLite
-        - Custom store
+        - MySQL
     validations:
       required: true
   - type: textarea
