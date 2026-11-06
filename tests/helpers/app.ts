@@ -8,9 +8,10 @@ import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import type { Database } from '@adonisjs/lucid/database'
 import type { ApplicationService } from '@adonisjs/core/types'
 import { defineAccessControl } from '../../index.js'
+import type { KeyType, MembershipEvent, PermissionMap, Trx } from '../../src/types.js'
 import { connectionConfig, testClient, testEngine } from './database.js'
 import { createSchema, dropSchema, type SchemaNames } from './schema.js'
-import { permissions, roles } from './fixture.js'
+import { permissions, roles, type Role } from './fixture.js'
 
 export interface TestApp {
   app: ApplicationService
@@ -21,7 +22,14 @@ export interface TestApp {
 
 /** Boots core providers, Lucid and the package provider with the given `access_control` config value. */
 export async function bootTestApp(
-  options: { accessControl?: unknown; withProvider?: boolean } = {}
+  options: {
+    accessControl?: unknown
+    withProvider?: boolean
+    onMembershipChanged?: (event: MembershipEvent<string>, trx: Trx) => Promise<void>
+    permissions?: PermissionMap<Role>
+    /** Key types of the users and scope tables; default integer. */
+    keyTypes?: { users: KeyType; scope: KeyType }
+  } = {}
 ): Promise<TestApp> {
   const client = testClient()
   const suffix = randomBytes(4).toString('hex')
@@ -43,10 +51,11 @@ export async function bootTestApp(
       : defineAccessControl({
           roles: [...roles],
           ownerRole: 'owner',
-          users: { table: names.users, keyType: 'integer' },
-          scope: { table: names.scope, keyType: 'integer' },
+          users: { table: names.users, keyType: options.keyTypes?.users ?? 'integer' },
+          scope: { table: names.scope, keyType: options.keyTypes?.scope ?? 'integer' },
           membershipsTable: names.memberships,
-          permissions,
+          permissions: options.permissions ?? permissions,
+          onMembershipChanged: options.onMembershipChanged,
         })
   const factory = new IgnitorFactory()
     .withCoreProviders()
@@ -73,7 +82,7 @@ export async function bootTestApp(
     await app.boot()
     db = await app.container.make('lucid.db')
     if (client === 'pg') await db.rawQuery(`create schema "${schema}"`)
-    await createSchema(db, names, { users: 'integer', scope: 'integer' })
+    await createSchema(db, names, options.keyTypes ?? { users: 'integer', scope: 'integer' })
   } catch (error) {
     try {
       if (db && client === 'pg') await db.rawQuery(`drop schema if exists "${schema}" cascade`)

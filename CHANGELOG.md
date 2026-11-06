@@ -10,6 +10,13 @@
 
 ### Added
 
+- Account Kit callbacks (`@kevinjohn/adonisjs-access-control/account-kit`):
+  `accessControlKitCallbacks(options)` returns `authorize` (`invite`, `manageInvitation`,
+  `listInvitations`: plain reads through `context.trx`, scoped by `context.scope` or
+  `invitation.scope`, admission-checked when the kit's admission provider is bound),
+  `onInvitationAccepted` (creates the membership, then runs the app's callback),
+  `onAccountDeletingTransaction` and `exportAccountData`. `AccessControl` is resolved from the
+  container on every call, so the callbacks can be created in `config/account_kit.ts`.
 - Scope middleware (`@kevinjohn/adonisjs-access-control/middleware`): named `scope` middleware and
   `scopeMiddleware(options)` resolve the request's membership from `ctx.auth.user` and the route's
   `scopeId`, refuse with `E_ACCESS_CONTROL_FORBIDDEN` otherwise, and set `ctx.membership`.

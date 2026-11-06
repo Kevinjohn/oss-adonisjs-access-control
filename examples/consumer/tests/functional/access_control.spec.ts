@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
+import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import accessControl from '@kevinjohn/adonisjs-access-control/services/main'
 import User from '#models/user'
@@ -123,5 +124,115 @@ test.group('Scoped routes with the package middleware and Bouncer abilities', (g
   test('a guest never reaches the scope middleware', async ({ client }) => {
     const response = await client.get(`/teams/${scopeId}/project`)
     response.assertStatus(401)
+  })
+})
+
+test.group('Account Kit callbacks wired in config/account_kit.ts', () => {
+  test('the kit config carries the package callbacks and they answer from the memberships table', async ({
+    assert,
+  }) => {
+    const { default: kitConfig } = await import('#config/account_kit')
+    const [team] = await db
+      .table('teams')
+      .returning('id')
+      .insert({ name: 'Kit team', created_at: new Date() })
+    const scopeId = Number(typeof team === 'object' ? team.id : team)
+    const owner = await createUser('kit-owner@example.com')
+    await accessControl.memberships.createFirstMember({ scopeId, userId: owner.id })
+    const actor = { id: owner.id, email: owner.email } as never
+    assert.isTrue(
+      await kitConfig.authorize.invite(actor, 'editor', { scope: String(scopeId) } as never)
+    )
+    assert.isFalse(
+      await kitConfig.authorize.invite(actor, 'owner', { scope: String(scopeId) } as never)
+    )
+    assert.isFalse(await kitConfig.authorize.invite(actor, 'editor'))
+    const exported = await db.transaction((trx) => kitConfig.exportAccountData!(actor, trx))
+    assert.deepInclude((exported as { memberships: unknown[] }).memberships[0], {
+      scopeId,
+      role: 'owner',
+    })
+  })
+})
+
+test.group('Scoped invitations through Account Kit', () => {
+  /** The consumer's kit with deliveries captured instead of thrown, and no credential policy. */
+  async function kitCapturingLinks() {
+    const { AccountKit } = await import('@kevinjohn/adonisjs-account-kit')
+    const { default: kitConfig } = await import('#config/account_kit')
+    const links: string[] = []
+    const capture = async (_target: unknown, link: string) => {
+      links.push(link)
+    }
+    const config = {
+      ...kitConfig,
+      enabled: [...kitConfig.enabled, 'invitations'],
+      notify: {
+        ...kitConfig.notify,
+        invitationProvision: capture,
+        accountActivationProvision: capture,
+      },
+      onCredentialsChangedTransaction: async () => {},
+    } as unknown as typeof kitConfig
+    const kit = new AccountKit({ config, db, limiter: await app.container.make('limiter.manager') })
+    const lastToken = () => decodeURIComponent(new URL(links.at(-1)!).pathname.split('/').at(-1)!)
+    return { kit, lastToken }
+  }
+
+  async function createTeam(name: string) {
+    const [team] = await db.table('teams').returning('id').insert({ name, created_at: new Date() })
+    return Number(typeof team === 'object' ? team.id : team)
+  }
+
+  test('one address invited to two teams gets both memberships on acceptance, in scope order', async ({
+    assert,
+  }) => {
+    const { kit, lastToken } = await kitCapturingLinks()
+    const owner = await createUser('inviter@example.com')
+    const scopes = [await createTeam('Invite A'), await createTeam('Invite B')]
+    for (const scopeId of scopes)
+      await accessControl.memberships.createFirstMember({ scopeId, userId: owner.id })
+    const email = 'twice-invited@example.com'
+    const tokens: string[] = []
+    // Sent in reverse scope order; acceptance still grants in ascending String(scope) order.
+    for (const scopeId of [...scopes].reverse()) {
+      await kit.invitations.send({
+        actorId: owner.id,
+        email,
+        role: 'editor',
+        scope: String(scopeId),
+      })
+      tokens.push(lastToken())
+    }
+    const user = await kit.invitations.accept({ token: tokens[0], password: 'accepted-password-1' })
+    const memberships = await accessControl.memberships.listForUser(user.id)
+    assert.deepEqual(
+      memberships.map((m) => [String(m.scopeId), m.role, m.status]),
+      scopes
+        .map(String)
+        .sort()
+        .map((scopeId) => [scopeId, 'editor', 'active'])
+    )
+    // The second invitation was consumed by the same acceptance.
+    assert.isNull(await kit.invitations.inspect({ token: tokens[1] }))
+  })
+
+  test('a self-registered user with a pending scoped invitation joins the team on activation', async ({
+    assert,
+  }) => {
+    const { kit, lastToken } = await kitCapturingLinks()
+    const owner = await createUser('matcher@example.com')
+    const scopeId = await createTeam('Invite match')
+    await accessControl.memberships.createFirstMember({ scopeId, userId: owner.id })
+    const email = 'registered-later@example.com'
+    await kit.invitations.send({ actorId: owner.id, email, role: 'editor', scope: String(scopeId) })
+    const user = await kit.registration.register({ email, password: 'registered-password-1' })
+    assert.deepEqual(await accessControl.memberships.listForUser(user.id), [])
+    await kit.emailVerification.complete({ token: lastToken(), password: 'registered-password-1' })
+    const joined = await accessControl.memberships.listForUser(user.id)
+    assert.deepEqual(
+      joined.map((m) => [String(m.scopeId), m.role]),
+      [[String(scopeId), 'editor']]
+    )
   })
 })
