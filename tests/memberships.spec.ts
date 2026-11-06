@@ -70,6 +70,10 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     assert.equal(await add(admin, outsider, 'ceo'), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
     assert.equal(await add(admin, outsider, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
     assert.equal(await add(owner, outsider, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
+    // Role rows come before the user lookup, so a missing user cannot be told apart by the role.
+    assert.equal(await add(admin, 999_999, 'ceo'), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
+    assert.equal(await add(admin, 999_999, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
+    assert.equal(await add(admin, viewer, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
     assert.equal(
       await codeOf(
         f.memberships.add({

@@ -119,8 +119,15 @@ export class AccessControl<
 
   constructor(config: AccessControlConfig<R, P>) {
     this.#matrix = validate(config)
+    // Freeze copies, so the caller's own objects stay writable.
     this.config = deepFreeze({
       ...config,
+      roles: [...config.roles] as unknown as R,
+      users: { ...config.users },
+      scope: { ...config.scope },
+      permissions: Object.fromEntries(
+        Object.entries(config.permissions).map(([resource, actions]) => [resource, { ...actions }])
+      ) as P,
       membershipsTable: config.membershipsTable ?? 'memberships',
     })
     this.roles = this.config.roles

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { cp, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { basename, join, relative } from 'node:path'
@@ -230,6 +230,7 @@ try {
         ) + '\n'
       )
       console.log(`[consumer] PASS ${selected} packed scaffold`)
+      await rm(app, { recursive: true, force: true })
       continue
     }
     await run(app, ['lint'], `${selected}_lint`)
@@ -301,6 +302,8 @@ try {
       }
       if (engineFailure !== undefined) throw engineFailure
     }
+    // A passing app is removed; a failing one stays for inspection next to its logs.
+    await rm(app, { recursive: true, force: true })
   }
 } catch (error) {
   let failure: unknown = error
