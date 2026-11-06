@@ -69,5 +69,8 @@ them.
 
 `RoleOf<typeof config>` and `PermissionKeyOf<typeof config>` from
 `@kevinjohn/adonisjs-access-control/types` name the role union and the key union of your
-configuration, for controllers, frontends and tests. Passing an unknown key to `can`, to a
-Bouncer ability or to a permission check is a type error.
+configuration, for controllers, frontends and tests. Through the instance exported by
+`config/access_control.ts`, an unknown key passed to a generated Bouncer ability is a type error;
+`can(role, key)` takes any string and answers false for an unknown key, and the container
+singleton from `services/main` is typed as a bare `AccessControl`, so wire Bouncer from the
+config module as the [Bouncer guide](bouncer.md) shows.

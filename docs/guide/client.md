@@ -1,14 +1,15 @@
 # Client payload
 
 A frontend needs to know what the current member may do without re-implementing the rules.
-`accessControl.clientPayload(ctx.membership)` builds that summary:
+`accessControl.clientPayload(ctx.membership)` builds that summary (`kitAccount` is the Account
+Kit middleware from the [Bouncer guide](bouncer.md)):
 
 ```ts
 router
   .get('/teams/:scopeId/session', async ({ membership }) => {
     return accessControl.clientPayload(membership)
   })
-  .use([middleware.auth(), middleware.scope()])
+  .use([kitAccount, middleware.scope()])
 ```
 
 ```json

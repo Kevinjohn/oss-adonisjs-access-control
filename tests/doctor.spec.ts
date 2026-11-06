@@ -143,6 +143,27 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     await booted.db.from(booted.names.memberships).where('scope_id', headless).delete()
   })
 
+  test('a role or status differing only by case is unknown, and an OWNER is not an owner', async ({
+    assert,
+  }) => {
+    // The runtime refuses `EDITOR`; the doctor must not let a case-insensitive collation hide it.
+    const scope = await createScope()
+    const [u1, u2, u3] = await Promise.all([createUser(), createUser(), createUser()])
+    const upperRole = await rawMembership(scope, u1, 'EDITOR')
+    const upperStatus = await rawMembership(scope, u2, 'editor', 'ACTIVE')
+    const upperOwner = await rawMembership(scope, u3, 'OWNER')
+    const report = await runDoctor({ access, db: booted.db, scope })
+    assert.deepEqual(failing(report), {
+      unknown_role: [String(upperRole), String(upperOwner)],
+      unknown_status: [String(upperStatus)],
+      scope_without_owner: [String(scope)],
+    })
+    await booted.db
+      .from(booted.names.memberships)
+      .whereIn('id', [upperRole, upperStatus, upperOwner])
+      .delete()
+  })
+
   test('sample ids stop at 20 while the count is exact', async ({ assert }) => {
     const scope = await createScope()
     const ids: number[] = []

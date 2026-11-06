@@ -34,13 +34,15 @@ function flagString(command: Configure, name: string, fallback: string): string 
 
 /** The Bouncer and Account Kit changes `configure` prints instead of editing application files. */
 export const manualSteps = `Bouncer: in app/middleware/initialize_bouncer_middleware.ts merge the generated abilities:
-  import accessControl from '${packageName}/services/main'
+  import accessControl from '#config/access_control'
   ctx.bouncer = new Bouncer(
     () => ctx.auth.user || null,
     { ...abilities, ...accessControl.abilities(() => ctx.membership) },
     policies
   ).setContainerResolver(ctx.containerResolver)
   and widen the HttpContext bouncer type with ReturnType<typeof accessControl.abilities>.
+  (config/access_control.ts carries the permission-key types; services/main is typed as a bare AccessControl.)
+Routes: apply Account Kit's managedAccountMiddleware or admissionMiddleware before middleware.scope().
 Account Kit: in config/account_kit.ts pass the package callbacks:
   import { accessControlKitCallbacks } from '${packageName}/account-kit'
   const kitCallbacks = accessControlKitCallbacks()

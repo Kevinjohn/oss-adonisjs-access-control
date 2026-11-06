@@ -79,7 +79,29 @@ two writers never wait on each other in a cycle. On SQLite the package shares Ac
 `account_transaction_lock` row, so package writes and kit writes serialise.
 
 Pass your own `trx` to run a membership change inside a larger transaction; the package then
-locks and writes through it and leaves commit and rollback to you.
+locks and writes through it and leaves commit and rollback to you. Three rules keep that safe:
+
+- Start `trx` with the kit's runner, `transaction(db, callback)` from
+  `@kevinjohn/adonisjs-account-kit/transaction`, not with `db.transaction()`. The runner sets the
+  isolation level and SQLite's shared lock row; under MySQL's default repeatable read a plain
+  Lucid transaction keeps reading the snapshot it started with, so two concurrent ownership
+  transfers could both see the old owner and leave a scope with two owners.
+- Do not hold a user row lock before calling in. Account Kit's `authentication.withCurrent` locks
+  the current account first; a membership change from inside it that targets another user locks
+  the users in key order and can wait on a writer that holds the other user and waits for this
+  one. Run cross-user membership changes in their own transaction.
+- Do not lock the scope row yourself before `removeAllForScope`; it locks the member users first,
+  then the scope, and a lock taken in the other order can deadlock with a concurrent change.
+
+```ts
+import db from '@adonisjs/lucid/services/db'
+import { transaction } from '@kevinjohn/adonisjs-account-kit/transaction'
+
+await transaction(db, async (trx) => {
+  await accessControl.memberships.transferOwnership({ actor, scopeId, toUserId, trx })
+  await Project.query({ client: trx }).where('team_id', scopeId).update({ owner_id: toUserId })
+})
+```
 
 ## Errors
 

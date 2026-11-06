@@ -35,7 +35,11 @@ look the `AccessControl` instance up on every call rather than at creation.
 
 The checks read through the kit's transaction when one is given and never lock rows, so they
 cannot change the kit's lock order. An invitation without a scope is not a team invitation and is
-refused by these callbacks; keep your own callbacks for those if you send them.
+refused by these callbacks; keep your own callbacks for those if you send them. The scope must be
+spelled the way the package normalises keys (a lower-case UUID, a plain integer): the kit stores
+and accepts invitations in the order of the strings it was given, so an alias would let that order
+differ from the package's lock order. `invite` refuses an alias and acceptance fails with
+`E_ACCESS_CONTROL_INVALID_INPUT`.
 
 `onInvitationAccepted` creates the membership for the invitation's scope and role inside the
 kit's acceptance transaction. A deleted scope, a role that no longer exists, the owner role or an

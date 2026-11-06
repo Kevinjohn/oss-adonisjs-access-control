@@ -5,16 +5,32 @@ about permission keys. Both read the same membership.
 
 ## The scope middleware
 
-`configure` registers `scope` as named middleware. Apply it per route or group after
-authentication, never globally:
+`configure` registers `scope` as named middleware. Apply it per route or group after Account
+Kit's own middleware, never globally:
 
 ```ts
+import app from '@adonisjs/core/services/app'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
+import { createManagedGuard, managedAccountMiddleware } from '@kevinjohn/adonisjs-account-kit/http'
+
+const kitAccount = managedAccountMiddleware({
+  kit: () => app.container.make(AccountKit),
+  guard: createManagedGuard({ strategy: 'session', name: 'web', loadUser: async () => User }),
+  active: true,
+})
+
 router
   .group(() => {
     router.get('/teams/:scopeId/projects', [ProjectsController, 'index'])
   })
-  .use([middleware.auth(), middleware.scope()])
+  .use([kitAccount, middleware.scope()])
 ```
+
+The kit's `managedAccountMiddleware` (or `admissionMiddleware` when admission is enabled)
+authenticates through your guard and refuses a session whose credential revision is stale, so a
+password change or a sign-out everywhere ends access at once; `active: true` also requires an
+active, verified account. `middleware.auth()` alone skips those checks: a revoked session would
+still reach the scope middleware and the Bouncer abilities.
 
 The middleware reads the user from `ctx.auth.user`, takes the scope from `ctx.params.scopeId` and
 loads the membership without locking. It sets `ctx.membership` for the rest of the request. The
@@ -32,21 +48,24 @@ router
   .use(scopeMiddleware({ resolveScope: (ctx) => ctx.request.header('x-team') }))
 ```
 
-Under Account Kit's admission or managed-account middleware the kit leaves the authenticated user
-on `ctx.auth.user`, so `middleware.auth()` is not needed in front of `middleware.scope()`; the
-example consumer's `/teams/:scopeId/kit-only` route runs that way. Under Masquerade the effective guard is the business guard, so the user,
-the membership and the Bouncer subject are the same customer.
+The kit middleware leaves the authenticated user on `ctx.auth.user`, which is all the scope
+middleware and the Bouncer initializer read; the example consumer's scoped routes run that way.
+Under Masquerade the effective guard is the business guard, so the user, the membership and the
+Bouncer subject are the same customer.
 
 ## Generated abilities
 
 `accessControl.abilities(resolve)` returns one Bouncer ability per permission key, named by the
-key. Merge them into the request's Bouncer in `app/middleware/initialize_bouncer_middleware.ts`:
+key. Merge them into the request's Bouncer in `app/middleware/initialize_bouncer_middleware.ts`,
+importing the instance from `config/access_control.ts` so the key union is typed (the container
+singleton from `services/main` is the same instance, but typed as a bare `AccessControl`, under
+which `bouncer.authorize('project:typo')` compiles and throws at runtime):
 
 ```ts
 import { Bouncer } from '@adonisjs/bouncer'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import accessControl from '@kevinjohn/adonisjs-access-control/services/main'
+import accessControl from '#config/access_control'
 import * as abilities from '#abilities/main'
 import { policies } from '#policies/main'
 

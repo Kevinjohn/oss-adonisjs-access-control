@@ -18,7 +18,7 @@ node ace migration:run
 | ---- | -------------------------------------------------------------------------------------------- |
 | 1    | Stops with a message when `config/account_kit.ts` is missing or `--scope-table` is absent.   |
 | 2    | Writes `config/access_control.ts` with the example roles and the table names from the flags. |
-| 3    | Publishes `database/migrations/<timestamp>_create_memberships.ts`.                           |
+| 3    | Publishes `database/migrations/<timestamp>_access_control_create_memberships.ts`.            |
 | 4    | Registers the provider and the `access-control:doctor` command in `adonisrc.ts`.             |
 | 5    | Registers the named middleware `scope` in `start/kernel.ts`.                                 |
 | 6    | Prints the Bouncer initializer and Account Kit config changes for you to apply.              |
@@ -60,7 +60,8 @@ consistent. The [changing roles guide](changing-roles.md) lists its checks.
 
 Changing `membershipsTable`, `users.table`, `scope.table` or any key type once the migration has
 run is not supported. Treat it as a new install: configure with the new values, migrate, and copy
-the rows with your own migration.
+the rows with your own migration. An application that already stores memberships in its own table
+follows the [adoption guide](adopting.md).
 
 ## Testing your application
 

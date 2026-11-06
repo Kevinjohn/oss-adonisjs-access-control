@@ -16,6 +16,7 @@ export const sidebar = [
       { text: 'Account Kit', link: '/guide/account-kit' },
       { text: 'Client payload', link: '/guide/client' },
       { text: 'Changing roles and the doctor', link: '/guide/changing-roles' },
+      { text: 'Adopting an existing table', link: '/guide/adopting' },
     ],
   },
   {

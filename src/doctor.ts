@@ -70,10 +70,16 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
     const found = await query.clone().select('m.id').orderBy('m.id', 'asc').limit(sampleLimit)
     return found.map((row) => row.id)
   }
+  // The runtime compares roles and statuses as exact strings; MySQL's default collation does
+  // not, so `EDITOR` would pass `NOT IN ('editor', ...)` there and be refused at runtime.
+  const exact = (column: string) =>
+    db.connection().dialect.name === 'mysql' ? `binary ${column}` : column
+  const notIn = (column: string, values: string[]) =>
+    rows().whereRaw(`${exact(column)} not in (${values.map(() => '?').join(', ')})`, values)
 
-  const unknownRole = rows().whereNotIn('m.role', [...roles])
+  const unknownRole = notIn('m.role', [...roles])
   checks.push(check('unknown_role', await sampleIds(unknownRole), await countOf(unknownRole)))
-  const unknownStatus = rows().whereNotIn('m.status', ['active', 'suspended'])
+  const unknownStatus = notIn('m.status', ['active', 'suspended'])
   checks.push(check('unknown_status', await sampleIds(unknownStatus), await countOf(unknownStatus)))
 
   if (ownerRole !== undefined) {
@@ -82,7 +88,7 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
         .select('m.scope_id')
         .groupBy('m.scope_id')
         .havingRaw(
-          `sum(case when m.role = ? and m.status = 'active' then 1 else 0 end) ${comparison} ?`,
+          `sum(case when ${exact('m.role')} = ? and ${exact('m.status')} = 'active' then 1 else 0 end) ${comparison} ?`,
           [ownerRole, comparison === '=' ? 0 : 1]
         )
         .orderBy('m.scope_id', 'asc')

@@ -102,7 +102,7 @@ test.group('configure (spec 11)', (group) => {
       assert.include(config, "invitations: { manage: 'admin' }")
       const files = await app.migrations()
       assert.lengthOf(files, 1)
-      assert.match(files[0], /^\d+_create_memberships\.ts$/)
+      assert.match(files[0], /^\d+_access_control_create_memberships\.ts$/)
       const migration = await app.read(`database/migrations/${files[0]}`)
       const rendered = await renderMembershipsStub({
         membershipsTable: 'memberships',
@@ -130,7 +130,7 @@ test.group('configure (spec 11)', (group) => {
       assert.equal(await app.read('start/kernel.ts'), kernel)
       assert.isTrue(
         second.logs.some((line) =>
-          line.includes('Skipped database/migrations/*_create_memberships.ts')
+          line.includes('Skipped database/migrations/*_access_control_create_memberships.ts')
         )
       )
     } finally {

@@ -43,10 +43,11 @@ router
       limit: 50,
     })
   })
-  .use([middleware.auth(), middleware.scope()])
+  .use([kitAccount, middleware.scope()])
 ```
 
 The response is `{ items, nextCursor }`; pass `nextCursor` back as `cursor` for the next page.
+`kitAccount` is the Account Kit middleware from the [Bouncer guide](../guide/bouncer.md).
 
 ## Guard a password reset started by an admin
 

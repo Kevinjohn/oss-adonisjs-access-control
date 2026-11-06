@@ -168,6 +168,7 @@ test('every guide page from the specification exists and is in the sidebar', asy
     'account-kit',
     'client',
     'changing-roles',
+    'adopting',
   ]
   const navigation = await readFile(join(repoRoot, 'docs/.vitepress/navigation.mts'), 'utf8')
   const index = await readFile(join(repoRoot, 'docs/README.md'), 'utf8')

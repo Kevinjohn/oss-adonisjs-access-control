@@ -19,7 +19,7 @@
   table against the configuration (table and columns, unknown roles and statuses, scopes without
   or with several active owners, orphan rows, the installed Account Kit version). Exit code 0, 1
   when rows are found, 2 when a check could not run.
-- User guides under `docs/guide/` and recipes.
+- User guides under `docs/guide/` (including adopting an existing memberships table) and recipes.
 - Account Kit callbacks (`@kevinjohn/adonisjs-access-control/account-kit`):
   `accessControlKitCallbacks(options)` returns `authorize` (`invite`, `manageInvitation`,
   `listInvitations`: plain reads through `context.trx`, scoped by `context.scope` or
