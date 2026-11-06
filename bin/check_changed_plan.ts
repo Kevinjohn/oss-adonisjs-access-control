@@ -38,6 +38,13 @@ const consumerInputs = [
   /^package\.json$/,
 ]
 const dependencyFiles = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']
+// Formatter configuration (and package.json, which pins Prettier) can change any file's format.
+const formatterInputs = [
+  /^\.prettierrc/,
+  /^\.prettierignore$/,
+  /^\.editorconfig$/,
+  /^package\.json$/,
+]
 
 const isSpec = (path: string) => /^tests\/.+\.spec\.ts$/.test(path)
 const isTypeScript = (path: string) => /\.[cm]?tsx?$/.test(path)
@@ -70,6 +77,7 @@ export function planChangedChecks(
   const specs = present.filter(isSpec)
   const suite = specs.length < changes.length
   const packageChanged = paths.some((path) => !outsidePackage(path))
+  const formatAll = paths.some((path) => formatterInputs.some((input) => input.test(path)))
 
   const step = (
     when: boolean,
@@ -98,21 +106,19 @@ export function planChangedChecks(
   )
 
   return [
-    step(formattable.length > 0, 'no changed files to format', 'format', [
-      'pnpm',
-      'exec',
-      'prettier',
-      '--check',
-      '--ignore-unknown',
-      '--no-error-on-unmatched-pattern',
-      ...formattable,
-    ]),
-    step(paths.some(isLintable), 'no lintable files changed', 'lint', [
-      'pnpm',
-      'lint',
-      '--max-warnings',
-      '0',
-    ]),
+    formatAll
+      ? { label: 'format', command: ['pnpm', 'format:check'] }
+      : step(formattable.length > 0, 'no changed files to format', 'format', [
+          'pnpm',
+          'exec',
+          'prettier',
+          '--check',
+          '--ignore-unknown',
+          '--no-error-on-unmatched-pattern',
+          ...formattable,
+        ]),
+    // The repository's own lint script carries the zero-warning limit for every caller.
+    step(paths.some(isLintable), 'no lintable files changed', 'lint', ['pnpm', 'lint']),
     step(
       paths.some(
         (path) =>

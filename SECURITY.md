@@ -28,6 +28,11 @@ The [build specification](https://github.com/Kevinjohn/oss-adonisjs-access-contr
 describes what the package enforces (membership rules, lock order, owner invariants) and what
 remains the application's responsibility (authentication, record-level rules, team CRUD).
 
+## Dependency assessment
+
+See the dated [dependency audit assessment](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/maintainers/verification.md#dependency-audit-assessment)
+for graph scope, retained advisories and follow-up boundaries.
+
 ## Independent review
 
 None yet.

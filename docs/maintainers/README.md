@@ -13,7 +13,7 @@ package archive.
 
 ## Monthly
 
-- Check each `uses:` in `.github/workflows/*.yml` for a newer release that matches its pin
-  format (major tag such as `actions/checkout@v7`, or exact version such as
-  `ossf/scorecard-action@v2.5.0`). Bump them in one PR.
+- Check each `uses:` in `.github/workflows/*.yml` for a newer release. Every action is pinned to
+  a commit SHA with the release tag in a trailing comment (`actions/checkout@<sha> # v7`); bump
+  the SHA and the comment together, in one PR.
 - Check open Dependabot alerts (Security tab).
