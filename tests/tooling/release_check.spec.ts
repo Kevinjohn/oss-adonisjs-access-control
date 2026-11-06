@@ -95,24 +95,36 @@ test('release notes take only the exact version section', async ({ assert }) => 
   assert.notInclude(result.notes, '- Other')
 }).timeout(15_000)
 
-test('release gate refuses a git-pinned Account Kit dev dependency', async ({ assert }) => {
+const kitRelease = (version: string) =>
+  `https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v${version}/kevinjohn-adonisjs-account-kit-${version}.tgz`
+
+test('release gate accepts only the release tarball of the declared Account Kit peer', async ({
+  assert,
+}) => {
   const changelog = '# Changelog\n\n## Unreleased\n\n## 9.9.9 - 2026-01-01\n\n- A\n'
+  const peerDependencies = { '@kevinjohn/adonisjs-account-kit': '0.3.0' }
   for (const pin of [
     'github:Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce',
+    'Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce',
     'git+https://github.com/Kevinjohn/oss-adonisjs-account-kit.git#main',
+    'git://github.com/Kevinjohn/oss-adonisjs-account-kit.git#main',
     'https://codeload.github.com/Kevinjohn/oss-adonisjs-account-kit/tar.gz/17e7a02b',
+    'https://github.com/Kevinjohn/oss-adonisjs-account-kit/archive/17e7a02b.tar.gz',
+    'file:../oss-adonisjs-account-kit',
+    'link:../oss-adonisjs-account-kit',
+    kitRelease('0.2.0'),
+    undefined,
   ]) {
     const result = await releaseCheck(changelog, {
-      devDependencies: { '@kevinjohn/adonisjs-account-kit': pin },
+      peerDependencies,
+      ...(pin === undefined ? {} : { devDependencies: { '@kevinjohn/adonisjs-account-kit': pin } }),
     })
-    assert.notEqual(result.status, 0, pin)
-    assert.include(result.stderr, 'Account Kit dev dependency is a git pin')
+    assert.notEqual(result.status, 0, String(pin))
+    assert.include(result.stderr, 'is not the v0.3.0 release tarball', String(pin))
   }
   const release = await releaseCheck(changelog, {
-    devDependencies: {
-      '@kevinjohn/adonisjs-account-kit':
-        'https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.0/kevinjohn-adonisjs-account-kit-0.3.0.tgz',
-    },
+    peerDependencies,
+    devDependencies: { '@kevinjohn/adonisjs-account-kit': kitRelease('0.3.0') },
   })
   assert.equal(release.status, 0, release.stderr)
-}).timeout(30_000)
+}).timeout(60_000)

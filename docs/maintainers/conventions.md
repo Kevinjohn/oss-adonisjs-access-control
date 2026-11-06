@@ -18,8 +18,9 @@ package, and creates release notes with an install command and SHA-256 digest. S
 
 Account Kit is a required peer at an exact version. The dev dependency and the example consumer
 install the GitHub release tarball of that version; update the URL, version and peer range
-together. `bin/release_check.sh` refuses to release while the dev dependency is a `github:` or
-git pin instead of a release tarball, so a kit commit never ships as a declared peer.
+together. `bin/release_check.sh` refuses to release unless the dev dependency is the release
+tarball of the exact peer version, so a kit commit or another kit release never ships as the
+declared peer.
 
 ## Architecture and boundaries
 

@@ -4,12 +4,16 @@
 # Packs the working-tree candidate independently of demo and consumer archives.
 set -euo pipefail
 VERSION=$(node -p "require('./package.json').version")
-# The exact Account Kit peer must be a release the dev dependency also installs, never a git pin.
-KIT=$(node -p "(require('./package.json').devDependencies || {})['@kevinjohn/adonisjs-account-kit'] || ''")
-case "$KIT" in
-  github:*|git+*|git://*|*codeload.github.com*)
-    echo "Account Kit dev dependency is a git pin ($KIT); point it at a kit release tarball" >&2; exit 1;;
-esac
+# The package is tested against its Account Kit dev dependency, so that must be the release
+# tarball of the exact peer version it declares: never a git pin, a local path or another release.
+KIT_NAME='@kevinjohn/adonisjs-account-kit'
+KIT=$(node -p "(require('./package.json').devDependencies || {})['$KIT_NAME'] || ''")
+PEER=$(node -p "(require('./package.json').peerDependencies || {})['$KIT_NAME'] || ''")
+if [ -n "$KIT$PEER" ]; then
+  RELEASE="https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v$PEER/kevinjohn-adonisjs-account-kit-$PEER.tgz"
+  [ "$KIT" = "$RELEASE" ] || {
+    echo "Account Kit dev dependency ($KIT) is not the v$PEER release tarball the peer declares" >&2; exit 1; }
+fi
 if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
   echo "tag v$VERSION already exists" >&2; exit 1; fi
 # Compare the version literally: its dots must not match any character.
