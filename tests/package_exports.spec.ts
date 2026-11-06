@@ -21,6 +21,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.isString(root.stubsRoot)
     assert.isTrue(existsSync(root.stubsRoot))
     assert.isTrue(existsSync(join(root.stubsRoot, 'main.js')))
+    assert.isTrue(existsSync(join(root.stubsRoot, 'migrations', 'released.json')))
     assert.lengthOf(Object.keys(types), 0)
     assert.isFunction(provider.default)
     assert.isFunction(commands.getMetaData)
