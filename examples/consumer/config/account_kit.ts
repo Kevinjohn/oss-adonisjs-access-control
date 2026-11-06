@@ -40,6 +40,11 @@ export default defineConfig({
   registration: { availability: 'open' },
 
   /**
+   * The existing session guard, so the kit's own route middleware can protect application routes.
+   */
+  authentication: { strategy: 'session', guard: 'web' },
+
+  /**
    * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
    */
   limiterSecret: env.get('APP_KEY'),

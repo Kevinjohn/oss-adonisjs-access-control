@@ -38,7 +38,7 @@ export interface TestDatabase {
   cleanup(): Promise<void>
 }
 
-function connectionConfig(
+export function connectionConfig(
   client: TestClient,
   options: { sqliteFilename: string; schema: string; sqliteBusyTimeout: number }
 ) {

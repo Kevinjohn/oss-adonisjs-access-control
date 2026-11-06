@@ -21,6 +21,7 @@ export type {
   ExportForInput,
   MembershipExport,
 } from './memberships.js'
+export type { AbilityMap, AbilitySubject, MembershipResolver } from './abilities.js'
 
 /** A Lucid transaction client, as started by Account Kit's `transaction()` runner. */
 export type Trx = TransactionClientContract
