@@ -89,6 +89,17 @@ working plans belong in the local, gitignored `plans/` directory; do not commit 
 - Keep public error codes stable; changing one requires a breaking changelog entry.
 - Write imperative commit messages that describe the change, signed off with `git commit -s`.
 
+## Repository-specific
+
+- The [build specification](docs/maintainers/design/spec-access-control.md) is the contract.
+  Section 1 (repository rules) is strict; a deviation needs the owner's approval and a line in
+  [conventions](docs/maintainers/conventions.md).
+- Only lock in the order of specification section 4.2. Ascending means code-unit order of
+  `String(key)`.
+- The reserved keys `members:list`, `members:manage` and `invitations:manage` are always present.
+- Released migration stubs are immutable (specification section 17.1).
+- Error codes are `E_ACCESS_CONTROL_*` with the response shape from specification section 6.
+
 ## Code of conduct
 
 Everyone taking part in this project follows the [code of conduct](CODE_OF_CONDUCT.md).
