@@ -12,6 +12,7 @@ on:
       - pnpm-workspace.yaml
       - index.ts
       - configure.ts
+      - 'src/**'
       - 'providers/**'
       - 'stubs/**'
       - 'commands/**'
@@ -69,7 +70,7 @@ jobs:
             const p=require("./package.json"); const dev=p.devDependencies||{};
             for (const [n,r] of Object.entries(p.peerDependencies||{})) {
               if (n==="typescript") continue;                 // compiler peer
-              if (/^https?:/.test(dev[n]||"")) continue;      // tarball peer
+              if (/^(https?:|github:|git\+)/.test(dev[n]||"")) continue; // tarball or git peer
               process.stdout.write(n+"@"+r.replace(/^[\^~]/,"").split(" ")[0]+" ");
             }')
           pnpm add -D $PEERS
@@ -94,7 +95,7 @@ jobs:
             const p=require("./package.json"); const dev=p.devDependencies||{};
             for (const [n,r] of Object.entries(p.peerDependencies||{})) {
               if (n==="typescript") continue;
-              if (/^https?:/.test(dev[n]||"")) continue;
+              if (/^(https?:|github:|git\+)/.test(dev[n]||"")) continue;
               process.stdout.write(n+" ");
             }')
           pnpm update $PEERS
