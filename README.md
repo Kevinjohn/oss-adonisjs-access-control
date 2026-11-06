@@ -49,13 +49,18 @@ export default defineAccessControl({
     invitations: { manage: 'admin' },
   },
 })
-// start/routes.ts
+// start/routes.ts: Account Kit's middleware (credential revision, active account or admission)
+// runs before `scope`; `middleware.auth()` alone skips those checks.
 router
   .put('/teams/:scopeId/projects/:id', [ProjectsController, 'update'])
-  .use([middleware.auth(), middleware.scope()])
+  .use([kitAccount, middleware.scope()])
 // in the controller
 await bouncer.authorize('project:write')
 ```
+
+`kitAccount` is the kit's `managedAccountMiddleware` (or `admissionMiddleware`) built once in
+`start/routes.ts`; the [Bouncer guide](docs/guide/bouncer.md) shows it. Build the request's
+Bouncer from `#config/access_control`, not from `services/main`, so permission keys are typed.
 
 The [setup guide](docs/guide/setup.md) covers the two manual steps (the Bouncer initializer and
 the Account Kit callbacks) and `node ace access-control:doctor`.

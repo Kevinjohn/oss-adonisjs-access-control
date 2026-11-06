@@ -12,6 +12,7 @@ import type {
 } from '@kevinjohn/adonisjs-account-kit'
 import { AccessControl } from '../src/define.js'
 import { AccessControlError } from '../src/errors.js'
+import { isCanonicalKey } from '../src/keys.js'
 import type { Membership, UserKey } from '../src/types.js'
 
 /** Options of `accessControlKitCallbacks`. */
@@ -52,6 +53,17 @@ async function admitted(userId: UserKey, trx: Trx | undefined, enabled: boolean)
   return admission.isAdmitted(userId, trx)
 }
 
+/**
+ * `scope` when it is spelled the way the package normalises keys (specification 5.1); otherwise
+ * null. The kit stores invitation scopes as given and accepts them in that order, so an alias
+ * (an upper-case UUID) would make the kit's acceptance order differ from the package's lock
+ * order. Team invitations are authorised and honoured for the canonical spelling only.
+ */
+function canonicalScope(access: AccessControl, scope: string | null | undefined): string | null {
+  if (scope === null || scope === undefined) return null
+  return isCanonicalKey(access.config.scope.keyType, scope) ? scope : null
+}
+
 /** The actor's active membership in `scope`, read through `trx` without locking; null otherwise. */
 async function activeMembership(
   access: AccessControl,
@@ -59,9 +71,10 @@ async function activeMembership(
   scope: string | null | undefined,
   trx: Trx | undefined
 ): Promise<Membership | null> {
-  if (scope === null || scope === undefined) return null
+  const canonical = canonicalScope(access, scope)
+  if (canonical === null) return null
   try {
-    const membership = await access.memberships.find(scope, actor.id, trx)
+    const membership = await access.memberships.find(canonical, actor.id, trx)
     return membership !== null && membership.status === 'active' ? membership : null
   } catch (error) {
     if (error instanceof AccessControlError && error.code === 'E_ACCESS_CONTROL_INVALID_INPUT')
@@ -127,6 +140,10 @@ export function accessControlKitCallbacks(
     async onInvitationAccepted(user, invitation, trx) {
       if (invitation.scope !== null) {
         const access = await resolveAccessControl()
+        if (canonicalScope(access, invitation.scope) === null)
+          throw new AccessControlError('E_ACCESS_CONTROL_INVALID_INPUT', {
+            message: `invitation ${invitation.id}: scope must be a canonical ${access.config.scope.keyType} key`,
+          })
         await access.memberships.acceptInvitation({
           scopeId: invitation.scope,
           userId: user.id,

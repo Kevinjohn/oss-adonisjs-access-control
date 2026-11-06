@@ -29,7 +29,7 @@ test.group('migration stubs: released stubs are immutable (spec 17.1)', () => {
     )
     assert.include(
       released.map((r) => r.name),
-      'create_memberships'
+      'access_control_create_memberships'
     )
   })
 

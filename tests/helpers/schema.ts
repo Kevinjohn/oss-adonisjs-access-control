@@ -1,4 +1,5 @@
 // Creates the kit's lock row, a users table, a scope table and the package's memberships table.
+import { testEngine } from './database.js'
 import { readFile, writeFile, mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -29,7 +30,19 @@ export async function createLockRow(db: Database): Promise<void> {
 }
 
 /** A parent table with an `id` primary key of the given key type and a `name` column. */
-export async function createParentTable(db: Database, name: string, keyType: KeyType) {
+export async function createParentTable(
+  db: Database,
+  name: string,
+  keyType: KeyType,
+  options: { caseInsensitiveKeys?: boolean } = {}
+) {
+  if (keyType === 'string' && options.caseInsensitiveKeys && testEngine === 'sqlite') {
+    // Knex drops `collate` on SQLite, so the case-insensitive key table is raw DDL.
+    await db.rawQuery(
+      `create table \`${name}\` (\`id\` varchar(254) collate nocase primary key, \`name\` varchar(100) not null)`
+    )
+    return
+  }
   await db.connection().schema.createTable(name, (table) => {
     if (keyType === 'integer') table.increments('id')
     else if (keyType === 'uuid') table.uuid('id').primary()
@@ -38,7 +51,10 @@ export async function createParentTable(db: Database, name: string, keyType: Key
   })
 }
 
-const stubPath = new URL('../../stubs/migrations/create_memberships.stub', import.meta.url)
+const stubPath = new URL(
+  '../../stubs/migrations/access_control_create_memberships.stub',
+  import.meta.url
+)
 
 /** Renders the migration stub the way `configure` will, for a given set of names and key types. */
 export async function renderMembershipsStub(input: {
@@ -87,11 +103,12 @@ export async function runMembershipsMigration(
 export async function createSchema(
   db: Database,
   names: SchemaNames,
-  keyTypes: { users: KeyType; scope: KeyType }
+  keyTypes: { users: KeyType; scope: KeyType },
+  options: { caseInsensitiveKeys?: boolean } = {}
 ): Promise<void> {
   await createLockRow(db)
-  await createParentTable(db, names.users, keyTypes.users)
-  await createParentTable(db, names.scope, keyTypes.scope)
+  await createParentTable(db, names.users, keyTypes.users, options)
+  await createParentTable(db, names.scope, keyTypes.scope, options)
   await runMembershipsMigration(db, {
     membershipsTable: names.memberships,
     usersTable: names.users,

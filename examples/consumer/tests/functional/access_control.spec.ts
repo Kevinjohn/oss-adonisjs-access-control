@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import accessControl from '@kevinjohn/adonisjs-access-control/services/main'
@@ -6,6 +7,14 @@ import User from '#models/user'
 
 async function createUser(email: string) {
   return User.create({ email, password: 'secret-password', fullName: email })
+}
+
+/** A session the kit established: the user plus the credential revision it stamps at sign-in. */
+function signedIn<T extends { loginAs(user: User): T; withSession(data: object): T }>(
+  request: T,
+  user: User
+): T {
+  return request.loginAs(user).withSession({ accountKitRevision: '' })
 }
 
 test.group('Scoped routes with the package middleware and Bouncer abilities', (group) => {
@@ -49,7 +58,7 @@ test.group('Scoped routes with the package middleware and Bouncer abilities', (g
   })
 
   test('an editor sees its payload and Bouncer answers per key', async ({ client }) => {
-    const response = await client.get(`/teams/${scopeId}/project`).loginAs(editor)
+    const response = await signedIn(client.get(`/teams/${scopeId}/project`), editor)
     response.assertStatus(200)
     response.assertBodyContains({
       membership: {
@@ -64,27 +73,30 @@ test.group('Scoped routes with the package middleware and Bouncer abilities', (g
     })
   })
 
-  test('the kit middleware alone leaves ctx.auth.user for the scope middleware and Bouncer', async ({
+  test('the kit middleware refuses a guest and a stale session before the scope middleware', async ({
     client,
   }) => {
-    // The session carries the kit's revision stamp, as a kit sign-in would store it.
-    const response = await client
-      .get(`/teams/${scopeId}/kit-only`)
-      .loginAs(editor)
-      .withSession({ accountKitRevision: '' })
-    response.assertStatus(200)
-    response.assertBodyContains({
-      membership: { scopeId: String(scopeId), role: 'editor' },
-      canWrite: true,
-    })
-    const guest = await client.get(`/teams/${scopeId}/kit-only`)
+    const guest = await client.get(`/teams/${scopeId}/project`)
     guest.assertStatus(401)
+    // A session without the kit's revision stamp was not established by the kit.
+    const unstamped = await client.get(`/teams/${scopeId}/project`).loginAs(editor)
+    unstamped.assertStatus(401)
+    // A credential change after sign-in moves the revision; the old session is refused.
+    editor.credentialsChangedAt = DateTime.now()
+    await editor.save()
+    try {
+      const stale = await signedIn(client.get(`/teams/${scopeId}/project`), editor)
+      stale.assertStatus(401)
+    } finally {
+      editor.credentialsChangedAt = null
+      await editor.save()
+    }
   })
 
   test('authorize refuses an editor with 403 and allows the owner', async ({ client }) => {
-    const refused = await client.post(`/teams/${scopeId}/archive`).loginAs(editor)
+    const refused = await signedIn(client.post(`/teams/${scopeId}/archive`), editor)
     refused.assertStatus(403)
-    const allowed = await client.post(`/teams/${scopeId}/archive`).loginAs(owner)
+    const allowed = await signedIn(client.post(`/teams/${scopeId}/archive`), owner)
     allowed.assertStatus(200)
     allowed.assertBodyContains({ archived: true })
   })
@@ -98,7 +110,7 @@ test.group('Scoped routes with the package middleware and Bouncer abilities', (g
       [owner, '/teams/999999/project'],
       [owner, '/teams/not-a-team/project'],
     ] as const) {
-      const response = await client.get(path).loginAs(user)
+      const response = await signedIn(client.get(path), user)
       response.assertStatus(403)
       response.assertHeader('cache-control', 'no-store')
       response.assertBodyContains({

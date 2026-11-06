@@ -114,3 +114,11 @@ GitHub-visible text. Review complete outgoing content before publication.
   `22.4.2`, the Lucid floor, itself requires `luxon ^3.4.4`, so a `3.0.0` floor cannot be
   installed alongside the required Lucid peer. The packed floor consumer installs `luxon 3.4.4`.
   Pending the owner's confirmation.
+- `leave` answers `NOT_A_MEMBER`, not `SCOPE_NOT_FOUND`, when the scope row is missing
+  (specification section 6 lists `SCOPE_NOT_FOUND` for a missing row during a lock). `leave` is
+  routed without the scope middleware, so any signed-in user may call it; one code for a missing
+  scope and a missing membership keeps team existence private. Owner-approved on 2026-11-06.
+- String keys are locked, stored and compared by the spelling the users or scope row holds, read
+  before locking, so a database that compares keys case-insensitively (MySQL's default collation)
+  cannot store an alias or reverse the lock order of specification 4.2. Integer and UUID keys
+  are canonical after normalisation (5.1) and are not read first. Owner-approved on 2026-11-06.

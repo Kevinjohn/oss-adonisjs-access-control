@@ -1,6 +1,8 @@
 import { test } from '@japa/runner'
 import { locksRows } from './helpers/database.js'
 import { defineAccessControl } from '../index.js'
+import { isCanonicalKey } from '../src/keys.js'
+import { sameKeys } from '../src/locks.js'
 import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
 
 const actor = (id: number | string) => ({ id })
@@ -259,5 +261,98 @@ test.group('locks: key types and custom tables', () => {
       },
     })
     assert.throws(() => config.memberships, /attach/)
+  })
+})
+
+test.group('keys: pure helpers', () => {
+  test('sameKeys compares the sorted key sets element by element', ({ assert }) => {
+    assert.isTrue(sameKeys([2, 1], [1, 2]))
+    assert.isTrue(sameKeys(['b', 'a'], ['a', 'b']))
+    assert.isFalse(sameKeys(['a\nb'], ['a', 'b']))
+    assert.isFalse(sameKeys([1], [1, 2]))
+    assert.isFalse(sameKeys([], [1]))
+  })
+
+  test('isCanonicalKey accepts only the normalised spelling of a key', ({ assert }) => {
+    assert.isTrue(isCanonicalKey('integer', '7'))
+    assert.isFalse(isCanonicalKey('integer', '07'))
+    assert.isFalse(isCanonicalKey('integer', 'x'))
+    assert.isTrue(isCanonicalKey('uuid', '0f7b3f1e-3f5c-4f6a-9d2e-1c2b3a4d5e6f'))
+    assert.isFalse(isCanonicalKey('uuid', '0F7B3F1E-3F5C-4F6A-9D2E-1C2B3A4D5E6F'))
+    assert.isTrue(isCanonicalKey('string', 'Team A'))
+    assert.isFalse(isCanonicalKey('string', ''))
+  })
+})
+
+test.group('keys: case-insensitive string keys (MySQL default collation)', () => {
+  test('string keys are locked, stored and compared by the spelling the parent row holds', async ({
+    assert,
+  }) => {
+    const f = await membershipFixture({ keyType: 'string', caseInsensitiveKeys: true })
+    try {
+      if (!f.caseInsensitiveKeys) return
+      const upper = (key: number | string) => String(key).toUpperCase()
+      const scope = await f.createScope()
+      const [owner, other, third] = await Promise.all([
+        f.createUser(),
+        f.createUser(),
+        f.createUser(),
+      ])
+      const calls = recordLocks(f)
+      const first = await f.config.memberships.createFirstMember({
+        scopeId: upper(scope),
+        userId: upper(owner),
+      })
+      assert.deepEqual([first.scopeId, first.userId], [scope, owner])
+      const added = await f.config.memberships.add({
+        actor: actor(upper(owner)),
+        scopeId: upper(scope),
+        userId: upper(other),
+        role: 'admin',
+      })
+      assert.deepEqual([added.scopeId, added.userId], [scope, other])
+      const rows = await f.rows(scope)
+      assert.deepEqual(
+        rows.map((row) => [row.scope_id, row.user_id]),
+        [
+          [scope, owner],
+          [scope, other],
+        ]
+      )
+      assert.deepEqual(
+        f.events.map((event) => ('userId' in event ? [event.scopeId, event.userId] : null)),
+        [
+          [scope, owner],
+          [scope, other],
+        ]
+      )
+      // The actor targeting an alias of their own key is self-management, not a role change.
+      assert.equal(
+        await codeOf(
+          f.config.memberships.changeRole({
+            actor: actor(owner),
+            scopeId: scope,
+            userId: upper(owner),
+            role: 'admin',
+          })
+        ),
+        'E_ACCESS_CONTROL_SELF_MANAGEMENT'
+      )
+      // Locks follow the stored spellings, whatever the caller wrote.
+      calls.length = 0
+      await f.config.memberships.add({
+        actor: actor(upper(other)),
+        scopeId: upper(scope),
+        userId: upper(third),
+        role: 'viewer',
+      })
+      assert.deepEqual(calls, [
+        [f.names.users, other],
+        [f.names.users, third],
+        [f.names.scope, scope],
+      ])
+    } finally {
+      await f.cleanup()
+    }
   })
 })
