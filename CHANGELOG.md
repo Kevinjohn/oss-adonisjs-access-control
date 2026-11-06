@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0 - 2026-11-06
+
 ### Migrations
 
 - `access_control_create_memberships`: the memberships table with `RESTRICT` foreign keys to the users and scope
@@ -53,7 +55,6 @@
   then the scope row) and reports through `onMembershipChanged` inside the transaction.
 - Transaction runner: Account Kit's `transaction` export, which serialises SQLite writers on the
   kit's `account_transaction_lock` row and runs MySQL at READ COMMITTED with a UTC connection.
-  Account Kit is pinned at a `main` commit until a release ships that export.
 - `AccessControlError.handle`: the table status, `Cache-Control: no-store` and
   `{ errors: [{ code, message }] }`, translated through `ctx.i18n` when present.
 - `docs/reference/errors.md` listing every code.
