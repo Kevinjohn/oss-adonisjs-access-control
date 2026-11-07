@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Examples: the API and Inertia React `.gitignore` describe `vendor` as a packed package build, matching Account Kit, so the starter examples sandbox merges them without a conflict. Closes #25.
+
 ## 0.1.3 - 2026-11-07
 
 ### Added
