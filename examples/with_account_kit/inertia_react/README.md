@@ -67,5 +67,5 @@ pnpm test
 
 `tests/functional/teams.spec.ts` covers creating a team, inviting and joining, a viewer who reads
 but is refused a rename with `E_AUTHORIZATION_FAILURE`, an editor who renames, a refused outsider,
-an unconfirmed account that cannot create a team, and an editor who cannot invite. `tests/browser/teams.spec.ts` creates and renames a team in
-Chromium.
+an unconfirmed account that cannot create a team, and an editor who cannot invite.
+`tests/browser/teams.spec.ts` creates and renames a team in Chromium.
