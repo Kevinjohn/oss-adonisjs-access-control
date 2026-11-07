@@ -12,8 +12,8 @@ export default defineAccessControl({
   scope: { table: 'teams', keyType: 'integer' },
   membershipsTable: 'memberships',
   permissions: {
-    project: { read: 'viewer', write: 'editor', archive: 'admin' },
-    members: { list: 'admin', manage: 'admin' },
+    team: { read: 'viewer', write: 'editor' },
+    members: { list: 'viewer', manage: 'admin' },
     invitations: { manage: 'admin' },
   },
   /**

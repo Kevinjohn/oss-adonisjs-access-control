@@ -61,3 +61,26 @@ router
     router.post('settings/password', [controllers.Passwords, 'update'])
   })
   .use(middleware.auth())
+
+// Invitation links: create the account and join the team.
+router.get('invitation/:token', [controllers.Invitations, 'edit'])
+router.post('invitation/:token', [controllers.Invitations, 'update'])
+
+router
+  .group(() => {
+    router.get('teams', [controllers.Teams, 'index']).as('teams.index')
+    router.post('teams', [controllers.Teams, 'store']).as('teams.store')
+  })
+  .use(middleware.auth())
+
+// `scope` runs after authentication: it loads the membership of `:scopeId`, or refuses with
+// E_ACCESS_CONTROL_FORBIDDEN (403).
+router
+  .group(() => {
+    router.get('teams/:scopeId', [controllers.Teams, 'show']).as('teams.show')
+    router.post('teams/:scopeId', [controllers.Teams, 'update']).as('teams.update')
+    router
+      .post('teams/:scopeId/invitations', [controllers.TeamInvitations, 'store'])
+      .as('team_invitations.store')
+  })
+  .use([middleware.auth(), middleware.scope()])

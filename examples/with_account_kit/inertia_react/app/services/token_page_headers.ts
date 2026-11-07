@@ -7,10 +7,12 @@ export function sendTokenPageHeaders(response: HttpContext['response']) {
   response.header('Referrer-Policy', 'no-referrer')
 }
 
-/** Match only the three application-owned proof routes, before routing or body parsing. */
+/** Match only the application-owned proof routes, before routing or body parsing. */
 export function proofRequest(request: HttpContext['request']) {
   if (!['GET', 'POST'].includes(request.method())) return null
-  const match = /^\/(reset-password|verify-email|confirm-email)\/([^/]+)\/?$/.exec(request.url())
+  const match = /^\/(reset-password|verify-email|confirm-email|invitation)\/([^/]+)\/?$/.exec(
+    request.url()
+  )
   if (!match) return null
   const family = match[1]
   const fallback = family === 'reset-password' ? '/forgot-password' : '/login'
@@ -42,6 +44,8 @@ export async function proofRecovery(request: HttpContext['request']) {
       ? await kit.passwordReset.inspect(input)
       : proof.family === 'verify-email'
         ? await kit.emailVerification.inspect(input)
-        : await kit.emailPasswordManagement.inspectEmailChange(input)
+        : proof.family === 'invitation'
+          ? Boolean(await kit.invitations.inspect(input))
+          : await kit.emailPasswordManagement.inspectEmailChange(input)
   return valid ? proof.path : proof.fallback
 }
