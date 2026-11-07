@@ -71,6 +71,20 @@ test.group('transaction observer classifier', () => {
     )
   })
 
+  test('keeps the attempt open across ROLLBACK TO SAVEPOINT', ({ assert }) => {
+    const observer = classifyForTest()
+    for (const sql of ['BEGIN;', 'SAVEPOINT trx2;', 'ROLLBACK TO SAVEPOINT trx2', 'COMMIT;'])
+      observer.feed(query(sql, 'trx1'))
+    const attempts = observer.attempts()
+    assert.lengthOf(attempts, 1)
+    assert.deepEqual(
+      attempts[0].inside.map((s) => s.kind),
+      ['savepoint', 'savepoint']
+    )
+    assert.equal(attempts[0].terminal?.kind, 'commit')
+    assert.lengthOf(attempts.outside, 0)
+  })
+
   test('shows a BEGIN without a later lock query in the attempt', ({ assert }) => {
     const observer = classifyForTest()
     for (const event of [
