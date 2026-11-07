@@ -7,9 +7,12 @@ export const controllers = {
   Dashboard: () => import('#controllers/dashboard_controller'),
   EmailChanges: () => import('#controllers/email_changes_controller'),
   EmailVerifications: () => import('#controllers/email_verifications_controller'),
+  Invitations: () => import('#controllers/invitations_controller'),
   NewAccount: () => import('#controllers/new_account_controller'),
   PasswordResets: () => import('#controllers/password_resets_controller'),
   Passwords: () => import('#controllers/passwords_controller'),
   Profile: () => import('#controllers/profile_controller'),
   Session: () => import('#controllers/session_controller'),
+  TeamInvitations: () => import('#controllers/team_invitations_controller'),
+  Teams: () => import('#controllers/teams_controller'),
 }

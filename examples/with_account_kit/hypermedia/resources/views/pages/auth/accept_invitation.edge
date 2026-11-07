@@ -1,0 +1,42 @@
+@layouts.auth()
+  <h1 class="auth__title">Join the team</h1>
+  @if(email)
+    <p class="auth__sub">
+      Choose a password for
+      <strong>{{ email }}</strong>. The invitation can be used once.
+    </p>
+    @form({
+      route: 'invitations.update',
+      routeParams: { token },
+      method: 'POST',
+      class: 'auth__form',
+    })
+      @field.root({ name: 'fullName' })
+        @!field.label({ text: 'Full name (optional)' })
+        @!input.control({ autocomplete: 'name' })
+        @!field.error()
+      @end
+      @field.root({ name: 'password' })
+        @!field.label({ text: 'Password' })
+        @!input.control({
+          type: 'password',
+          autocomplete: 'new-password',
+          required: true,
+        })
+        @!field.error()
+      @end
+      @field.root({ name: 'passwordConfirmation' })
+        @!field.label({ text: 'Confirm password' })
+        @!input.control({
+          type: 'password',
+          autocomplete: 'new-password',
+          required: true,
+        })
+        @!field.error()
+      @end
+      @!button({ text: 'Create account and join', type: 'submit', block: true })
+    @end
+  @else
+    <p class="auth__sub">This invitation is invalid, already used, or expired.</p>
+  @end
+@end

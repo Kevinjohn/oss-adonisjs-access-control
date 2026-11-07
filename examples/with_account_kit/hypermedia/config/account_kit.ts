@@ -6,6 +6,7 @@ import {
   createLucidAdapter,
   defineConfig,
 } from '@kevinjohn/adonisjs-account-kit'
+import { accessControlKitCallbacks } from '@kevinjohn/adonisjs-access-control/account-kit'
 import { accountKitNotify } from '#services/account_kit_notifications'
 
 const environment = app.inProduction ? 'production' : app.inTest ? 'test' : 'development'
@@ -24,6 +25,11 @@ const fullNameFrom = (data: unknown) => {
   return fullName.trim()
 }
 
+/**
+ * Team invitations, acceptance, account deletion and export go through Access Control.
+ */
+const teamCallbacks = accessControlKitCallbacks()
+
 const users = createLucidAdapter(loadUser, {
   mapRegistrationData(data, user) {
     user.fullName = fullNameFrom(data)
@@ -32,7 +38,13 @@ const users = createLucidAdapter(loadUser, {
 
 export default defineConfig({
   users,
-  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
+  enabled: [
+    'passwordReset',
+    'emailVerification',
+    'emailPasswordManagement',
+    'registration',
+    'invitations',
+  ],
   registration: {
     availability: 'open',
     mapFields: (data) => ({ fullName: fullNameFrom(data) }),
@@ -47,13 +59,12 @@ export default defineConfig({
   },
   limiterSecret: env.get('APP_KEY').release(),
   /**
-   * This app sends no invitations, so every invitation action is refused.
+   * Team admins and owners invite to their team; Access Control answers every invitation check.
    */
-  authorize: {
-    invite: async () => false,
-    manageInvitation: async () => false,
-    listInvitations: async () => false,
-  },
+  authorize: teamCallbacks.authorize,
+  onInvitationAccepted: teamCallbacks.onInvitationAccepted,
+  onAccountDeletingTransaction: teamCallbacks.onAccountDeletingTransaction,
+  exportAccountData: teamCallbacks.exportAccountData,
   /**
    * Links are built from APP_URL only, and must use HTTPS outside localhost.
    */
