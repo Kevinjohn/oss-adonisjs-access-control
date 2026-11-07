@@ -92,6 +92,17 @@ export class PasswordResetTokenSchema extends BaseModel {
   declare tokenableId: number
 }
 
+export class RateLimitSchema extends BaseModel {
+  static $columns = ['expire', 'key', 'points'] as const
+  $columns = RateLimitSchema.$columns
+  @column()
+  declare expire: bigint | number | null
+  @column({ isPrimary: true })
+  declare key: string
+  @column()
+  declare points: number
+}
+
 export class SessionSchema extends BaseModel {
   static $columns = ['data', 'expiresAt', 'id', 'userId'] as const
   $columns = SessionSchema.$columns
@@ -103,6 +114,19 @@ export class SessionSchema extends BaseModel {
   declare id: string
   @column()
   declare userId: string | null
+}
+
+export class TeamSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'name', 'updatedAt'] as const
+  $columns = TeamSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
 }
 
 export class UserSchema extends BaseModel {

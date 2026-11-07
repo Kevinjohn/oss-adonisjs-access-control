@@ -249,6 +249,19 @@ export class SocialTransactionSchema extends BaseModel {
   declare verificationHash: string | null
 }
 
+export class TeamSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'name', 'updatedAt'] as const
+  $columns = TeamSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
 export class UserSchema extends BaseModel {
   static $columns = ['createdAt', 'credentialsChangedAt', 'email', 'emailVerifiedAt', 'fullName', 'id', 'password', 'unverifiedEmail', 'updatedAt'] as const
   $columns = UserSchema.$columns
