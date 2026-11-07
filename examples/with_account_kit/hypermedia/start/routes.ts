@@ -61,9 +61,10 @@ router
     router.get('teams', [controllers.Teams, 'index']).as('teams.index')
     router.post('teams', [controllers.Teams, 'store']).as('teams.store')
   })
-  .use(middleware.auth())
+  .use([middleware.auth(), middleware.verified()])
 
-// `scope` runs after authentication: it loads the membership of `:scopeId`, or refuses with
+// Teams send invitation email, so they need a confirmed address. `scope` runs after
+// authentication: it loads the membership of `:scopeId`, or refuses with
 // E_ACCESS_CONTROL_FORBIDDEN (403).
 router
   .group(() => {
@@ -73,4 +74,4 @@ router
       .post('teams/:scopeId/invitations', [controllers.TeamInvitations, 'store'])
       .as('team_invitations.store')
   })
-  .use([middleware.auth(), middleware.scope()])
+  .use([middleware.auth(), middleware.verified(), middleware.scope()])

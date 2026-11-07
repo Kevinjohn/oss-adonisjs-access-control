@@ -100,6 +100,20 @@ test.group('teams', (group) => {
     assert.equal(body.errors[0].code, 'E_ACCESS_CONTROL_FORBIDDEN')
   })
 
+  test('an account with an unconfirmed address cannot create a team', async ({ assert }) => {
+    await User.create({
+      email: 'pending@example.test',
+      password,
+      unverifiedEmail: 'pending@example.test',
+    })
+    const pending = new FormSession()
+    await pending.login('pending@example.test', password)
+    await pending.request('/dashboard')
+    const refused = await pending.request('/teams', { name: 'Spam' })
+    assert.equal(refused.headers.get('location'), '/dashboard')
+    assert.lengthOf(await Team.all(), 0)
+  })
+
   test('an editor cannot invite', async ({ assert }) => {
     await User.create({ email: 'owner@example.test', password })
     const owner = new FormSession()
