@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Examples: Account Kit's API, Hypermedia and Inertia React starter examples with Access Control
+  added, in `examples/with_account_kit/`. Accounts create teams, invite members with a role through
+  Account Kit's scoped invitations, and scoped routes check permission keys with Bouncer. They feed
+  the [starter examples sandbox](https://github.com/Kevinjohn/oss-adonisjs-starter-examples).
+
 ## 0.1.2 - 2026-11-07
 
 ### Added

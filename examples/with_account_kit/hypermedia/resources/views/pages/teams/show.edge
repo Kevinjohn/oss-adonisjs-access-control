@@ -1,0 +1,54 @@
+@layouts.app({ title: team.name })
+  @page()
+    <h1>{{ team.name }}</h1>
+    <p>Your role: <strong>{{ role }}</strong>.</p>
+    @can('team:write')
+      <h2>Rename the team</h2>
+      @form({
+        route: 'teams.update',
+        routeParams: { scopeId: team.id },
+        method: 'POST',
+        class: 'auth__form',
+      })
+        @field.root({ name: 'name' })
+          @!field.label({ text: 'Team name' })
+          @!input.control({ required: true, value: team.name })
+          @!field.error()
+        @end
+        @!button({ text: 'Rename team', type: 'submit' })
+      @end
+    @end
+
+    <h2>Members</h2>
+    <ul>
+      @each(member in members)
+        <li>{{ member.email }} ({{ member.role }})</li>
+      @end
+    </ul>
+    @can('invitations:manage')
+      <h2>Invite a member</h2>
+      @form({
+        route: 'team_invitations.store',
+        routeParams: { scopeId: team.id },
+        method: 'POST',
+        class: 'auth__form',
+      })
+        @field.root({ name: 'email' })
+          @!field.label({ text: 'Email' })
+          @!input.control({ type: 'email', required: true })
+          @!field.error()
+        @end
+        @field.root({ name: 'role' })
+          @!field.label({ text: 'Role' })
+          <select name="role" id="role">
+            @each(option in invitableRoles)
+              <option value="{{ option }}">{{ option }}</option>
+            @end
+          </select>
+          @!field.error()
+        @end
+        @!button({ text: 'Send invitation', type: 'submit' })
+      @end
+    @end
+  @end
+@end

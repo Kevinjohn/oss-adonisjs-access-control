@@ -1,0 +1,27 @@
+@layouts.app({ title: 'Teams' })
+  @page()
+    <h1>Your teams</h1>
+    @if(teams.length)
+      <ul>
+        @each(team in teams)
+          <li>
+            <a href="{{ urlFor('teams.show', { scopeId: team.id }) }}">{{ team.name }}</a>
+            ({{ team.role }})
+          </li>
+        @end
+      </ul>
+    @else
+      <p>You are not in a team yet. Create one, or ask a team admin to invite you.</p>
+    @end
+
+    <h2>Create a team</h2>
+    @form({ route: 'teams.store', method: 'POST', class: 'auth__form' })
+      @field.root({ name: 'name' })
+        @!field.label({ text: 'Team name' })
+        @!input.control({ required: true })
+        @!field.error()
+      @end
+      @!button({ text: 'Create team', type: 'submit' })
+    @end
+  @end
+@end

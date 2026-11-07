@@ -1,0 +1,36 @@
+import db from '@adonisjs/lucid/services/db'
+import type { AccountUser, Trx } from '@kevinjohn/adonisjs-account-kit'
+import type { AdmissionAuthorizeCallbacks } from '@kevinjohn/adonisjs-account-kit/admission'
+import { isAdmitted } from './account_admission_access.js'
+
+export { isAdmitted }
+export { exportAccountData } from './account_kit_export.js'
+
+/**
+ * True when the user holds the instance owner role in the example's `role_assignments` table.
+ * The owner decides admissions and inspects accounts; team roles live in Access Control.
+ */
+export async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
+  const query = trx ? trx.from('role_assignments') : db.from('role_assignments')
+  return Boolean(await query.where('user_id', userId).where('role', 'owner').first())
+}
+
+/** An admitted owner: the authority for account inspection. */
+export async function isAdmittedOwner(userId: number | string, trx?: Trx): Promise<boolean> {
+  return (await isAdmitted(userId, trx)) && isOwner(userId, trx)
+}
+
+/** Denies access to accounts that carry the `disabled` role. */
+export async function canAccess(user: AccountUser, trx: Trx): Promise<boolean> {
+  return !(await trx
+    .from('role_assignments')
+    .where('user_id', user.id)
+    .where('role', 'disabled')
+    .first())
+}
+
+/** The list callback checks the owner role; the route's `admittedAccount()` gate checks admission. */
+export const admissionAuthorize: AdmissionAuthorizeCallbacks = {
+  decide: async (actor, _subject, context) => isOwner(actor.id, context?.trx),
+  list: async (actor, context) => isOwner(actor.id, context?.trx),
+}
