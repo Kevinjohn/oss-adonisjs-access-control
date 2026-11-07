@@ -1,7 +1,7 @@
 {
   "name": "@kevinjohn/adonisjs-access-control",
   "description": "Team memberships and a ranked role matrix for AdonisJS applications built on Account Kit, with generated Bouncer abilities",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "engines": {
     "node": ">=24.0.0"
   },

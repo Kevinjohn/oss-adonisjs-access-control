@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.1 - 2026-11-07
+
 ### Changed
 
 - Account Kit peer is `0.3.1` (exact); the dev dependency and the example consumer install its
