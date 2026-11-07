@@ -30,6 +30,7 @@ export default defineConfig({
     () => import('@adonisjs/session/commands'),
     () => import('@kevinjohn/adonisjs-account-kit/commands'),
     () => import('@kevinjohn/adonisjs-account-kit/admission/commands'),
+    () => import('@kevinjohn/adonisjs-access-control/commands'),
   ],
 
   /*
@@ -59,6 +60,7 @@ export default defineConfig({
     () => import('@adonisjs/limiter/limiter_provider'),
     () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
     () => import('@kevinjohn/adonisjs-account-kit/admission/provider'),
+    () => import('@kevinjohn/adonisjs-access-control/access_control_provider'),
   ],
 
   /*

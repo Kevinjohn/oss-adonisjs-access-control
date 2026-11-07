@@ -31,6 +31,7 @@ export default defineConfig({
     () => import('@adonisjs/session/commands'),
     () => import('@adonisjs/inertia/commands'),
     () => import('@kevinjohn/adonisjs-account-kit/commands'),
+    () => import('@kevinjohn/adonisjs-access-control/commands'),
   ],
 
   /*
@@ -62,6 +63,7 @@ export default defineConfig({
     () => import('#providers/api_provider'),
     () => import('@adonisjs/limiter/limiter_provider'),
     () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
+    () => import('@kevinjohn/adonisjs-access-control/access_control_provider'),
   ],
 
   /*
