@@ -47,7 +47,8 @@ does not use a frozen lockfile.
 
 ## Create a team and invite a member
 
-1. Create an account at `/signup` and sign in.
+1. Create an account at `/signup`, confirm the address from the link in the server log, and sign
+   in. Teams send invitation email, so they need a confirmed address.
 2. Open **Teams**, enter a name and choose **Create team**. You are its owner.
 3. On the team page, invite an address as `viewer`, `editor` or `admin`. In development the
    invitation email, link included, is printed to the server log.
@@ -65,6 +66,6 @@ pnpm test
 ```
 
 `tests/functional/teams.spec.ts` covers creating a team, inviting and joining, a viewer who reads
-but is refused a rename with `E_AUTHORIZATION_FAILURE`, an editor who renames, a refused outsider
-and an editor who cannot invite. `tests/browser/teams.spec.ts` creates and renames a team in
+but is refused a rename with `E_AUTHORIZATION_FAILURE`, an editor who renames, a refused outsider,
+an unconfirmed account that cannot create a team, and an editor who cannot invite. `tests/browser/teams.spec.ts` creates and renames a team in
 Chromium.
