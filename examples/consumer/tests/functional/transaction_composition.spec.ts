@@ -482,7 +482,9 @@ test.group('transaction composition on SQLite', (group) => {
     assert.equal(attempts[0].terminal?.kind, 'commit')
   })
 
-  test('forwards trx for add, setStatus, remove and transferOwnership', async ({ assert }) => {
+  test('forwards trx for add, setStatus, remove, transferOwnership and grant', async ({
+    assert,
+  }) => {
     const owners = (rows: MembershipRow[]) => rows.filter((r) => r.role === 'owner')
     const operations: Array<{
       operation: string
@@ -540,6 +542,18 @@ test.group('transaction composition on SQLite', (group) => {
             trx,
           }),
         wrote: (rows) => owners(rows).length === 1 && owners(rows)[0].user_id === f.actorId,
+      },
+      {
+        operation: 'grant',
+        session: 'current',
+        run: (_actorId, trx) =>
+          f.access.memberships.grant({
+            scopeId: f.scopeId,
+            userId: f.outsiderId,
+            role: 'viewer',
+            trx,
+          }),
+        wrote: (rows) => rows.some((r) => r.user_id === f.outsiderId && r.role === 'viewer'),
       },
     ]
     for (const [index, row] of operations.entries()) {

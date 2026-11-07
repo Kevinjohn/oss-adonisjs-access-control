@@ -14,6 +14,7 @@ export type {
   ListForScopeInput,
   CreateFirstMemberInput,
   AcceptInvitationInput,
+  GrantMembershipInput,
   IdentityInput,
   IdentityRoles,
   PrepareAccountDeletionInput,
@@ -89,6 +90,7 @@ export type MembershipEvent<Role extends string> =
       reason: 'removed' | 'scope_deleted' | 'account_deleted'
     }
   | { type: 'membership.left'; scopeId: ScopeKey; userId: UserKey; role: Role }
+  | { type: 'membership.granted'; scopeId: ScopeKey; userId: UserKey; role: Role }
   | {
       type: 'membership.ownership_transferred'
       scopeId: ScopeKey

@@ -49,15 +49,16 @@ whether someone is a member from a 404 versus a 403.
 These take no actor and must stay behind your own checks; never expose them to request input
 directly.
 
-| Method                        | Purpose                                                                                                                                                                                                |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `createFirstMember`           | Seeds a new scope with its owner (or a manager role when no owner role is set). Refuses a non-empty scope with `SCOPE_NOT_EMPTY`.                                                                      |
-| `acceptInvitation`            | Creates the membership an accepted Account Kit invitation grants, inside the kit's transaction. The [Account Kit guide](account-kit.md) wires it.                                                      |
-| `identityRoles`               | Loads the actor's active memberships and all of the target's, under locks, for `canAdministerIdentity`.                                                                                                |
-| `assertCanAdministerIdentity` | Throws `FORBIDDEN` unless the actor may administer the target across every scope.                                                                                                                      |
-| `prepareAccountDeletion`      | Removes every membership of a user inside the kit's deletion transaction; refuses an active owner with `LAST_OWNER`.                                                                                   |
-| `removeAllForScope`           | Removes every membership of a scope inside your scope-deletion transaction, just before you delete the scope row. A member set that changed since the first read is `CONFLICT`; retry the transaction. |
-| `exportFor`                   | The user's memberships with ISO timestamps, for the kit's data export.                                                                                                                                 |
+| Method                        | Purpose                                                                                                                                                                                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createFirstMember`           | Seeds a new scope with its owner (or a manager role when no owner role is set). Refuses a non-empty scope with `SCOPE_NOT_EMPTY`.                                                                                                             |
+| `acceptInvitation`            | Creates the membership an accepted Account Kit invitation grants, inside the kit's transaction. The [Account Kit guide](account-kit.md) wires it.                                                                                             |
+| `grant`                       | Creates a membership the application has authorised itself (admission, eligibility), inside the application's kit transaction. Takes no actor and no invitation; refuses the owner role, a missing user or scope, and an existing membership. |
+| `identityRoles`               | Loads the actor's active memberships and all of the target's, under locks, for `canAdministerIdentity`.                                                                                                                                       |
+| `assertCanAdministerIdentity` | Throws `FORBIDDEN` unless the actor may administer the target across every scope.                                                                                                                                                             |
+| `prepareAccountDeletion`      | Removes every membership of a user inside the kit's deletion transaction; refuses an active owner with `LAST_OWNER`.                                                                                                                          |
+| `removeAllForScope`           | Removes every membership of a scope inside your scope-deletion transaction, just before you delete the scope row. A member set that changed since the first read is `CONFLICT`; retry the transaction.                                        |
+| `exportFor`                   | The user's memberships with ISO timestamps, for the kit's data export.                                                                                                                                                                        |
 
 ## Events
 
@@ -66,8 +67,8 @@ row changes, with the same `trx`. Throwing rolls the write back. Use it for audi
 through `trx`, or to queue notifications that a commit hook sends afterwards.
 
 Event types: `membership.added`, `membership.first_member`, `membership.invitation_accepted`,
-`membership.role_changed`, `membership.status_changed`, `membership.removed` (with `reason`:
-`removed`, `scope_deleted` or `account_deleted`), `membership.left` and
+`membership.granted`, `membership.role_changed`, `membership.status_changed`, `membership.removed`
+(with `reason`: `removed`, `scope_deleted` or `account_deleted`), `membership.left` and
 `membership.ownership_transferred`. The `MembershipEvent<Role>` union in
 `@kevinjohn/adonisjs-access-control/types` describes each payload.
 
