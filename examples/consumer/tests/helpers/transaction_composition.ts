@@ -85,6 +85,27 @@ function captureGuard() {
   return { guard, established: () => established }
 }
 
+/** What a fixture has created so far. */
+interface CreatedRows {
+  table: boolean
+  scopeId?: number
+  userIds: number[]
+}
+
+/** Removes created rows, children first, then drops the effects table. */
+async function discard(created: CreatedRows): Promise<void> {
+  const { scopeId } = created
+  if (scopeId !== undefined)
+    await transaction(db, (trx) => accessControl.memberships.removeAllForScope({ scopeId, trx }))
+  if (created.table) await db.from(effectsTable).delete()
+  if (created.userIds.length > 0) {
+    await db.from('account_sessions').whereIn('user_id', created.userIds).delete()
+    await db.from('users').whereIn('id', created.userIds).delete()
+  }
+  if (scopeId !== undefined) await db.from('teams').where('id', scopeId).delete()
+  if (created.table) await db.connection().schema.dropTable(effectsTable)
+}
+
 async function readBusyTimeout(): Promise<unknown> {
   const [row]: Array<Record<string, unknown>> = await db.rawQuery('PRAGMA busy_timeout')
   return Object.values(row)[0]
@@ -109,21 +130,40 @@ export async function compositionFixture(
     db,
     limiter,
   })
-  const access = accessControl
+  const created: CreatedRows = { table: false, userIds: [] }
+  try {
+    return await build(options, kit, created)
+  } catch (error) {
+    // A half-built fixture would make the next one fail on its unique emails or the table.
+    await discard(created)
+    throw error
+  }
+}
 
+async function build(
+  options: CompositionOptions,
+  kit: AccountKit,
+  created: CreatedRows
+): Promise<CompositionFixture> {
+  const access = accessControl
   await db.connection().schema.createTable(effectsTable, (t) => {
     t.increments('id')
     t.string('operation').notNullable()
     t.string('stage').notNullable()
   })
+  created.table = true
 
   const [team] = await db
     .table('teams')
     .returning('id')
     .insert({ name: 'Justice League', created_at: new Date() })
   const scopeId = Number(typeof team === 'object' ? team.id : team)
-  const confirmed = (email: string, fullName: string) =>
-    User.create({ email, password, fullName, emailVerifiedAt: DateTime.utc() })
+  created.scopeId = scopeId
+  const confirmed = async (email: string, fullName: string) => {
+    const user = await User.create({ email, password, fullName, emailVerifiedAt: DateTime.utc() })
+    created.userIds.push(user.id)
+    return user
+  }
   const bruce = await confirmed('bruce.wayne@wayne.example', 'Bruce Wayne')
   // Create the pair in the requested order, then assign roles from the actual key strings.
   const order = options.order ?? 'actor<target'
@@ -140,7 +180,6 @@ export async function compositionFixture(
   pair.sort((a, b) => (String(a.id) < String(b.id) ? -1 : 1))
   const [actor, target] = order === 'actor<target' ? pair : [pair[1], pair[0]]
   const outsider = await confirmed('barry.allen@centralcity.example', 'Barry Allen')
-  const users = [bruce, actor, target, outsider]
 
   await access.memberships.createFirstMember({ scopeId, userId: bruce.id })
   await access.memberships.add({
@@ -221,13 +260,7 @@ export async function compositionFixture(
       })
     },
     async cleanup() {
-      const ids = users.map((u) => u.id)
-      await transaction(db, (trx) => access.memberships.removeAllForScope({ scopeId, trx }))
-      await effects.clear()
-      await db.from('account_sessions').whereIn('user_id', ids).delete()
-      await db.from('users').whereIn('id', ids).delete()
-      await db.from('teams').where('id', scopeId).delete()
-      await db.connection().schema.dropTable(effectsTable)
+      await discard(created)
       const busyTimeout = await readBusyTimeout()
       if (busyTimeout !== 1000)
         throw new Error(`composition fixture: busy_timeout is ${busyTimeout}, expected 1000`)

@@ -3,6 +3,7 @@ import db from '@adonisjs/lucid/services/db'
 import { InvalidSessionError, PostCommitError } from '@kevinjohn/adonisjs-account-kit/errors'
 import type { Trx } from '@kevinjohn/adonisjs-account-kit'
 import { compositionFixture, type CompositionFixture } from '#tests/helpers/transaction_composition'
+import User from '#models/user'
 import {
   observeTransactions,
   type ObservedAttempt,
@@ -96,12 +97,15 @@ test.group('transaction composition on SQLite', (group) => {
   )
 
   let f: CompositionFixture
-  let observer: TransactionObserver
+  let observer: TransactionObserver | undefined
   let baseline: Record<string, unknown>
+  /** Whether `f` belongs to the running test and still needs its cleanup. */
+  let owned = false
 
   /** A fresh fixture with session A aged, the effects cleared and the observer attached. */
   async function arrange(order: 'actor<target' | 'actor>target') {
     f = await compositionFixture({ order })
+    owned = true
     await f.ageSession()
     await f.effects.clear()
     baseline = await f.snapshotSession()
@@ -109,7 +113,10 @@ test.group('transaction composition on SQLite', (group) => {
   }
 
   async function dispose() {
-    observer.detach()
+    observer?.detach()
+    observer = undefined
+    if (!owned) return
+    owned = false
     await f.cleanup()
   }
 
@@ -123,8 +130,8 @@ test.group('transaction composition on SQLite', (group) => {
 
   /** Ends the measurement window: later verification queries stay out of the evidence. */
   function settle(): ObservedAttempts {
-    observer.detach()
-    return observer.attempts()
+    observer!.detach()
+    return observer!.attempts()
   }
 
   /** C01: the positive path, with the actor key on either side of the target key. */
@@ -283,7 +290,7 @@ test.group('transaction composition on SQLite', (group) => {
     assert.lengthOf(attempts, 1)
     assert.lengthOf(attempts.outside, 0)
     assert.lengthOf(
-      observer.statements().filter((s) => s.kind === 'begin'),
+      observer!.statements().filter((s) => s.kind === 'begin'),
       1
     )
   })
@@ -385,7 +392,7 @@ test.group('transaction composition on SQLite', (group) => {
       assert.equal(pool.numUsed(), 1)
       assert.equal(pool.numPendingAcquires(), 1)
       assert.isFalse(
-        observer.statements().some((s) => s.verb === 'delete' && s.table === 'account_sessions')
+        observer!.statements().some((s) => s.verb === 'delete' && s.table === 'account_sessions')
       )
     } finally {
       releaseWrite.release()
@@ -395,7 +402,7 @@ test.group('transaction composition on SQLite', (group) => {
     const attempts = settle()
 
     const commit = attempts[0].terminal!
-    const deletion = observer
+    const deletion = observer!
       .statements()
       .find((s) => s.verb === 'delete' && s.table === 'account_sessions')
     assert.equal(commit.kind, 'commit')
@@ -552,7 +559,7 @@ test.group('transaction composition on SQLite', (group) => {
       const before = { memberships: await scopeRows(f), effects: await f.effects.rows() }
       assert.lengthOf(owners(before.memberships), 1, row.operation)
       // The snapshot reads stay out of the measured window.
-      observer.detach()
+      observer!.detach()
       observer = observeTransactions(db)
       let changed: MembershipRow[] | undefined
       const error = await failure(
@@ -579,6 +586,37 @@ test.group('transaction composition on SQLite', (group) => {
       assert.lengthOf(attempts, 1, row.operation)
       assert.lengthOf(attempts.outside, 0, row.operation)
       assert.equal(attempts[0].terminal?.kind, 'rollback', row.operation)
+    }
+  })
+})
+
+test.group('transaction composition fixture on SQLite', (group) => {
+  group.tap((t) =>
+    t.skip(
+      process.env.DB_CLIENT !== 'sqlite',
+      'SQLite-only composition; PostgreSQL keeps the row-lock warning'
+    )
+  )
+
+  test('removes what it created when its setup fails', async ({ assert }) => {
+    // Clark's address is taken, so setup fails after the table, the team and two users exist.
+    const blocker = await User.create({
+      email: 'clark.kent@dailyplanet.example',
+      password: 'blocker-password',
+      fullName: 'Blocker',
+    })
+    try {
+      await assert.rejects(() => compositionFixture())
+      assert.isFalse(await db.connection().schema.hasTable('composition_effects'))
+      assert.lengthOf(await db.from('teams').where('name', 'Justice League'), 0)
+      assert.lengthOf(
+        await db
+          .from('users')
+          .whereIn('email', ['bruce.wayne@wayne.example', 'diana.prince@themyscira.example']),
+        0
+      )
+    } finally {
+      await blocker.delete()
     }
   })
 })
