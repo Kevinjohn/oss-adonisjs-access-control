@@ -12,7 +12,7 @@
     "./registry": "./.adonisjs/client/registry/index.ts"
   },
   "scripts": {
-    "kit:pack": "pnpm --dir ../.. build && pnpm --dir ../.. pack --out examples/api/vendor/kevinjohn-adonisjs-account-kit.tgz",
+    "kit:pack": "pnpm --dir ../../.. build && pnpm --dir ../../.. pack --out examples/with_account_kit/api/vendor/kevinjohn-adonisjs-access-control.tgz",
     "start": "node bin/server.js",
     "build": "node ace build",
     "dev": "node ace serve --hmr",
@@ -65,6 +65,7 @@
   "dependencies": {
     "@adonisjs/ally": "^6.3.2",
     "@adonisjs/auth": "^10.1.0",
+    "@adonisjs/bouncer": "^4.0.0",
     "@adonisjs/core": "^7.5.2",
     "@adonisjs/cors": "^3.0.0",
     "@adonisjs/limiter": "^3.0.1",
@@ -72,13 +73,14 @@
     "@adonisjs/session": "^8.1.0",
     "@adonisjs/shield": "^9.0.0",
     "@japa/api-client": "^3.2.1",
+    "@kevinjohn/adonisjs-access-control": "file:vendor/kevinjohn-adonisjs-access-control.tgz",
+    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.1/kevinjohn-adonisjs-account-kit-0.3.1.tgz",
     "@tuyau/core": "^1.2.2",
     "@vinejs/vine": "^4.4.0",
     "better-sqlite3": "^12.11.1",
     "luxon": "^3.7.2",
     "pg": "^8.23.1",
-    "reflect-metadata": "^0.2.2",
-    "@kevinjohn/adonisjs-account-kit": "file:vendor/kevinjohn-adonisjs-account-kit.tgz"
+    "reflect-metadata": "^0.2.2"
   },
   "allowScripts": {
     "@swc/core": true,

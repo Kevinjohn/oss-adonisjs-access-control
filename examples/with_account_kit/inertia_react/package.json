@@ -8,7 +8,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "kit:pack": "pnpm --dir ../.. build && pnpm --dir ../.. pack --out examples/inertia-react/vendor/kevinjohn-adonisjs-account-kit.tgz",
+    "kit:pack": "pnpm --dir ../../.. build && pnpm --dir ../../.. pack --out examples/with_account_kit/inertia_react/vendor/kevinjohn-adonisjs-access-control.tgz",
     "start": "node bin/server.js",
     "build": "node ace build",
     "dev": "node ace serve --hmr",
@@ -64,6 +64,7 @@
   },
   "dependencies": {
     "@adonisjs/auth": "^10.1.0",
+    "@adonisjs/bouncer": "^4.0.0",
     "@adonisjs/core": "^7.5.2",
     "@adonisjs/cors": "^3.0.0",
     "@adonisjs/inertia": "^5.0.1",
@@ -75,9 +76,10 @@
     "@adonisjs/vite": "^6.0.2",
     "@inertiajs/core": "^3.7.1",
     "@inertiajs/react": "^3.7.1",
+    "@kevinjohn/adonisjs-access-control": "file:vendor/kevinjohn-adonisjs-access-control.tgz",
+    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.1/kevinjohn-adonisjs-account-kit-0.3.1.tgz",
     "@tuyau/core": "^1.2.2",
     "@vinejs/vine": "^4.4.0",
-    "@kevinjohn/adonisjs-account-kit": "file:vendor/kevinjohn-adonisjs-account-kit.tgz",
     "better-sqlite3": "^13.0.3",
     "edge.js": "^6.5.1",
     "lucide-react": "^1.48.0",
