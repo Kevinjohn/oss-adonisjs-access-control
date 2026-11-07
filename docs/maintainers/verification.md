@@ -33,6 +33,26 @@ escalates the active owned group; the first interrupt determines exit status 130
 With `CONSUMER_PG_EXTERNAL=1`, the harness leaves the externally provided PostgreSQL service
 running and only drops its own uniquely named schema.
 
+## SQLite composition
+
+`examples/consumer/tests/functional/transaction_composition.spec.ts` runs membership operations
+inside Account Kit's `authentication.withCurrent` with the callback's `trx`, against real
+registry sessions, and checks commit, rollback, retry, post-commit failure, revocation order and
+the nesting refusal (cases C01 to C11). `transaction_observer.ts` in `tests/helpers/` records the
+Knex-dispatched statements of each attempt without SQL text or bindings. Run it with
+`pnpm test:consumer --profile=floor --database=sqlite --package=<archive>`; the PostgreSQL profile
+skips the group.
+
+Verified with Account Kit 0.3.1, Node 24.22.2 and pnpm 11.23.0 (Lucid 22.4.2, Knex 3.3.0,
+better-sqlite3 13.0.3). The tested model is one application process, one SQLite database file and
+a pool of one connection (`min: 1, max: 1`, `acquireTimeoutMillis: 5000`) in WAL mode with
+`synchronous = FULL`, foreign keys on and `busy_timeout = 1000`. A single connection cannot show
+writer contention, and no PostgreSQL or MySQL claim follows from it. For each profile the runner
+keeps the consumer lockfile (`<profile>_consumer-pnpm-lock.yaml`) and the
+`pnpm list --depth Infinity --json` graph (`<profile>_consumer-dependency-graph.json`) in the run
+directory, and records the lockfile SHA-256 and the graph file name in that profile's
+`results.json` entries.
+
 ## Release verification
 
 After each release is published, install the advertised README tarball in a fresh AdonisJS 7 app

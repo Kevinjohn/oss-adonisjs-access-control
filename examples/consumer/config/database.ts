@@ -15,10 +15,15 @@ const dbConfig = defineConfig({
       pool: {
         min: 1,
         max: 1,
+        acquireTimeoutMillis: 5000,
         afterCreate(connection, callback) {
+          connection.pragma('journal_mode = WAL')
+          connection.pragma('synchronous = FULL')
           connection.pragma('foreign_keys = ON')
+          connection.pragma('busy_timeout = 1000')
           callback(null, connection)
         },
+        validate: (connection) => connection.open && !connection.inTransaction,
       },
       useNullAsDefault: true,
       migrations: { naturalSort: true, paths: ['database/migrations'] },

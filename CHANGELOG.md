@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Verified and documented running membership operations inside Account Kit's
+  `authentication.withCurrent` on SQLite with the supplied `trx` (one process, one database file,
+  one-connection pool). Row-locking databases keep the cross-user warning.
+
 ## 0.1.1 - 2026-11-07
 
 ### Changed
