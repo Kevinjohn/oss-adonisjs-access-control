@@ -7,6 +7,8 @@
 - Verified and documented running membership operations inside Account Kit's
   `authentication.withCurrent` on SQLite with the supplied `trx` (one process, one database file,
   one-connection pool). Row-locking databases keep the cross-user warning.
+- `memberships.grant`: a trusted operation that creates a membership inside the application's
+  transaction after the application's own checks, emitting `membership.granted`.
 
 ## 0.1.1 - 2026-11-07
 

@@ -610,6 +610,7 @@ export type MembershipEvent<Role extends string> =
       reason: 'removed' | 'scope_deleted' | 'account_deleted'
     }
   | { type: 'membership.left'; scopeId: ScopeKey; userId: UserKey; role: Role }
+  | { type: 'membership.granted'; scopeId: ScopeKey; userId: UserKey; role: Role }
   | {
       type: 'membership.ownership_transferred'
       scopeId: ScopeKey
@@ -659,12 +660,13 @@ non-manager cannot probe membership by 404 versus 403) → remaining rule rows �
 
 ### 5.3 Trusted operations (no actor)
 
-| Method                        | Input                                                         | Checks                                                                                                                                                                                                                         | Event                            |
-| ----------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
-| `createFirstMember`           | `{ scopeId, userId, role?, trx? }`                            | scope locked; any membership exists → `SCOPE_NOT_EMPTY`. When `O` set: role is `O` (passing another role → `INVALID_INPUT`). When unset: `role` required and must satisfy `can(role, 'members:manage')`, else `INVALID_INPUT`. | `membership.first_member`        |
-| `acceptInvitation`            | `{ scopeId, userId, role, invitationId, trx }` (trx required) | scope locked; role known and not `O` else `INVALID_INPUT`; existing membership → `ALREADY_MEMBER`                                                                                                                              | `membership.invitation_accepted` |
-| `identityRoles`               | `{ actorId, targetId, trx? }`                                 | locks both user rows ascending (freezing both membership sets), reads memberships, locks the scope rows of both maps' union, ascending; returns `{ actorRoles, targetRoles }` per 3.4                                          | none                             |
-| `assertCanAdministerIdentity` | `{ actorId, targetId, trx? }`                                 | `identityRoles` then `canAdministerIdentity`; false → `FORBIDDEN`                                                                                                                                                              | none                             |
+| Method                        | Input                                                         | Checks                                                                                                                                                                                                                                       | Event                            |
+| ----------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `createFirstMember`           | `{ scopeId, userId, role?, trx? }`                            | scope locked; any membership exists → `SCOPE_NOT_EMPTY`. When `O` set: role is `O` (passing another role → `INVALID_INPUT`). When unset: `role` required and must satisfy `can(role, 'members:manage')`, else `INVALID_INPUT`.               | `membership.first_member`        |
+| `acceptInvitation`            | `{ scopeId, userId, role, invitationId, trx }` (trx required) | scope locked; role known and not `O` else `INVALID_INPUT`; existing membership → `ALREADY_MEMBER`                                                                                                                                            | `membership.invitation_accepted` |
+| `grant`                       | `{ scopeId, userId, role, trx }` (trx required)               | scope locked; role known and not `O` else `INVALID_INPUT`; missing user row → `USER_NOT_FOUND`; existing membership → `ALREADY_MEMBER`. For a membership the application authorised itself (admission, eligibility); no actor, no invitation | `membership.granted`             |
+| `identityRoles`               | `{ actorId, targetId, trx? }`                                 | locks both user rows ascending (freezing both membership sets), reads memberships, locks the scope rows of both maps' union, ascending; returns `{ actorRoles, targetRoles }` per 3.4                                                        | none                             |
+| `assertCanAdministerIdentity` | `{ actorId, targetId, trx? }`                                 | `identityRoles` then `canAdministerIdentity`; false → `FORBIDDEN`                                                                                                                                                                            | none                             |
 
 These are server-only. They are on the service but documented as "do not expose to request input
 without your own checks".

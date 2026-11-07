@@ -51,4 +51,7 @@ defineAccessControl({
   permissions: { members: { list: 'viewer' }, invitations: { manage: 'viewer' } },
 })
 
+// @ts-expect-error grant requires the application's transaction
+void config.memberships.grant({ scopeId: 1, userId: 2, role: 'editor' })
+
 void [role, key, badRole, badKey, dottedKey]

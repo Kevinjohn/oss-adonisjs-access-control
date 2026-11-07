@@ -482,6 +482,10 @@ re-read through the write transaction **[review]**):
   and writes through the acceptance transaction. The invitation is a stored grant until it expires or
   is revoked; acceptance does not re-check the inviter. Apps needing acceptance-time reauthorization
   add that policy explicitly.
+- `memberships.grant({ scopeId, userId, role, trx })`: a membership the application authorised
+  itself (admission, eligibility), inside the application's kit transaction. No actor and no
+  invitation; validates scope, user and a non-owner role, refuses an existing membership and emits
+  `membership.granted`.
 
 Errors are typed and carry a stable `code` (e.g. `NOT_A_MEMBER`, `ROLE_NOT_ASSIGNABLE`,
 `LAST_OWNER`, `SELF_STATUS_CHANGE`, `SELF_ROLE_CHANGE`, `UNKNOWN_ROLE`, `SCOPE_NOT_EMPTY`).

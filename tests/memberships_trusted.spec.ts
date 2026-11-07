@@ -128,6 +128,85 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     )
   })
 
+  test('grant: requires trx, a known non-owner role, an existing user and scope, and no membership', async ({
+    assert,
+  }) => {
+    const scope = await f.createScope()
+    const [o, u] = await Promise.all([f.createUser(), f.createUser()])
+    await f.memberships.createFirstMember({ scopeId: scope, userId: o })
+    f.events.length = 0
+    assert.equal(
+      await codeOf(f.memberships.grant({ scopeId: scope, userId: u, role: 'editor' } as never)),
+      'E_ACCESS_CONTROL_INVALID_INPUT'
+    )
+    const inTrx = (input: Record<string, unknown>) =>
+      codeOf(f.runner.transaction(f.db, (trx) => f.memberships.grant({ ...input, trx } as never)))
+    assert.equal(
+      await inTrx({ scopeId: scope, userId: u, role: 'owner' }),
+      'E_ACCESS_CONTROL_INVALID_INPUT'
+    )
+    assert.equal(
+      await inTrx({ scopeId: scope, userId: u, role: 'ceo' }),
+      'E_ACCESS_CONTROL_INVALID_INPUT'
+    )
+    assert.equal(
+      await inTrx({ scopeId: scope, userId: 999_999, role: 'editor' }),
+      'E_ACCESS_CONTROL_USER_NOT_FOUND'
+    )
+    assert.equal(
+      await inTrx({ scopeId: 999_999, userId: u, role: 'editor' }),
+      'E_ACCESS_CONTROL_SCOPE_NOT_FOUND'
+    )
+    assert.deepEqual(f.events, [])
+    const granted = await f.runner.transaction(f.db, (trx) =>
+      f.memberships.grant({ scopeId: scope, userId: u, role: 'editor', trx })
+    )
+    assert.deepInclude(granted, { scopeId: scope, userId: u, role: 'editor', status: 'active' })
+    assert.deepEqual(f.events.at(-1), {
+      type: 'membership.granted',
+      scopeId: scope,
+      userId: u,
+      role: 'editor',
+    })
+    assert.equal(
+      await inTrx({ scopeId: scope, userId: u, role: 'viewer' }),
+      'E_ACCESS_CONTROL_ALREADY_MEMBER'
+    )
+  })
+
+  test('grant: an outer rollback and a throwing hook leave no row', async ({ assert }) => {
+    const scope = await f.createScope()
+    const u = await f.createUser()
+    await assert.rejects(
+      () =>
+        f.runner.transaction(f.db, async (trx) => {
+          await f.memberships.grant({ scopeId: scope, userId: u, role: 'editor', trx })
+          throw new Error('outer')
+        }),
+      'outer'
+    )
+    assert.deepEqual(await f.rows(scope), [])
+    const g = await membershipFixture({
+      onMembershipChanged: async () => {
+        throw new Error('hook')
+      },
+    })
+    try {
+      const hookScope = await g.createScope()
+      const hookUser = await g.createUser()
+      await assert.rejects(
+        () =>
+          g.runner.transaction(g.db, (trx) =>
+            g.memberships.grant({ scopeId: hookScope, userId: hookUser, role: 'editor', trx })
+          ),
+        'hook'
+      )
+      assert.deepEqual(await g.rows(hookScope), [])
+    } finally {
+      await g.cleanup()
+    }
+  })
+
   test('identityRoles: actor map is active only, target map includes suspended', async ({
     assert,
   }) => {

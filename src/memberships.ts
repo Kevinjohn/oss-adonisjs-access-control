@@ -85,6 +85,14 @@ export interface AcceptInvitationInput {
   /** Required: the kit hook's transaction. */
   trx: Trx
 }
+/** Input of the trusted `grant`: a membership the application has authorised itself. */
+export interface GrantMembershipInput {
+  scopeId: ScopeKey
+  userId: UserKey
+  role: string
+  /** Required: the application's transaction, started with the kit runner. */
+  trx: Trx
+}
 /** Input of the trusted `identityRoles` and `assertCanAdministerIdentity`. */
 export interface IdentityInput {
   actorId: UserKey
@@ -635,6 +643,24 @@ export class MembershipService<Role extends string = string> {
       },
       trx
     )
+    return membership
+  }
+
+  /** Trusted: a membership the application grants after its own admission checks, in its transaction. */
+  async grant(input: GrantMembershipInput): Promise<Membership> {
+    const trx = this.#requireTrx(input.trx, 'grant')
+    if (this.#access.rank(input.role) < 0 || input.role === this.#access.ownerRole)
+      throw error('E_ACCESS_CONTROL_INVALID_INPUT', 'a granted role must be a known non-owner role')
+    const { scopeId, userIds } = await this.#storedKeys(trx, this.#scopeKey(input.scopeId), [
+      this.#userKey(input.userId),
+    ])
+    const [userId] = userIds
+    await this.#lock(trx, scopeId, [userId])
+    const user = await trx.from(this.#usersTable).select('id').where('id', userId).first()
+    if (!user) throw error('E_ACCESS_CONTROL_USER_NOT_FOUND')
+    if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
+    const membership = await this.#insert(trx, scopeId, userId, input.role)
+    await this.#emit({ type: 'membership.granted', scopeId, userId, role: input.role as Role }, trx)
     return membership
   }
 
