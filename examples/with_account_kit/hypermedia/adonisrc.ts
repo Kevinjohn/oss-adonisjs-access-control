@@ -1,5 +1,6 @@
 import { indexEntities } from '@adonisjs/core/generators'
 import { defineConfig } from '@adonisjs/core/app'
+import { indexPolicies } from '@adonisjs/bouncer'
 
 export default defineConfig({
   /*
@@ -29,6 +30,7 @@ export default defineConfig({
     () => import('@adonisjs/session/commands'),
     () => import('@kevinjohn/adonisjs-account-kit/commands'),
     () => import('@kevinjohn/adonisjs-access-control/commands'),
+    () => import('@adonisjs/bouncer/commands'),
   ],
 
   /*
@@ -58,6 +60,7 @@ export default defineConfig({
     () => import('@adonisjs/auth/auth_provider'),
     () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
     () => import('@kevinjohn/adonisjs-access-control/access_control_provider'),
+    () => import('@adonisjs/bouncer/bouncer_provider'),
   ],
 
   /*
@@ -137,7 +140,7 @@ export default defineConfig({
   |
   */
   hooks: {
-    init: [indexEntities()],
+    init: [indexEntities(), indexPolicies()],
     buildStarting: [() => import('@adonisjs/vite/build_hook')],
   },
 })

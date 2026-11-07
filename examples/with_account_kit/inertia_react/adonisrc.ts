@@ -2,6 +2,7 @@ import { indexPages } from '@adonisjs/inertia'
 import { indexEntities } from '@adonisjs/core/generators'
 import { defineConfig } from '@adonisjs/core/app'
 import { generateRegistry } from '@tuyau/core/hooks'
+import { indexPolicies } from '@adonisjs/bouncer'
 
 export default defineConfig({
   /*
@@ -32,6 +33,7 @@ export default defineConfig({
     () => import('@adonisjs/inertia/commands'),
     () => import('@kevinjohn/adonisjs-account-kit/commands'),
     () => import('@kevinjohn/adonisjs-access-control/commands'),
+    () => import('@adonisjs/bouncer/commands'),
   ],
 
   /*
@@ -64,6 +66,7 @@ export default defineConfig({
     () => import('@adonisjs/limiter/limiter_provider'),
     () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
     () => import('@kevinjohn/adonisjs-access-control/access_control_provider'),
+    () => import('@adonisjs/bouncer/bouncer_provider'),
   ],
 
   /*
@@ -137,6 +140,7 @@ export default defineConfig({
       }),
       indexPages({ framework: 'react' }),
       generateRegistry(),
+      indexPolicies(),
     ],
     buildStarting: [() => import('@adonisjs/vite/build_hook')],
   },

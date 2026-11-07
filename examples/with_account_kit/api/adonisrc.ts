@@ -1,6 +1,7 @@
 import { indexEntities } from '@adonisjs/core'
 import { defineConfig } from '@adonisjs/core/app'
 import { generateRegistry } from '@tuyau/core/hooks'
+import { indexPolicies } from '@adonisjs/bouncer'
 
 export default defineConfig({
   /*
@@ -31,6 +32,7 @@ export default defineConfig({
     () => import('@kevinjohn/adonisjs-account-kit/commands'),
     () => import('@kevinjohn/adonisjs-account-kit/admission/commands'),
     () => import('@kevinjohn/adonisjs-access-control/commands'),
+    () => import('@adonisjs/bouncer/commands'),
   ],
 
   /*
@@ -61,6 +63,7 @@ export default defineConfig({
     () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
     () => import('@kevinjohn/adonisjs-account-kit/admission/provider'),
     () => import('@kevinjohn/adonisjs-access-control/access_control_provider'),
+    () => import('@adonisjs/bouncer/bouncer_provider'),
   ],
 
   /*
@@ -119,6 +122,7 @@ export default defineConfig({
         transformers: { enabled: true },
       }),
       generateRegistry(),
+      indexPolicies(),
     ],
   },
 })
