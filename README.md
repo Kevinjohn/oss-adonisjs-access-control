@@ -23,15 +23,15 @@ policies).
 
 Access Control requires Node.js 24+, AdonisJS 7 and Account Kit 0.3.1 (exact), the release with
 the `./transaction` export, scoped invitations and `ctx.auth.user` left set by its middleware.
-Install the `0.1.1` release from GitHub:
+Install the `0.1.2` release from GitHub:
 
 ```sh
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.1/kevinjohn-adonisjs-access-control-0.1.1.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.2/kevinjohn-adonisjs-access-control-0.1.2.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 ```
 
-The release asset is `kevinjohn-adonisjs-access-control-0.1.1.tgz`; verify it against the SHA-256
-in the [release notes](https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/tag/v0.1.1).
+The release asset is `kevinjohn-adonisjs-access-control-0.1.2.tgz`; verify it against the SHA-256
+in the [release notes](https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/tag/v0.1.2).
 
 ## Quick start
 
