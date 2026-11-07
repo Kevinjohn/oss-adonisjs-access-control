@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.2 - 2026-11-07
+
 ### Added
 
 - Verified and documented running membership operations inside Account Kit's
