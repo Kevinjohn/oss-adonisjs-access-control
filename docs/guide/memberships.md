@@ -86,10 +86,20 @@ locks and writes through it and leaves commit and rollback to you. Three rules k
   isolation level and SQLite's shared lock row; under MySQL's default repeatable read a plain
   Lucid transaction keeps reading the snapshot it started with, so two concurrent ownership
   transfers could both see the old owner and leave a scope with two owners.
-- Do not hold a user row lock before calling in. Account Kit's `authentication.withCurrent` locks
-  the current account first; a membership change from inside it that targets another user locks
-  the users in key order and can wait on a writer that holds the other user and waits for this
-  one. Run cross-user membership changes in their own transaction.
+- On PostgreSQL and MySQL, do not hold a user row lock before calling in. Account Kit's
+  `authentication.withCurrent` locks the current account first; a membership change from inside
+  it that targets another user locks the users in key order and can wait on a writer that holds
+  the other user and waits for this one. Run cross-user membership changes in their own
+  transaction.
+- On SQLite, with one application process owning one database file and a one-connection pool, a
+  membership operation may run inside Account Kit's `authentication.withCurrent` when it receives
+  that callback's `trx`. The kit runner takes the shared writer lock before it checks the session.
+  Access Control uses the same transaction and leaves commit and rollback to the caller. Keep the
+  callback database-only and safe to retry: the runner retries it after `SQLITE_BUSY`. Await all
+  work and let errors escape. Use one resolved Account Kit module instance across the application
+  and Access Control, so the nesting guard and error classes are shared. Do not open another
+  transaction or run queries on the root client inside the callback. The packed consumer tests
+  this configuration; it says nothing about row-locking databases.
 - Do not lock the scope row yourself before `removeAllForScope`; it locks the member users first,
   then the scope, and a lock taken in the other order can deadlock with a concurrent change.
 
@@ -100,6 +110,24 @@ import { transaction } from '@kevinjohn/adonisjs-account-kit/transaction'
 await transaction(db, async (trx) => {
   await accessControl.memberships.transferOwnership({ actor, scopeId, toUserId, trx })
   await Project.query({ client: trx }).where('team_id', scopeId).update({ owner_id: toUserId })
+})
+```
+
+On SQLite, the same `trx` from `withCurrent` carries the session check, the membership change and
+the application's own writes; a throw anywhere before commit rolls all of them back:
+
+```ts
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
+
+await accountKit.authentication.withCurrent(current, async ({ account, trx }) => {
+  await accessControl.memberships.changeRole({
+    actor: { id: account.id },
+    scopeId,
+    userId,
+    role: 'admin',
+    trx,
+  })
+  await trx.table('audit_entries').insert({ action: 'member.role_changed', user_id: userId })
 })
 ```
 

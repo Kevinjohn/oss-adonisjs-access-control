@@ -529,6 +529,11 @@ freezes those users' membership sets, then lock the scope rows they read, ascend
 `onMembershipChanged` runs after step 4's write, while these locks are held; it must not lock or write
 other users' rows or Account Kit tables, which sit earlier in the lock order.
 
+On SQLite, where `lockRow` is a no-op and the kit runner holds the writer lock from its first
+statement, a cross-user membership write inside `authentication.withCurrent` with that callback's
+`trx` is tested in the packed consumer (one process, one database file, one-connection pool); the
+lock order above is unchanged.
+
 ### 4.3 Transactions
 
 - Every service method takes `trx?: Trx`. Without it, the method runs `transaction(db, fn)` from the
@@ -539,6 +544,9 @@ other users' rows or Account Kit tables, which sit earlier in the lock order.
   for each key type under test (`tests/helpers/schema.ts`). The kit runner throws without the lock row.
 - No method retries; the kit runner owns SQLite busy retries. Committed work is never replayed.
 - Network, mail and other side effects are never performed inside these transactions.
+- The tested SQLite exception: a caller `trx` from `authentication.withCurrent` may carry
+  cross-user membership writes in the configuration of section 4.2; the package still locks in the
+  section 4.2 order and leaves commit and rollback to the caller.
 
 ---
 

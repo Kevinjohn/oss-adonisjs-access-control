@@ -53,7 +53,7 @@ for (const [name, version] of Object.entries(floor)) {
   if (declaredFloor !== version)
     throw new Error(`Floor selection mismatch for ${name}: ${version} vs declared ${declaredFloor}`)
 }
-const results: unknown[] = []
+const results: Array<Record<string, unknown>> = []
 let ownsPostgres = false
 const baseEnv = {
   ...process.env,
@@ -277,19 +277,7 @@ try {
           fixtureBuild: 'passed',
           packageSha256: digest,
         })
-        await writeFile(
-          join(directory, 'results.json'),
-          JSON.stringify(
-            {
-              artifact: basename(artifact),
-              packageSha256: digest,
-              nodeVersion: process.version,
-              results,
-            },
-            null,
-            2
-          ) + '\n'
-        )
+        await writeResults()
         console.log(`[consumer] PASS ${selected}/${engine}`)
       } catch (error) {
         engineFailure = error
@@ -304,6 +292,20 @@ try {
       }
       if (engineFailure !== undefined) throw engineFailure
     }
+    // The resolved graph outlives the app: its lockfile, the lockfile digest and the full list.
+    const lockfile = `${selected}_consumer-pnpm-lock.yaml`
+    const dependencyGraph = `${selected}_consumer-dependency-graph.json`
+    await cp(join(app, 'pnpm-lock.yaml'), join(directory, lockfile))
+    const lockfileSha256 = createHash('sha256')
+      .update(await readFile(join(directory, lockfile)))
+      .digest('hex')
+    const graph: unknown = JSON.parse(
+      await run(app, ['list', '--depth', 'Infinity', '--json'], `${selected}_dependency_graph`)
+    )
+    await writeFile(join(directory, dependencyGraph), JSON.stringify(graph, null, 2) + '\n')
+    for (const entry of results)
+      if (entry.profile === selected) Object.assign(entry, { lockfileSha256, dependencyGraph })
+    await writeResults()
     // A passing app is removed; a failing one stays for inspection next to its logs.
     await rm(app, { recursive: true, force: true })
   }
@@ -345,6 +347,22 @@ if (process.exitCode === undefined) {
   )
   if (processRunner.interruptedBy === 'SIGINT') process.exitCode = 130
   else if (processRunner.interruptedBy === 'SIGTERM') process.exitCode = 143
+}
+
+async function writeResults(): Promise<void> {
+  await writeFile(
+    join(directory, 'results.json'),
+    JSON.stringify(
+      {
+        artifact: basename(artifact),
+        packageSha256: digest,
+        nodeVersion: process.version,
+        results,
+      },
+      null,
+      2
+    ) + '\n'
+  )
 }
 
 function combineFailures(primary: unknown, cleanup: unknown): AggregateError {

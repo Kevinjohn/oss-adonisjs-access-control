@@ -1,5 +1,6 @@
 import env from '#start/env'
 import { createLucidAdapter, defineConfig } from '@kevinjohn/adonisjs-account-kit'
+import type { AccountKitConfig } from '@kevinjohn/adonisjs-account-kit'
 import { accessControlKitCallbacks } from '@kevinjohn/adonisjs-access-control/account-kit'
 
 /**
@@ -23,76 +24,81 @@ const notConfigured = (method: string) => async () => {
  */
 const accessControl = accessControlKitCallbacks()
 
-export default defineConfig({
-  /**
-   * Reads and writes accounts through the application's Lucid User model.
-   */
-  users,
+/** Fresh raw configuration objects on every call, so tests can customise before resolving. */
+export function createAccountKitConfig(): AccountKitConfig {
+  return {
+    /**
+     * Reads and writes accounts through the application's Lucid User model.
+     */
+    users,
 
-  /**
-   * Account flows the application exposes.
-   */
-  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
+    /**
+     * Account flows the application exposes.
+     */
+    enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
 
-  /**
-   * Choose admission in the application before exposing a public signup route.
-   */
-  registration: { availability: 'open' },
+    /**
+     * Choose admission in the application before exposing a public signup route.
+     */
+    registration: { availability: 'open' },
 
-  /**
-   * The existing session guard, so the kit's own route middleware can protect application routes.
-   */
-  authentication: { strategy: 'session', guard: 'web' },
+    /**
+     * The existing session guard, so the kit's own route middleware can protect application routes.
+     */
+    authentication: { strategy: 'session', guard: 'web' },
 
-  /**
-   * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
-   */
-  limiterSecret: env.get('APP_KEY'),
+    /**
+     * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
+     */
+    limiterSecret: env.get('APP_KEY'),
 
-  /**
-   * Who may send, manage and list team invitations: active members holding invitations:manage.
-   */
-  authorize: accessControl.authorize,
+    /**
+     * Who may send, manage and list team invitations: active members holding invitations:manage.
+     */
+    authorize: accessControl.authorize,
 
-  /**
-   * Links sent in account emails. Point them at your own routes.
-   */
-  urls: {
-    passwordReset: (token) => accountUrl('recovery', token),
-    emailVerification: (token) => accountUrl('verification', token),
-    invitation: (token) => accountUrl('invitation', token),
-    emailChange: (token) => accountUrl('email-change', token),
-  },
+    /**
+     * Links sent in account emails. Point them at your own routes.
+     */
+    urls: {
+      passwordReset: (token) => accountUrl('recovery', token),
+      emailVerification: (token) => accountUrl('verification', token),
+      invitation: (token) => accountUrl('invitation', token),
+      emailChange: (token) => accountUrl('email-change', token),
+    },
 
-  /**
-   * Delivers account notices. Each one throws until you connect your mailer.
-   */
-  notify: {
-    passwordResetProvision: notConfigured('passwordResetProvision'),
-    accountActivationProvision: notConfigured('accountActivationProvision'),
-    invitationProvision: notConfigured('invitationProvision'),
-    emailChangeProvision: notConfigured('emailChangeProvision'),
-    emailChanged: notConfigured('emailChanged'),
-    passwordResetCompleted: notConfigured('passwordResetCompleted'),
-    passwordChanged: notConfigured('passwordChanged'),
-  },
+    /**
+     * Delivers account notices. Each one throws until you connect your mailer.
+     */
+    notify: {
+      passwordResetProvision: notConfigured('passwordResetProvision'),
+      accountActivationProvision: notConfigured('accountActivationProvision'),
+      invitationProvision: notConfigured('invitationProvision'),
+      emailChangeProvision: notConfigured('emailChangeProvision'),
+      emailChanged: notConfigured('emailChanged'),
+      passwordResetCompleted: notConfigured('passwordResetCompleted'),
+      passwordChanged: notConfigured('passwordChanged'),
+    },
 
-  /**
-   * Choose your revocation policy explicitly. For API tokens/outbox, see examples/api.
-   * Applications without revocable credentials may deliberately replace this with a no-op.
-   */
-  onCredentialsChangedTransaction: async () => {
-    throw new Error('account_kit: implement the application credential-revocation policy')
-  },
+    /**
+     * Choose your revocation policy explicitly. For API tokens/outbox, see examples/api.
+     * Applications without revocable credentials may deliberately replace this with a no-op.
+     */
+    onCredentialsChangedTransaction: async () => {
+      throw new Error('account_kit: implement the application credential-revocation policy')
+    },
 
-  /**
-   * Grants the invited team role inside the acceptance transaction.
-   */
-  onInvitationAccepted: accessControl.onInvitationAccepted,
+    /**
+     * Grants the invited team role inside the acceptance transaction.
+     */
+    onInvitationAccepted: accessControl.onInvitationAccepted,
 
-  /**
-   * Removes the user's memberships before the account row goes, and exports them on request.
-   */
-  onAccountDeletingTransaction: accessControl.onAccountDeletingTransaction,
-  exportAccountData: accessControl.exportAccountData,
-})
+    /**
+     * Removes the user's memberships before the account row goes, and exports them on request.
+     */
+    onAccountDeletingTransaction: accessControl.onAccountDeletingTransaction,
+    exportAccountData: accessControl.exportAccountData,
+  }
+}
+
+export default defineConfig(createAccountKitConfig())
