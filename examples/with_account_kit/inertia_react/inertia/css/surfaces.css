@@ -332,6 +332,8 @@
   align-items: center;
   border-bottom: 1px solid var(--line);
   background: var(--card);
+  /* Narrow screens scroll the links instead of widening the page. */
+  overflow-x: auto;
 }
 .subnav__inner {
   display: flex;
