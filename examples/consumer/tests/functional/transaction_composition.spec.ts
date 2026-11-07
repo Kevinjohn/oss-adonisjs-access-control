@@ -106,18 +106,29 @@ test.group('transaction composition on SQLite', (group) => {
   async function arrange(order: 'actor<target' | 'actor>target') {
     f = await compositionFixture({ order })
     owned = true
-    await f.ageSession()
-    await f.effects.clear()
-    baseline = await f.snapshotSession()
+    try {
+      await f.ageSession()
+      await f.effects.clear()
+      baseline = await f.snapshotSession()
+    } catch (error) {
+      // Japa skips each.teardown after a failed setup; clean up here so the next case can start.
+      await dispose()
+      throw error
+    }
     observer = observeTransactions(db)
   }
 
   async function dispose() {
-    observer?.detach()
+    const watching = observer
     observer = undefined
-    if (!owned) return
-    owned = false
-    await f.cleanup()
+    try {
+      watching?.detach()
+    } finally {
+      if (owned) {
+        owned = false
+        await f.cleanup()
+      }
+    }
   }
 
   group.each.setup(async (t) => {
@@ -162,7 +173,10 @@ test.group('transaction composition on SQLite', (group) => {
     assert.lengthOf(attempts.outside, 0)
     const [attempt] = attempts
     assert.equal(attempt.terminal?.kind, 'commit')
-    assert.equal(count(attempts, 'rollback'), 0)
+    assert.notInclude(
+      observer!.statements().map((s) => s.kind),
+      'rollback'
+    )
     assert.equal(count(attempts, 'savepoint'), 0)
     assert.equal(count(attempts, 'release'), 0)
     const statements = [attempt.begin, ...attempt.inside, attempt.terminal!]

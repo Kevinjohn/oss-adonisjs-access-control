@@ -57,17 +57,18 @@ export interface StatementClassifier extends TransactionObserver {
 }
 
 const control = /^(BEGIN|COMMIT|ROLLBACK)\b/i
-const savepoint = /^SAVEPOINT\b/i
+// `ROLLBACK TO SAVEPOINT` undoes a savepoint inside the transaction; it does not end it.
+const savepoint = /^(SAVEPOINT|ROLLBACK\s+TO)\b/i
 const release = /^RELEASE SAVEPOINT\b/i
 const tableName = /\b(?:from|into|update)\s+[`"]?([a-zA-Z_][a-zA-Z0-9_]*)/i
 const verbs = /^(select|insert|update|delete)\b/i
 
 function kindOf(sql: string): ObservedStatement['kind'] {
   const trimmed = sql.trim()
+  if (savepoint.test(trimmed)) return 'savepoint'
   const match = trimmed.match(control)
   if (match) return match[1].toLowerCase() as 'begin' | 'commit' | 'rollback'
   if (release.test(trimmed)) return 'release'
-  if (savepoint.test(trimmed)) return 'savepoint'
   return 'query'
 }
 
