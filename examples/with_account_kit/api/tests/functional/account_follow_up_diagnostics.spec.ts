@@ -71,14 +71,14 @@ test.group('Account follow up diagnostics', (group) => {
         password: 'InviterPass123!',
         emailVerifiedAt: DateTime.utc(),
       })
-      await grantAdmittedOwner(inviter)
+      const scope = await grantAdmittedOwner(inviter)
       const invitedEmail = `invite-${suffix}@example.test`
       notifications.failLifecycle = true
       const invitationSend = await captureFollowUpDiagnostics(() =>
         client
           .post('/api/v1/account/invitations')
           .loginAs(inviter)
-          .json({ email: invitedEmail, role: 'viewer' })
+          .json({ email: invitedEmail, role: 'viewer', scope })
       )
       notifications.failLifecycle = false
       assert.equal(invitationSend.result.status(), 202)
@@ -105,7 +105,7 @@ test.group('Account follow up diagnostics', (group) => {
       const resendSend = await client
         .post('/api/v1/account/invitations')
         .loginAs(inviter)
-        .json({ email: resendEmail, role: 'viewer' })
+        .json({ email: resendEmail, role: 'viewer', scope })
       assert.equal(resendSend.status(), 201)
       const resendId = responseBody<{ id: number }>(resendSend).id
       notifications.failLifecycle = true

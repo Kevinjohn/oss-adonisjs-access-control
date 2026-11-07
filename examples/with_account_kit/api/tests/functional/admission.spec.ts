@@ -80,8 +80,8 @@ async function createPerson(email = `person-${randomUUID()}@example.test`) {
 /** An admitted owner, signed in. */
 async function createOwner(client: ApiClient) {
   const owner = await createPerson(`owner-${randomUUID()}@example.test`)
-  await grantAdmittedOwner(owner)
-  return { owner, credential: await signIn(client, owner.email) }
+  const scope = await grantAdmittedOwner(owner)
+  return { owner, scope, credential: await signIn(client, owner.email) }
 }
 
 const decisionOf = (response: ApiResponse) => response.body() as Decision
@@ -89,10 +89,11 @@ const refusal = (response: ApiResponse) =>
   response.body() as { errors: Array<{ code: string }>; decision: Decision }
 
 /** The owner invites `email` and returns the invitation link path. */
-async function invite(client: ApiClient, owner: Credential, email: string) {
+async function invite(client: ApiClient, owner: Credential, scope: string, email: string) {
   const sent = await as(client.post('/api/v1/account/invitations'), owner).json({
     email,
-    role: 'member',
+    role: 'viewer',
+    scope,
   })
   if (sent.status() !== 201) throw new Error(`Invite failed: ${JSON.stringify(sent.body())}`)
   const notice = notifications.events.find(
@@ -168,9 +169,12 @@ test.group('Admission', (group) => {
     client,
     assert,
   }) => {
-    const { credential: owner } = await createOwner(client)
+    const { credential: owner, scope } = await createOwner(client)
     const email = `invited-${randomUUID()}@example.test`
-    assert.equal((await acceptInvitation(client, await invite(client, owner, email))).status(), 201)
+    assert.equal(
+      (await acceptInvitation(client, await invite(client, owner, scope, email))).status(),
+      201
+    )
     const person = await User.findByOrFail('email', email)
     const session = await signIn(client, email)
 
@@ -280,13 +284,14 @@ test.group('Admission', (group) => {
 
   test('a revoked owner cannot send an invitation', async ({ client, assert }) => {
     const { credential: owner } = await createOwner(client)
-    const { owner: other, credential: otherSession } = await createOwner(client)
+    const { owner: other, scope, credential: otherSession } = await createOwner(client)
     const revoked = await as(client.post(`/api/v1/account/admissions/${other.id}/revoke`), owner)
     assert.equal(revoked.status(), 200, JSON.stringify(revoked.body()))
 
     const sent = await as(client.post('/api/v1/account/invitations'), otherSession).json({
       email: `refused-${randomUUID()}@example.test`,
-      role: 'member',
+      role: 'viewer',
+      scope,
     })
     assert.equal(sent.status(), 403)
     assert.lengthOf(await db.from('account_invitations'), 0)
@@ -296,16 +301,19 @@ test.group('Admission', (group) => {
     client,
     assert,
   }) => {
-    const { credential: owner } = await createOwner(client)
+    const { credential: owner, scope } = await createOwner(client)
     const email = `social-${randomUUID()}@example.test`
-    const link = await invite(client, owner, email)
+    const link = await invite(client, owner, scope, email)
     const session = await socialSignIn(client, email)
 
     const status = await as(client.get('/api/v1/account/admission'), session)
     assert.equal(status.status(), 200, JSON.stringify(status.body()))
     assert.deepEqual(decisionOf(status).requirements.invitation, { met: true })
     assert.equal(decisionOf(status).requirements.approval?.status, 'pending')
-    const invitations = await as(client.get('/api/v1/account/invitations'), owner).qs({ limit: 10 })
+    const invitations = await as(client.get('/api/v1/account/invitations'), owner).qs({
+      scope,
+      limit: 10,
+    })
     assert.equal(invitations.status(), 200)
     assert.lengthOf((invitations.body() as { items: unknown[] }).items, 0)
     const accepted = await acceptInvitation(client, link)

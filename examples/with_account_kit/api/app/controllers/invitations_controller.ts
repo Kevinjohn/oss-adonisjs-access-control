@@ -21,9 +21,9 @@ export default class InvitationsController {
     if (actor.currentAccessToken && !actor.currentAccessToken.allows('invitations:create')) {
       return accountError(ctx, 403, 'missing_ability', 'This token cannot create invitations.')
     }
-    const { email, role } = await ctx.request.validateUsing(invitationValidator)
+    const { email, role, scope } = await ctx.request.validateUsing(invitationValidator)
     const invitation = await committedFollowUp(ctx.logger, 'invitation.send', () =>
-      accountKit.invitations.send({ actorId: actor.id, email, role })
+      accountKit.invitations.send({ actorId: actor.id, email, role, scope })
     )
     return invitation
       ? ctx.response.created({ id: invitation.id })
@@ -32,8 +32,10 @@ export default class InvitationsController {
 
   async list(ctx: HttpContext) {
     const actor = await ctx.auth.getUserOrFail()
-    const { limit, cursor } = await ctx.request.validateUsing(invitationListValidator)
-    return ctx.response.ok(await accountKit.invitations.list({ actorId: actor.id, limit, cursor }))
+    const { scope, limit, cursor } = await ctx.request.validateUsing(invitationListValidator)
+    return ctx.response.ok(
+      await accountKit.invitations.list({ actorId: actor.id, scope, limit, cursor })
+    )
   }
 
   async inspect(ctx: HttpContext) {

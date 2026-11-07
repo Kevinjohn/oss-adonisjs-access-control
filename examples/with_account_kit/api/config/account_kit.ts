@@ -11,12 +11,8 @@ import {
 import { notifications } from '#services/account_kit_notifications'
 import { createNotify } from './account_kit_notifications.js'
 import { onCredentialsChangedTransaction } from './account_kit_credential_notice.js'
-import {
-  authorize,
-  canAccess,
-  exportAccountData,
-  onInvitationAccepted,
-} from '#services/account_kit_authorization'
+import { accessControlKitCallbacks } from '@kevinjohn/adonisjs-access-control/account-kit'
+import { canAccess, exportAccountData } from '#services/account_kit_authorization'
 import { registrationFullName } from '#services/registration_fields'
 import { referencePasswordLimits } from '#validators/password'
 import { allySocialProvider } from '#services/social_provider'
@@ -51,6 +47,12 @@ const notify = Object.fromEntries(
     (...args: unknown[]) => overridable[name](...args),
   ])
 ) as unknown as NotificationCallbacks
+
+/**
+ * Team invitations, acceptance and account deletion go through Access Control. Instance roles
+ * (the owner and disabled accounts) stay in the example's `role_assignments` table.
+ */
+const teamCallbacks = accessControlKitCallbacks()
 
 const loadUser = async () => (await import('#models/user')).default
 const users = createLucidAdapter(loadUser, {
@@ -93,7 +95,7 @@ export default defineConfig({
   // The functional suite sends many requests from one client; production keeps the package
   // default of five requests per 15 minutes.
   ...(app.inTest ? { throttle: { requests: 100, duration: '15m' } } : {}),
-  authorize,
+  authorize: teamCallbacks.authorize,
   urls: {
     passwordReset: (token) => accountUrl('password-reset', token),
     emailVerification: (token) => accountUrl('email-verification', token),
@@ -101,10 +103,11 @@ export default defineConfig({
     emailChange: (token) => accountUrl('email-change', token),
   },
   notify,
-  // Records invitation evidence for admission, then grants the role, in the acceptance transaction.
-  onInvitationAccepted: withInvitationEvidence(onInvitationAccepted),
+  // Records invitation evidence for admission, then creates the team membership, in the
+  // acceptance transaction.
+  onInvitationAccepted: withInvitationEvidence(teamCallbacks.onInvitationAccepted),
   // Inactive here: they run only when `accountDeletion` and `dataExport` are enabled.
-  onAccountDeletingTransaction: withAdmissionCleanup(),
+  onAccountDeletingTransaction: withAdmissionCleanup(teamCallbacks.onAccountDeletingTransaction),
   exportAccountData,
   onCredentialsChangedTransaction,
   onLifecycleEvent: async (event) => notifications.recordLifecycle(event),

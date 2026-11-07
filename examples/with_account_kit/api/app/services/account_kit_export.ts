@@ -1,9 +1,12 @@
 import type { AccountUser, Trx } from '@kevinjohn/adonisjs-account-kit'
+import { accessControlKitCallbacks } from '@kevinjohn/adonisjs-access-control/account-kit'
 import { isAdmitted } from './account_admission_access.js'
 
+const teamExport = accessControlKitCallbacks().exportAccountData
+
 /**
- * The account export: the admission record always, and the application's roles only for an
- * admitted account, since the export route accepts any valid credential.
+ * The account export: the admission record always, and the instance roles and team memberships
+ * only for an admitted account, since the export route accepts any valid credential.
  */
 export async function exportAccountData(user: AccountUser, trx: Trx) {
   const admission = await trx
@@ -19,10 +22,13 @@ export async function exportAccountData(user: AccountUser, trx: Trx) {
     )
     .where('user_id', user.id)
     .first()
-  if (!(await isAdmitted(user.id, trx))) return { admission: admission ?? null, roles: [] }
+  if (!(await isAdmitted(user.id, trx)))
+    return { admission: admission ?? null, roles: [], memberships: [] }
   const rows: Array<{ role: string }> = await trx
     .from('role_assignments')
     .select('role')
     .where('user_id', user.id)
-  return { admission: admission ?? null, roles: rows.map((row) => row.role) }
+  // Access Control's documented export shape.
+  const teams = (await teamExport(user, trx)) as { memberships: unknown[] }
+  return { admission: admission ?? null, roles: rows.map((row) => row.role), ...teams }
 }

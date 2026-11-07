@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
+import accessControl from '#config/access_control'
 import { notifications } from '#services/account_kit_notifications'
 import { cookies } from '#tests/helpers/cookies'
 import { truncateDatabase } from '#tests/helpers/database'
@@ -39,7 +40,7 @@ test.group('Release scenarios', (group) => {
       password: 'OwnerPass123!',
       emailVerifiedAt: DateTime.utc(),
     })
-    await grantAdmittedOwner(inviter)
+    const scope = await grantAdmittedOwner(inviter)
 
     const sessionMode = process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session'
     let ownerCredential: { bearer?: string; cookie?: string; csrf?: string }
@@ -70,7 +71,7 @@ test.group('Release scenarios', (group) => {
       send.header('cookie', ownerCredential.cookie!).header('x-csrf-token', ownerCredential.csrf!)
     }
     const recipient = `member-${suffix}@example.test`
-    const issued = await send.json({ email: recipient, role: 'member' })
+    const issued = await send.json({ email: recipient, role: 'viewer', scope })
     assert.equal(issued.status(), 201, JSON.stringify(issued.body()))
     const notice = notifications.events.find(
       (event) => event.kind === 'invitation' && event.recipient === recipient
@@ -78,7 +79,8 @@ test.group('Release scenarios', (group) => {
     assert.isDefined(notice)
     const token = decodeURIComponent(new URL(notice!.value).pathname.split('/').at(-1)!)
 
-    await db.from('role_assignments').where('user_id', inviter.id).delete()
+    // Without a team membership the inviter loses invitation authority.
+    await db.from('memberships').where('user_id', inviter.id).delete()
     const deniedSend = client.post('/api/v1/account/invitations')
     if (ownerCredential.bearer) deniedSend.bearerToken(ownerCredential.bearer)
     else {
@@ -88,7 +90,8 @@ test.group('Release scenarios', (group) => {
     }
     const denied = await deniedSend.json({
       email: `denied-${suffix}@example.test`,
-      role: 'member',
+      role: 'viewer',
+      scope,
     })
     assert.equal(denied.status(), 403)
 
@@ -106,8 +109,7 @@ test.group('Release scenarios', (group) => {
     })
     assert.equal(accepted.status(), 201, JSON.stringify(accepted.body()))
     const member = await User.findByOrFail('email', recipient)
-    assert.isDefined(
-      await db.from('role_assignments').where('user_id', member.id).where('role', 'member').first()
-    )
+    const membership = await accessControl.memberships.find(scope, member.id)
+    assert.equal(membership?.role, 'viewer')
   })
 })

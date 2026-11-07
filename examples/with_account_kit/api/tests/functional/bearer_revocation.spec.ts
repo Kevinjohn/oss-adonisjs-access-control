@@ -27,7 +27,7 @@ test.group('Bearer revocation', (group) => {
     const response = await client
       .post('/api/v1/account/invitations')
       .bearerToken(token.value!.release())
-      .json({ email: `invitee-${randomUUID()}@example.test`, role: 'member' })
+      .json({ email: `invitee-${randomUUID()}@example.test`, role: 'viewer', scope: '1' })
     assert.equal(response.status(), 403)
     assert.equal(
       responseBody<{ errors: [{ code: string }] }>(response).errors[0].code,

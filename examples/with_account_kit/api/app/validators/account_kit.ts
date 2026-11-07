@@ -13,13 +13,24 @@ export const invitationAcceptValidator = vine.create({
   passwordConfirmation: vine.string().sameAs('password'),
   fullName: optionalFullName(),
 })
+// `scope` is the team id, spelled as Access Control normalises it: a plain integer.
+const teamScope = () =>
+  vine
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/)
 export const invitationValidator = vine.create({
   email: email(),
   role: vine.string().trim().minLength(1),
+  scope: teamScope(),
 })
 export const invitationListValidator = vine.create({
+  scope: teamScope(),
   limit: vine.number().min(1).max(100).optional(),
   cursor: vine.string().optional(),
+})
+export const teamValidator = vine.create({
+  name: vine.string().trim().minLength(1).maxLength(100),
 })
 export const credentialChangeValidator = vine.create({
   currentPassword: vine.string().minLength(1),

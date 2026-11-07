@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
+import accessControl from '#config/access_control'
 import { notifications } from '#services/account_kit_notifications'
 import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 import { cookies } from '#tests/helpers/cookies'
@@ -243,7 +244,7 @@ test.group('Reference session', (group) => {
       email: `session-owner-${randomUUID()}@example.test`,
       password: 'OwnerPass123!',
     })
-    await grantAdmittedOwner(owner)
+    const scope = await grantAdmittedOwner(owner)
     const bootstrap = await client.get('/api/v1/auth/csrf')
     const login = await client
       .post('/api/v1/auth/login')
@@ -259,10 +260,13 @@ test.group('Reference session', (group) => {
       .post('/api/v1/account/invitations')
       .header('cookie', ownerSession)
       .header('x-csrf-token', ownerToken)
-      .json({ email: recipient, role: 'member' })
+      .json({ email: recipient, role: 'viewer', scope })
     assert.equal(sent.status(), 201, JSON.stringify(sent.body()))
     const invitationId = (sent.body() as { id: number }).id
-    const list = await client.get('/api/v1/account/invitations').header('cookie', ownerSession)
+    const list = await client
+      .get('/api/v1/account/invitations')
+      .header('cookie', ownerSession)
+      .qs({ scope })
     assert.equal(list.status(), 200)
     const firstNotice = notifications.events.findLast(
       (event) => event.kind === 'invitation' && event.recipient === recipient
@@ -297,12 +301,8 @@ test.group('Reference session', (group) => {
       })
     assert.equal(acceptance.status(), 201, JSON.stringify(acceptance.body()))
     const invited = await User.findByOrFail('email', recipient)
-    const assignment = await db
-      .from('role_assignments')
-      .where('user_id', invited.id)
-      .where('role', 'member')
-      .first()
-    assert.isDefined(assignment)
+    const membership = await accessControl.memberships.find(scope, invited.id)
+    assert.equal(membership?.role, 'viewer')
     const replay = await client
       .post(currentPath)
       .header('cookie', cookies(acceptCsrf))
@@ -318,7 +318,7 @@ test.group('Reference session', (group) => {
       .post('/api/v1/account/invitations')
       .header('cookie', ownerSession)
       .header('x-csrf-token', ownerToken)
-      .json({ email: revokeEmail, role: 'member' })
+      .json({ email: revokeEmail, role: 'viewer', scope })
     assert.equal(second.status(), 201)
     const secondId = (second.body() as { id: number }).id
     const secondNotice = notifications.events.findLast(

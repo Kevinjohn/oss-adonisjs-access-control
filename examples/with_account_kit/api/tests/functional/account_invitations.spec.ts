@@ -5,6 +5,7 @@ import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import hash from '@adonisjs/core/services/hash'
 import User from '#models/user'
+import accessControl from '#config/access_control'
 import { notifications } from '#services/account_kit_notifications'
 import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
 import { tokenFrom } from '#tests/helpers/link_tokens'
@@ -27,20 +28,21 @@ test.group('Account invitations', (group) => {
       password: 'InvitePass123!',
       emailVerifiedAt: DateTime.utc(),
     })
-    await grantAdmittedOwner(inviter)
+    const scope = await grantAdmittedOwner(inviter)
     const inviteResponse = await client.post('/api/v1/account/invitations').loginAs(inviter).json({
       email: 'new-member@example.test',
       role: 'editor',
+      scope,
     })
     assert.equal(inviteResponse.status(), 201)
-    // Roles come from an allowlist: case variants of owner and control roles are refused.
+    // Access Control knows only its configured roles and never grants the owner role by invitation.
     for (const role of ['owner', 'Owner', 'disabled', 'made-up'])
       assert.equal(
         (
           await client
             .post('/api/v1/account/invitations')
             .loginAs(inviter)
-            .json({ email: `role-${role.toLowerCase()}@example.test`, role })
+            .json({ email: `role-${role.toLowerCase()}@example.test`, role, scope })
         ).status(),
         403,
         role
@@ -49,7 +51,7 @@ test.group('Account invitations', (group) => {
     const invitationList = await client
       .get('/api/v1/account/invitations')
       .loginAs(inviter)
-      .qs({ limit: 10 })
+      .qs({ scope, limit: 10 })
     assert.equal(invitationList.status(), 200)
     assert.equal(
       responseBody<{ items: Array<{ email: string }> }>(invitationList).items[0].email,
@@ -61,7 +63,9 @@ test.group('Account invitations', (group) => {
       password: 'OrdinaryPass123!',
     })
     assert.equal(
-      (await client.get('/api/v1/account/invitations').loginAs(ordinaryUser)).status(),
+      (
+        await client.get('/api/v1/account/invitations').loginAs(ordinaryUser).qs({ scope })
+      ).status(),
       403
     )
     assert.equal(
@@ -69,7 +73,7 @@ test.group('Account invitations', (group) => {
         await client
           .post('/api/v1/account/invitations')
           .loginAs(ordinaryUser)
-          .json({ email: 'denied@example.test', role: 'editor' })
+          .json({ email: 'denied@example.test', role: 'editor', scope })
       ).status(),
       403
     )
@@ -102,8 +106,8 @@ test.group('Account invitations', (group) => {
     const invited = await User.findByOrFail('email', 'new-member@example.test')
     assert.isNull(invited.fullName)
     assert.isTrue(await hash.verify(invited.password!, 'MemberPass123!'))
-    const role = await db.from('role_assignments').where('user_id', invited.id).first()
-    assert.equal(role.role, 'editor')
+    const membership = await accessControl.memberships.find(scope, invited.id)
+    assert.equal(membership?.role, 'editor')
     assert.equal(
       (
         await client.post(invitationPath).json({
@@ -119,7 +123,7 @@ test.group('Account invitations', (group) => {
         await client
           .post('/api/v1/account/invitations')
           .loginAs(inviter)
-          .json({ email: 'bad', role: '' })
+          .json({ email: 'bad', role: '', scope })
       ).status(),
       422
     )
@@ -127,7 +131,7 @@ test.group('Account invitations', (group) => {
     const contentionInvite = await client
       .post('/api/v1/account/invitations')
       .loginAs(inviter)
-      .json({ email: 'contended-member@example.test', role: 'viewer' })
+      .json({ email: 'contended-member@example.test', role: 'viewer', scope })
     assert.equal(contentionInvite.status(), 201)
     const contentionToken = tokenFrom(
       notifications.events.filter((event) => event.kind === 'invitation').at(-1)!.value
@@ -161,6 +165,7 @@ test.group('Account invitations', (group) => {
     const resendSend = await client.post('/api/v1/account/invitations').loginAs(inviter).json({
       email: 'resend@example.test',
       role: 'viewer',
+      scope,
     })
     assert.equal(resendSend.status(), 201)
     const resendId = responseBody<{ id: number }>(resendSend).id

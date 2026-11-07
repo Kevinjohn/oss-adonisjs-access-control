@@ -131,5 +131,20 @@ router
       .get('reports', [controllers.Reports, 'index'])
       .use(middleware.auth())
       .use(middleware.admittedAccount())
+
+    // Teams: admitted accounts create them; `scope` loads the caller's membership of `:scopeId`
+    // and refuses everyone else with E_ACCESS_CONTROL_FORBIDDEN (403).
+    router
+      .post('teams', [controllers.Teams, 'store'])
+      .use(middleware.auth())
+      .use(middleware.admittedAccount())
+    router
+      .group(() => {
+        router.get('teams/:scopeId', [controllers.Teams, 'show'])
+        router.patch('teams/:scopeId', [controllers.Teams, 'update'])
+      })
+      .use(middleware.auth())
+      .use(middleware.admittedAccount())
+      .use(middleware.scope())
   })
   .prefix('/api/v1')
