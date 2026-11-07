@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.3 - 2026-11-07
+
 ### Added
 
 - Examples: Account Kit's API, Hypermedia and Inertia React starter examples with Access Control
