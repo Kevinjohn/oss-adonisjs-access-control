@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+- Docs: the Bouncer guide's middleware is now the consumer example's file, and a test keeps them in
+  step.
+
 ## 0.1.4 - 2026-11-08
 
 ### Changed
