@@ -63,9 +63,14 @@ These mean a programming, configuration or deployment fault:
 - `UNKNOWN_ROLE`: a stored role outside `roles` after a configuration change, or an unvalidated
   role passed in.
 - `INVALID_INPUT`: input the application did not validate, or a trusted operation called without
-  `trx`. One case is a state condition: `transferOwnership` to a member who is not active answers
-  `INVALID_INPUT` (`ownership can only go to an active member`). Check that the target is an
-  active member before the call and answer with your own refusal.
+  `trx`. Two cases reach it from ordinary use:
+  - `transferOwnership` to a member who is not active answers `INVALID_INPUT` (`ownership can
+only go to an active member`). Check that the target is an active member before the call and
+    answer with your own refusal.
+  - A paging `cursor` a client sent back altered or truncated answers `INVALID_INPUT`
+    (`Invalid membership cursor`). The cursor is opaque, so it cannot be checked before the call;
+    catch the error around `listForScope` and answer 400
+    ([recipe](../recipes/index.md#map-package-errors-to-your-api)).
 
 With AdonisJS's default exception handler, `INVALID_INPUT` renders as a 422 and is not logged,
 because the handler skips 422 when reporting.

@@ -275,6 +275,33 @@ so bound those parameters where routes are declared and a longer value matches n
 for (const param of ['scopeId', 'userId']) router.where(param, /^.{1,254}$/)
 ```
 
+The paging `cursor` is the one input you cannot validate first: it is opaque, and a client can
+send it back altered. Catch `INVALID_INPUT` around `listForScope` so a bad cursor answers 400
+instead of reaching the handler as a fault:
+
+```ts
+router
+  .get('/teams/:scopeId/members', async ({ membership, request, response }) => {
+    try {
+      return await accessControl.memberships.listForScope({
+        actor: { id: membership!.userId },
+        scopeId: membership!.scopeId,
+        cursor: request.input('cursor'),
+        limit: 50,
+      })
+    } catch (error) {
+      if (error instanceof AccessControlError && error.code === 'E_ACCESS_CONTROL_INVALID_INPUT') {
+        return response.badRequest({ code: 'INVALID_CURSOR' })
+      }
+      throw error
+    }
+  })
+  .use([kitAccount, middleware.scope()])
+```
+
+The scope key and `limit` come from the server here, so a bad cursor is the only way this call
+answers `INVALID_INPUT`.
+
 Capacity Lens maps its codes in
 [`refusal.ts`](https://github.com/Kevinjohn/capacitylens/blob/68b353794/apps/backend/app/services/access_control/refusal.ts), handles them in
 [`handler.ts`](https://github.com/Kevinjohn/capacitylens/blob/68b353794/apps/backend/app/exceptions/handler.ts) and bounds its parameters in

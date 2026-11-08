@@ -87,7 +87,10 @@ the application passed through unchecked:
 - A route parameter longer than the key limit. String keys are 1 to 254 characters; bound the
   parameter with `router.where(...)` so a longer value matches no route
   ([recipe](../recipes/index.md#map-package-errors-to-your-api)).
-- An unvalidated role, status, `limit` (1 to 100) or `cursor`.
+- An unvalidated role, status or `limit` (1 to 100).
+- A paging `cursor` the client altered. It is opaque and cannot be validated in advance; catch
+  `INVALID_INPUT` around `listForScope` and answer 400
+  ([recipe](../recipes/index.md#map-package-errors-to-your-api)).
 - `transferOwnership` to a member who is not active. Check the target first and answer with your
   own refusal.
 - A trusted operation called without `trx`: `acceptInvitation`, `grant`, `prepareAccountDeletion`
