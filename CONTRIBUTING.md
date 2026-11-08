@@ -100,6 +100,14 @@ working plans belong in the local, gitignored `plans/` directory; do not commit 
 - Released migration stubs are immutable (specification section 17.1).
 - Error codes are `E_ACCESS_CONTROL_*` with the response shape from specification section 6.
 
+### Documentation examples from the example apps
+
+When a guide shows code that an example application runs, keep the code in the example and mark
+it with `// #region example_name` and `// #endregion example_name`. Put
+`<!-- source: relative/path/to/file.ts#example_name -->` before the matching code fence in the
+guide. `tests/docs_source_examples.spec.ts` fails when the fence and the region differ, so change
+both together.
+
 ## Code of conduct
 
 Everyone taking part in this project follows the [code of conduct](CODE_OF_CONDUCT.md).

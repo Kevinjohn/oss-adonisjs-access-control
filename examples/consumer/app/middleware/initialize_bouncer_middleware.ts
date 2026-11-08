@@ -1,3 +1,4 @@
+// #region initialize_bouncer
 import { Bouncer } from '@adonisjs/bouncer'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
@@ -30,3 +31,4 @@ declare module '@adonisjs/core/http' {
     >
   }
 }
+// #endregion initialize_bouncer
