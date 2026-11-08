@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.6 - 2026-11-08
+
 ### Added
 
 - Docs: a getting started guide, a troubleshooting guide, recipes from adopting the package in a
@@ -9,6 +11,10 @@
   manage flag, error mapping, stricter product rules, Bouncer inside the request transaction),
   a section on replacing a home-grown access layer, the doctor in CI, and which error codes a user
   can reach. The documentation index follows the shape of the sibling packages.
+
+### Changed
+
+- Requires Account Kit 0.3.3 (exact), the release with `admission.record`.
 
 ### Fixed
 

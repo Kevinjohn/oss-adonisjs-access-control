@@ -1,8 +1,8 @@
 # Access Control with Account Kit: API example
 
 This app is Account Kit's
-[API example](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/v0.3.2/examples/api)
-at `v0.3.2`, with Access Control added. Accounts create teams, invite members to a team with a
+[API example](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/v0.3.3/examples/api)
+at `v0.3.3`, with Access Control added. Accounts create teams, invite members to a team with a
 role, and each role sees and changes only what its permission keys allow. It runs on the official
 AdonisJS API starter at
 [`adonisjs/starter-kits` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/api).
@@ -46,7 +46,7 @@ pnpm dev
 ```
 
 `kit:pack` builds Access Control from this checkout into `vendor/`. Account Kit comes from its
-`v0.3.2` GitHub release. The packed archive's checksum changes with every build, so the install
+`v0.3.3` GitHub release. The packed archive's checksum changes with every build, so the install
 does not use a frozen lockfile.
 
 ## Create a team and invite a member

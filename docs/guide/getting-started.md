@@ -9,14 +9,14 @@ runs the same steps end to end.
 ## Before you start
 
 - Node.js 24 and AdonisJS 7 with Lucid and Bouncer installed.
-- Account Kit 0.3.2 configured: `config/account_kit.ts` exists and the kit's migrations have run,
+- Account Kit 0.3.3 configured: `config/account_kit.ts` exists and the kit's migrations have run,
   including its `account_transaction_lock` table.
 - A users table and a `teams` table, each with an `increments()` primary key.
 
 ## 1. Install and configure
 
 ```sh
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.5/kevinjohn-adonisjs-access-control-0.1.5.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.6/kevinjohn-adonisjs-access-control-0.1.6.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 ```
 
