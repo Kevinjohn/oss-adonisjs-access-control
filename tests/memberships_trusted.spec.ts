@@ -210,7 +210,10 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
   test('identityRoles: actor map is active only, target map includes suspended', async ({
     assert,
   }) => {
-    const [s1, s2, s3] = await Promise.all([f.createScope(), f.createScope(), f.createScope()])
+    // One at a time, so the ids ascend s1 < s2 < s3 like the maps; parallel inserts may not.
+    const s1 = await f.createScope()
+    const s2 = await f.createScope()
+    const s3 = await f.createScope()
     const [a, t] = await Promise.all([f.createUser(), f.createUser()])
     await f.memberships.createFirstMember({ scopeId: s1, userId: a })
     await f.memberships.createFirstMember({ scopeId: s2, userId: a })
