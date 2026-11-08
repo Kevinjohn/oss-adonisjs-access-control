@@ -30,3 +30,4 @@ docs/.vitepress/dist
 !examples/consumer/.env.test
 # Account Kit starter example env, read by its tests
 !examples/with_account_kit/inertia_react/.env.test
+!examples/with_account_kit/inertia_vue/.env.test
