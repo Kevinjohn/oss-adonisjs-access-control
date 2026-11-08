@@ -68,3 +68,39 @@ one owner per scope. Then route the scoped requests through the `scope` middlewa
 generated abilities as the [Bouncer guide](bouncer.md) shows, and stop writing to the old table:
 every change goes through the membership service from now on, so `onMembershipChanged` sees it.
 Drop the old table in a later release once nothing reads it.
+
+## Replacing a home-grown access layer
+
+An application that enforced roles in its own code before adopting the package gains most by
+deleting that code, not by wrapping it.
+
+Delete:
+
+- Local action vocabularies and the tables that translate them to roles. Permission keys replace
+  them.
+- Policies that re-check a role the generated abilities already check.
+- Local self, owner and rank checks in front of package calls. The package refuses those cases
+  with `SELF_MANAGEMENT`, `OWNER_PROTECTED` and `RANK_TOO_LOW`.
+- Extra permission payloads for the client. Use the [client payload](client.md) or
+  [one shared declaration](../recipes/index.md#share-one-permission-declaration-with-the-browser).
+
+Keep in the application:
+
+- Audit rows, revision counters and idempotency receipts, written through the same `trx`.
+- Product rules stricter than the package, each a line beside the package call
+  ([recipe](../recipes/index.md#a-product-rule-stricter-than-the-package)).
+- The mapping from package errors to the application's API
+  ([recipe](../recipes/index.md#map-package-errors-to-your-api)).
+
+An application with no released database can skip the copy above and start from a fresh
+baseline. Create the package's table in the baseline migration with exactly the shape of the
+published `*_access_control_create_memberships.ts`: the same columns, types, foreign keys, unique
+key and indexes, then delete the published file. Run `node ace access-control:doctor` against the
+fresh database; it checks the table and its columns, not types or indexes, so copy the published
+body rather than retyping it. A later `configure` run publishes any released migration whose file
+name is missing, so delete that file again after re-running it.
+
+[Capacity Lens](https://github.com/Kevinjohn/capacitylens) moved from its own access layer to the
+package this way. Its first attempt spread over four pull requests that added 3,409 lines and
+removed 2,162; they were closed. A second plan that said what not to carry over produced one change of +1,092/−3,671
+([#1787](https://github.com/Kevinjohn/capacitylens/pull/1787)).

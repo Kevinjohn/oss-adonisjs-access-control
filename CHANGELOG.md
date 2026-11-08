@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- Docs: a getting started guide, a troubleshooting guide, recipes from adopting the package in a
+  single-company application (single-scope setup, a shared permission declaration, a per-row
+  manage flag, error mapping, stricter product rules, Bouncer inside the request transaction),
+  a section on replacing a home-grown access layer, the doctor in CI, and which error codes a user
+  can reach. The documentation index follows the shape of the sibling packages.
+
+### Fixed
+
+- Docs: the errors reference no longer lists a missing Account Kit lock row under
+  `E_ACCESS_CONTROL_INVALID_CONFIG`; Account Kit raises its own error for it. The team creation
+  and deletion recipes start their transaction with Account Kit's runner, as the memberships guide
+  requires.
+
 ## 0.1.5 - 2026-11-08
 
 ### Added

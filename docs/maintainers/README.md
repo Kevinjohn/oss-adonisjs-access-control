@@ -10,6 +10,8 @@ package archive.
 - [Verification](verification.md): local checks, database gates and release verification.
 - [Releasing](releasing.md): the release procedure, including pinned artifact references.
 - [Design records](design/): the build specification and the design history behind it.
+- [Adoption record: Capacity Lens](adoption-capacity-lens.md): how a single-company application
+  uses the package and what the package lacked.
 
 ## Monthly
 
