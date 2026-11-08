@@ -57,8 +57,12 @@ database; every service method accepts a caller `trx` started by the kit's `tran
 
 ## Further reading
 
-- [Guides](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/guide/setup.md):
-  setup, roles, rules, memberships, Bouncer, Account Kit, client payload, changing roles.
+- [Getting started](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/guide/getting-started.md):
+  install to a first scoped route.
+- [Guides](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/README.md#guides):
+  setup, roles, rules, memberships, Bouncer, Account Kit, client payload, changing roles, adoption.
+- [Recipes](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/recipes/index.md)
+  and [troubleshooting](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/guide/troubleshooting.md).
 - [Technical contract](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/maintainers/design/spec-access-control.md).
 
 ## Tested against

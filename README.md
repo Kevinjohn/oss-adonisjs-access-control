@@ -61,8 +61,9 @@ await bouncer.authorize('project:write')
 `start/routes.ts`; the [Bouncer guide](docs/guide/bouncer.md) shows it. Build the request's
 Bouncer from `#config/access_control`, not from `services/main`, so permission keys are typed.
 
-The [setup guide](docs/guide/setup.md) covers the two manual steps (the Bouncer initializer and
-the Account Kit callbacks) and `node ace access-control:doctor`.
+The [getting started guide](docs/guide/getting-started.md) walks from install to this route and
+the first member; the [setup guide](docs/guide/setup.md) covers the two manual steps (the Bouncer
+initializer and the Account Kit callbacks) and `node ace access-control:doctor`.
 
 ## Tested against
 
@@ -77,10 +78,14 @@ the Account Kit callbacks) and `node ace access-control:doctor`.
 
 ## Documentation
 
-- [Documentation index](docs/README.md)
-- [Guides](docs/guide/setup.md): setup, roles, rules, memberships, Bouncer, Account Kit, the
-  client payload and changing roles
-- [API reference](docs/reference/README.md)
+- [Getting started](docs/guide/getting-started.md): install and protect a first scoped route.
+- [Guides](docs/README.md#guides): setup, roles, rules, memberships, Bouncer, Account Kit, the
+  client payload, changing roles and adoption.
+- [Recipes](docs/recipes/index.md): team creation and deletion, members pages, error mapping,
+  single-scope applications and more.
+- [API reference](docs/reference/README.md): supported imports and generated signatures.
+- [Errors](docs/reference/errors.md): every error code, its status and whether a user can reach it.
+- [Troubleshooting](docs/guide/troubleshooting.md): common symptoms, causes and fixes.
 - [Technical contract](docs/maintainers/design/spec-access-control.md)
 - [Notes for coding agents](README-AGENTS.md)
 

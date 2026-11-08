@@ -31,8 +31,46 @@ the package ships no translations.
 | `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY` | 409  | This team already has members.                                                          | `createFirstMember` on a scope with members                                                    |
 | `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` | 404  | That team does not exist.                                                               | the scope row is missing when the package locks it (`leave` answers `NOT_A_MEMBER` instead)    |
 | `E_ACCESS_CONTROL_INVALID_INPUT`   | 422  | The request is not valid.                                                               | malformed keys, limits or cursors; bad trusted-operation input; transfer to a suspended member |
-| `E_ACCESS_CONTROL_INVALID_CONFIG`  | 500  | (names the problem)                                                                     | boot validation, a missing database binding, or a missing Account Kit lock row                 |
+| `E_ACCESS_CONTROL_INVALID_CONFIG`  | 500  | (names the problem)                                                                     | boot validation, a config file without `defineAccessControl()`, or no database attached        |
 | `E_ACCESS_CONTROL_CONFLICT`        | 409  | The team changed while it was being deleted. Try again.                                 | `removeAllForScope` saw the member set change between its read and its locks                   |
+
+On SQLite, Account Kit's runner throws a plain `Error`, not a package error, when its
+`account_transaction_lock` table or row is missing; see
+[troubleshooting](../guide/troubleshooting.md#account-kit-transaction-errors).
 
 Construct one with `new AccessControlError(code, { message?, cause? })`; the `errors` namespace
 export also carries `errorTable`, the code-to-status-and-message map.
+
+## Refusals and faults
+
+Some codes answer a user's request; others mean the application or its configuration is wrong.
+An application that maps package errors to its own API
+([recipe](../recipes/index.md#map-package-errors-to-your-api)) maps the first group to 4xx and
+reports the second as server faults.
+
+A user can reach these through a request, even when the application validates its input:
+
+- `FORBIDDEN`, `RANK_TOO_LOW`, `OWNER_PROTECTED`, `SELF_MANAGEMENT`: the actor has no active
+  membership or the key, or a management rule refused.
+- `NOT_A_MEMBER`, `USER_NOT_FOUND`, `SCOPE_NOT_FOUND`: the target is gone or never existed.
+- `ALREADY_MEMBER`, `LAST_OWNER`, `CONFLICT`: the current state refuses the change.
+
+These mean a programming, configuration or deployment fault:
+
+- `INVALID_CONFIG`: the declaration or the provider wiring.
+- `OWNER_DISABLED`: `transferOwnership` called without `ownerRole`.
+- `SCOPE_NOT_EMPTY`: `createFirstMember` called for a scope that already has members.
+- `UNKNOWN_ROLE`: a stored role outside `roles` after a configuration change, or an unvalidated
+  role passed in.
+- `INVALID_INPUT`: input the application did not validate, or a trusted operation called without
+  `trx`. Two cases reach it from ordinary use:
+  - `transferOwnership` to a member who is not active answers `INVALID_INPUT` (`ownership can
+only go to an active member`). Check that the target is an active member before the call and
+    answer with your own refusal.
+  - A paging `cursor` a client sent back altered or truncated answers `INVALID_INPUT`
+    (`Invalid membership cursor`). The cursor is opaque, so it cannot be checked before the call;
+    catch the error around `listForScope` and answer 400
+    ([recipe](../recipes/index.md#map-package-errors-to-your-api)).
+
+With AdonisJS's default exception handler, `INVALID_INPUT` renders as a 422 and is not logged,
+because the handler skips 422 when reporting.

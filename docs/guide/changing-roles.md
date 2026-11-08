@@ -27,6 +27,23 @@ one scope. `--json` prints `{ "checks": [{ "name", "ok", "count", "sampleIds" }]
 Exit code 0 when every check is clean, 1 when a check finds rows, 2 when a check could not run
 (for example a malformed `--scope`). The command writes nothing and takes no locks.
 
+### Run it in CI
+
+Run the doctor wherever the application starts against a real schema: after `migration:run` in
+CI, or in a smoke test of the packaged application. It starts the application, so it needs the
+same environment and database connection.
+
+```sh
+node ace migration:run
+node ace access-control:doctor --json
+```
+
+Fail the job on any non-zero exit code. 1 means a check found rows, including
+`account_kit_version` when the installed Account Kit is not the exact version this release
+expects; 2 means a check could not run, for example an unreachable database. `--json` prints the
+report on one line for a log or an artefact; when the doctor cannot run it prints an error line
+instead. Rows are reported as ids only, never names or emails.
+
 ## Rename a role
 
 1. Change the name in `roles` (and in `ownerRole` when it is the owner).

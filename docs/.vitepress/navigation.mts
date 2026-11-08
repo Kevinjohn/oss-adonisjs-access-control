@@ -1,10 +1,20 @@
 export const nav = [
+  { text: 'Get started', link: '/guide/getting-started' },
   { text: 'Guide', link: '/guide/setup' },
   { text: 'Recipes', link: '/recipes/' },
   { text: 'Reference', link: '/reference/' },
+  { text: 'Troubleshooting', link: '/guide/troubleshooting' },
 ]
 
 export const sidebar = [
+  {
+    text: 'Start here',
+    items: [
+      { text: 'Getting started', link: '/guide/getting-started' },
+      { text: 'Recipes', link: '/recipes/' },
+      { text: 'Troubleshooting', link: '/guide/troubleshooting' },
+    ],
+  },
   {
     text: 'Guide',
     items: [
@@ -24,7 +34,6 @@ export const sidebar = [
     items: [
       { text: 'Public API', link: '/reference/' },
       { text: 'Errors', link: '/reference/errors' },
-      { text: 'Recipes', link: '/recipes/' },
     ],
   },
 ]
