@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Requires Account Kit 0.3.3 (exact), the release with `admission.record`.
+
 ### Added
 
 - Docs: a getting started guide, a troubleshooting guide, recipes from adopting the package in a

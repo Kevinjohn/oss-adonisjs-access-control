@@ -10,7 +10,7 @@ Use these notes to assess Access Control and protect its guarantees. Human overv
 
 ## Requirements
 
-Core 7, Lucid 22.4.2+, Bouncer 4, Auth 10, Luxon 3 and Account Kit 0.3.2 (exact), the release
+Core 7, Lucid 22.4.2+, Bouncer 4, Auth 10, Luxon 3 and Account Kit 0.3.3 (exact), the release
 with the `./transaction` export, scoped invitations and `ctx.auth.user` after its middleware.
 Roles and permission keys are declared in `config/access_control.ts`.
 
