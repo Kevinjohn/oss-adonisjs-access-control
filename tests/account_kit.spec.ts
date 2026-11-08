@@ -426,14 +426,17 @@ test.group('Account Kit callbacks: acceptance, deletion and export (spec 9)', (g
     })
     assert.lengthOf(await f.membershipRows(member), 0)
     assert.isNotOk(await booted.db.from(booted.names.users).where('id', member).first())
+    // Removal events follow the membership rows, not scope order, so compare them sorted.
     const [first, second] = [a, b].sort((x, y) => (String(x) < String(y) ? -1 : 1))
     assert.deepEqual(
-      events.map((event) => ({
-        type: event.type,
-        scopeId: event.scopeId,
-        actorId: 'actorId' in event ? event.actorId : undefined,
-        reason: 'reason' in event ? event.reason : undefined,
-      })),
+      events
+        .map((event) => ({
+          type: event.type,
+          scopeId: event.scopeId,
+          actorId: 'actorId' in event ? event.actorId : undefined,
+          reason: 'reason' in event ? event.reason : undefined,
+        }))
+        .sort((x, y) => (String(x.scopeId) < String(y.scopeId) ? -1 : 1)),
       [
         { type: 'membership.removed', scopeId: first, actorId: null, reason: 'account_deleted' },
         { type: 'membership.removed', scopeId: second, actorId: null, reason: 'account_deleted' },
