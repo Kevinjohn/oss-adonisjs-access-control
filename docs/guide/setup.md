@@ -6,7 +6,7 @@ users table and a table for the scope your members belong to (teams, organisatio
 files.
 
 ```sh
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.4/kevinjohn-adonisjs-access-control-0.1.4.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.5/kevinjohn-adonisjs-access-control-0.1.5.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 node ace migration:run
 ```
