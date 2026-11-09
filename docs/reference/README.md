@@ -5,7 +5,7 @@ show symbol signatures; those source paths are documentation locations, not supp
 
 ## Supported package imports
 
-This reference describes the `0.1.6` pre-release. Its provider entry is
+This reference describes the `0.1.7` pre-release. Its provider entry is
 `@kevinjohn/adonisjs-access-control/access_control_provider`; `configure` registers that path.
 
 | Import path                                                  | Use                                                                                                   | Public reference                                                                                               |

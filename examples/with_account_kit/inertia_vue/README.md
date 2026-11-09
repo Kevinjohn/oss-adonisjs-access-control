@@ -1,8 +1,8 @@
 # Access Control with Account Kit: Inertia Vue example
 
 This app is Account Kit's
-[Inertia Vue example](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/v0.3.3/examples/inertia-vue)
-at `v0.3.3`, with Access Control added. Accounts create teams, invite members to a team with a
+[Inertia Vue example](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/v0.3.4/examples/inertia-vue)
+at `v0.3.4`, with Access Control added. Accounts create teams, invite members to a team with a
 role, and each role sees and changes only what its permission keys allow. It runs on the official
 AdonisJS Inertia Vue starter at
 [`adonisjs/starter-kits` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue).
@@ -42,7 +42,7 @@ pnpm dev
 ```
 
 `kit:pack` builds Access Control from this checkout into `vendor/`. Account Kit comes from its
-`v0.3.3` GitHub release. The packed archive's checksum changes with every build, so the install
+`v0.3.4` GitHub release. The packed archive's checksum changes with every build, so the install
 does not use a frozen lockfile.
 
 ## Create a team and invite a member
