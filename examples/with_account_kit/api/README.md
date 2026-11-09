@@ -8,6 +8,9 @@ AdonisJS API starter at
 [`adonisjs/starter-kits` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/api).
 Everything Account Kit's README describes still applies.
 
+The model and migrations use the default `users` table with integer IDs. For another table or
+ID type, configure Account Kit and Access Control for that schema in your own application.
+
 ## What this example adds
 
 | File                                                                                      | Shows                                                                                        |
