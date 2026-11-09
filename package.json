@@ -47,6 +47,7 @@
     "test:mysql": "cross-env DB_CLIENT=mysql2 pnpm quick:test",
     "check": "node --import=@poppinss/ts-exec --enable-source-maps bin/check.ts",
     "check:changed": "node --import=@poppinss/ts-exec --enable-source-maps bin/check_changed.ts",
+    "bump:account-kit": "node --import=@poppinss/ts-exec --enable-source-maps bin/bump_account_kit.ts",
     "precompile": "pnpm lint",
     "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
     "postcompile": "pnpm copy:templates",

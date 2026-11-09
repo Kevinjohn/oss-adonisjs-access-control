@@ -3,9 +3,10 @@
 1. On a branch, bump `version` in `package.json` and turn `## Unreleased` into
    `## <version> - <YYYY-MM-DD>` (add a new empty `## Unreleased` above it).
 2. Update the `README.md` and `README-AGENTS.md` install commands, asset filename and release-note
-   link to that exact version. When changing the pinned Account Kit archive, update its URL,
-   version and the exact peer range together; an Access Control version bump does not select a
-   new Account Kit release automatically.
+   link to that exact version. To move to another Account Kit release, run
+   `pnpm bump:account-kit <version>`: it rewrites the URL, exact peer and lockfile entries together
+   and lists any line still naming the old version. An Access Control version bump does not select
+   a new Account Kit release automatically.
 3. If the release adds a migration stub, add its `{ name, sha256 }` entry to
    `stubs/migrations/released.json` and a `### Migrations` subsection to the changelog.
 4. Merge the PR (owner-authorised).
