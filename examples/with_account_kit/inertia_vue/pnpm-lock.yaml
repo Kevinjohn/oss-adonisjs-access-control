@@ -49,10 +49,10 @@ importers:
         version: 3.9.1(vue@3.5.44(typescript@6.0.3))
       '@kevinjohn/adonisjs-access-control':
         specifier: file:vendor/kevinjohn-adonisjs-access-control.tgz
-        version: file:vendor/kevinjohn-adonisjs-access-control.tgz(@adonisjs/auth@10.1.0(0b896aad98fb80cfbac387fbf02bc1ec))(@adonisjs/bouncer@4.0.1(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(edge.js@6.5.1))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(supports-color@10.2.2))(@kevinjohn/adonisjs-account-kit@https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz(a53274e9ae7eb1e6a258218e02d0ee13))(luxon@3.7.2)(typescript@6.0.3)
+        version: file:vendor/kevinjohn-adonisjs-access-control.tgz(@adonisjs/auth@10.1.0(0b896aad98fb80cfbac387fbf02bc1ec))(@adonisjs/bouncer@4.0.1(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(edge.js@6.5.1))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(supports-color@10.2.2))(@kevinjohn/adonisjs-account-kit@https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz(a53274e9ae7eb1e6a258218e02d0ee13))(luxon@3.7.2)(typescript@6.0.3)
       '@kevinjohn/adonisjs-account-kit':
-        specifier: https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz
-        version: https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz(a53274e9ae7eb1e6a258218e02d0ee13)
+        specifier: https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz
+        version: https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz(a53274e9ae7eb1e6a258218e02d0ee13)
       '@tuyau/core':
         specifier: ^1.2.2
         version: 1.2.3(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))
@@ -826,16 +826,16 @@ packages:
       '@adonisjs/bouncer': ^4.0.0
       '@adonisjs/core': ^7.0.0
       '@adonisjs/lucid': ^22.4.2
-      '@kevinjohn/adonisjs-account-kit': 0.3.3
+      '@kevinjohn/adonisjs-account-kit': 0.3.4
       luxon: ^3.4.4
       typescript: ^5.9.3 || ^6.0.3
     peerDependenciesMeta:
       typescript:
         optional: true
 
-  '@kevinjohn/adonisjs-account-kit@https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz':
-    resolution: {integrity: sha512-SBkXVoSgh+HrS95EvYL9dzFSJTg66ip9tkTr1TaPullG+Lsz0AEvQ48RjHCpNb9mA7dIdr4zAjHqI5ZxpIQMWA==, tarball: https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz}
-    version: 0.3.3
+  '@kevinjohn/adonisjs-account-kit@https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz':
+    resolution: {integrity: sha512-22gEWrzPprmYl8ghIrWmhxxXFEe6gOHALputmXcoorwpaVvVia5h+KPOc7WIBS5LcgVHsb4uWXQmatlLuGu43w==, tarball: https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz}
+    version: 0.3.4
     engines: {node: '>=24.0.0'}
     peerDependencies:
       '@adonisjs/assembler': ^8.0.0
@@ -4241,18 +4241,18 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  ? '@kevinjohn/adonisjs-access-control@file:vendor/kevinjohn-adonisjs-access-control.tgz(@adonisjs/auth@10.1.0(0b896aad98fb80cfbac387fbf02bc1ec))(@adonisjs/bouncer@4.0.1(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(edge.js@6.5.1))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(supports-color@10.2.2))(@kevinjohn/adonisjs-account-kit@https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz(a53274e9ae7eb1e6a258218e02d0ee13))(luxon@3.7.2)(typescript@6.0.3)'
+  ? '@kevinjohn/adonisjs-access-control@file:vendor/kevinjohn-adonisjs-access-control.tgz(@adonisjs/auth@10.1.0(0b896aad98fb80cfbac387fbf02bc1ec))(@adonisjs/bouncer@4.0.1(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(edge.js@6.5.1))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(supports-color@10.2.2))(@kevinjohn/adonisjs-account-kit@https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz(a53274e9ae7eb1e6a258218e02d0ee13))(luxon@3.7.2)(typescript@6.0.3)'
   : dependencies:
       '@adonisjs/auth': 10.1.0(0b896aad98fb80cfbac387fbf02bc1ec)
       '@adonisjs/bouncer': 4.0.1(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(edge.js@6.5.1)
       '@adonisjs/core': 7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1)
       '@adonisjs/lucid': 22.4.2(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(supports-color@10.2.2)
-      '@kevinjohn/adonisjs-account-kit': https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz(a53274e9ae7eb1e6a258218e02d0ee13)
+      '@kevinjohn/adonisjs-account-kit': https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz(a53274e9ae7eb1e6a258218e02d0ee13)
       luxon: 3.7.2
     optionalDependencies:
       typescript: 6.0.3
 
-  '@kevinjohn/adonisjs-account-kit@https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz(a53274e9ae7eb1e6a258218e02d0ee13)':
+  '@kevinjohn/adonisjs-account-kit@https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz(a53274e9ae7eb1e6a258218e02d0ee13)':
     dependencies:
       '@adonisjs/core': 7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1)
       '@adonisjs/limiter': 3.0.1(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(supports-color@10.2.2))
