@@ -248,8 +248,8 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         'updated_at',
       ])
       const versions = accountKitVersions()
-      assert.equal(versions.expected, '0.3.3')
-      assert.equal(versions.installed, '0.3.3')
+      assert.equal(versions.expected, '0.3.4')
+      assert.equal(versions.installed, '0.3.4')
     } finally {
       await booted.db.connection().schema.dropTableIfExists(emptyUsers)
     }

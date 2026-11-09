@@ -74,7 +74,7 @@
     "@adonisjs/shield": "^9.0.0",
     "@japa/api-client": "^3.2.1",
     "@kevinjohn/adonisjs-access-control": "file:vendor/kevinjohn-adonisjs-access-control.tgz",
-    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz",
+    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz",
     "@tuyau/core": "^1.2.2",
     "@vinejs/vine": "^4.4.0",
     "better-sqlite3": "^12.11.1",

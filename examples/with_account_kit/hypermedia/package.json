@@ -70,7 +70,7 @@
     "@adonisjs/static": "^2.0.1",
     "@adonisjs/vite": "^6.0.2",
     "@kevinjohn/adonisjs-access-control": "file:vendor/kevinjohn-adonisjs-access-control.tgz",
-    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.3/kevinjohn-adonisjs-account-kit-0.3.3.tgz",
+    "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.4/kevinjohn-adonisjs-account-kit-0.3.4.tgz",
     "@vinejs/vine": "^4.4.0",
     "better-sqlite3": "^13.0.3",
     "edge-iconify": "^2.0.2",

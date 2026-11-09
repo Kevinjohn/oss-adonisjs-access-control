@@ -2,10 +2,13 @@
 
 ## Unreleased
 
+## 0.1.7 - 2026-11-09
+
 ### Changed
 
 - Examples: the API app follows Account Kit's defaults-only example, with integer user IDs and a
   `users` table instead of environment switches for the table and ID type.
+- Requires Account Kit 0.3.4 (exact).
 
 ## 0.1.6 - 2026-11-08
 
