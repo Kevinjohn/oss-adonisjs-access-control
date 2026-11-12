@@ -33,9 +33,9 @@ Scope: package transaction and host callback boundary; the host owns screens, re
 
 ```mermaid
 flowchart TD
-    A["MembershipService.listForScope"] --> B["normalize scope; read actor membership"]
-    B --> C["require active member and members:list"]
-    C --> D["decode cursor and validate limit"]
+    A["MembershipService.listForScope"] --> B["normalize scope and actor key; validate limit and decode cursor"]
+    B --> C["read actor membership; require active and members:list"]
+    C --> D["apply cursor continuation predicates"]
     D --> E["query ordered created_at,id page"]
     E --> F["return rows and next opaque cursor"]
 ```

@@ -30,7 +30,7 @@ Scope: package behavior and host callback boundary; the application owns its scr
 
 ```mermaid
 flowchart TD
-    A["onAccountDeletingTransaction(user, trx)"] --> B["memberships.prepareAccountDeletion(userId, trx)"]
+    A["onAccountDeletingTransaction(user, trx)"] --> B["memberships.prepareAccountDeletion({ userId, trx })"]
     B --> C["read memberships and lock involved scopes"]
     C --> D{"Any active owner membership?"}
     D -->|Yes| E["throw LAST_OWNER; Kit transaction rolls back"]

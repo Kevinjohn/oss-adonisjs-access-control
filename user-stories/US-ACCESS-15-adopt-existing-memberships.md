@@ -6,7 +6,7 @@ As an application operator, I want to adopt existing membership data so that acc
 **Access:** Migration owner has access to application membership table and follows the documented staged adoption procedure.
 **Entry:** Follow adoption guide to map, copy and reconcile existing membership rows before switching services.
 **Documentation:** [adopting.md](../docs/guide/adopting.md)
-**Source:** [src/migration_schema.ts](../src/migration_schema.ts)
+**Source:** [configure](../configure.ts), [published schema](../src/migration_schema.ts), [doctor command](../commands/doctor.ts), [runDoctor](../src/doctor.ts)
 **Coverage:** [`tests/migration_stubs.spec.ts`](../tests/migration_stubs.spec.ts)
 
 ## Acceptance criteria
@@ -27,15 +27,16 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behavior; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
+Scope: package configuration/schema publication and doctor diagnostics surround a host-written data migration. The package never reads the old membership table.
 
 ```mermaid
 flowchart TD
-    A["Adoption procedure reads existing table contract"] --> B["migration/schema inspection checks identifiers and key types"]
-    B --> C["operator copies and reconciles data"]
-    C --> D{"validated?"}
-    D -->|No| E["do not cut over"]
-    D -->|Yes| F["host switches reads/writes to MembershipService"]
+    A["configureWith publishes a separate membership-table migration"] --> B["Host writes a later application migration mapping existing rows"]
+    B --> C["Host runs node ace migration:run"]
+    C --> D["AccessControlDoctor.run invokes runDoctor"]
+    D --> E{"Copied rows and configured schema checks clean?"}
+    E -->|No| F["Host corrects migration/data before cutover"]
+    E -->|Yes| G["Host routes through scope/abilities and stops old-table writes"]
 ```
 
-**Code references:** [adoption guide](../docs/guide/adopting.md), [schema contract](../src/migration_schema.ts)
+**Code references:** [Adoption instructions and host migration example](../docs/guide/adopting.md), [configureWith](../configure.ts), [published schema](../src/migration_schema.ts), [AccessControlDoctor](../commands/doctor.ts), [runDoctor](../src/doctor.ts).

@@ -28,7 +28,7 @@ Scope: package behavior; the host owns team records, page rendering, route place
 
 ```mermaid
 flowchart TD
-    A["Account Kit exportAccountData callback"] --> B["memberships.exportFor(userId, trx)"]
+    A["Account Kit exportAccountData callback"] --> B["memberships.exportFor({ userId, trx })"]
     B --> C["return memberships with ISO timestamps"]
 ```
 

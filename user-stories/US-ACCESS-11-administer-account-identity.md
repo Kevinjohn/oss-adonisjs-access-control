@@ -31,7 +31,7 @@ Scope: package behavior; the host owns team records, page rendering, route place
 
 ```mermaid
 flowchart TD
-    A["assertCanAdministerIdentity(actorId, targetId)"] --> B["identityRoles loads actor active and target all roles under locks"]
+    A["assertCanAdministerIdentity({ actorId, targetId, trx? })"] --> B["identityRoles loads actor active and target all roles under locks"]
     B --> C["canAdministerIdentity evaluates every target scope"]
     C --> D{"Allowed?"}
     D -->|No| E["throw FORBIDDEN"]
