@@ -89,6 +89,10 @@ initializer and the Account Kit callbacks) and `node ace access-control:doctor`.
 - [Technical contract](docs/maintainers/design/spec-access-control.md)
 - [Notes for coding agents](README-AGENTS.md)
 
+## User stories
+
+See the [user story catalogue](user-stories/README.md) for source-reviewed roles, scope enforcement, membership lifecycle, Account Kit callbacks and operator setup.
+
 ## Contributing
 
 Bug reports and documentation fixes are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
