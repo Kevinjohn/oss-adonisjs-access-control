@@ -7,7 +7,7 @@ As an application operator, I want to adopt existing membership data so that acc
 **Entry:** Follow adoption guide to map, copy and reconcile existing membership rows before switching services.
 **Documentation:** [adopting.md](../docs/guide/adopting.md)
 **Source:** [configure](../configure.ts), [published schema](../src/migration_schema.ts), [doctor command](../commands/doctor.ts), [runDoctor](../src/doctor.ts)
-**Coverage:** [`tests/migration_stubs.spec.ts`](../tests/migration_stubs.spec.ts)
+**Coverage:** [Published migration stub/schema tests](../tests/migration_stubs.spec.ts); these do not validate the host data copy.
 
 ## Acceptance criteria
 
@@ -33,9 +33,12 @@ Scope: package configuration/schema publication and doctor diagnostics surround 
 flowchart TD
     A["configureWith publishes a separate membership-table migration"] --> B["Host writes a later application migration mapping existing rows"]
     B --> C["Host runs node ace migration:run"]
-    C --> D["AccessControlDoctor.run invokes runDoctor"]
-    D --> E{"Copied rows and configured schema checks clean?"}
-    E -->|No| F["Host corrects migration/data before cutover"]
+    C --> H["Host reconciles copied counts, keys and role mappings against old table"]
+    H --> I{"Host copy reconciliation clean?"}
+    I -->|No| F["Host corrects migration/data before cutover"]
+    I -->|Yes| D["AccessControlDoctor.run invokes runDoctor"]
+    D --> E{"Table/columns, role/status, owner and orphan checks clean?"}
+    E -->|No| F
     E -->|Yes| G["Host routes through scope/abilities and stops old-table writes"]
 ```
 
