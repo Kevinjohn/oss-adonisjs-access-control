@@ -33,7 +33,7 @@ Scope: package behavior and host callback boundary; the application owns its scr
 flowchart TD
     A["MembershipService.createFirstMember(input)"] --> B["resolve role from ownerRole or supplied manager role"]
     B --> C["start transaction; lock user and scope"]
-    C --> D{"Scope empty and insert satisfies configured foreign keys?"
+    C --> D{"Scope empty and insert satisfies configured foreign keys?"}
     D -->|No| E["throw input or SCOPE_NOT_EMPTY error"]
     D -->|Yes| F["insert membership and emit first_member"]
     F --> G["caller commits transaction"]
