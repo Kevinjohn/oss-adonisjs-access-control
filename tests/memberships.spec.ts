@@ -43,7 +43,8 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       role: 'admin',
       status: 'active',
     })
-    assert.equal((await check(viewer, 'project:read')).role, 'viewer')
+    const asViewer = await check(viewer, 'project:read')
+    assert.equal(asViewer.role, 'viewer')
     // A role below the permission, a non-member, an unknown key and another scope are refused.
     const otherScope = await f.createScope()
     for (const refused of [
