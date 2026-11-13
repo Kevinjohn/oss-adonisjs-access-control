@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- `memberships.authorize({ scopeId, userId, permission, trx })` returns the user's active
+  membership when its role holds the permission and throws `E_ACCESS_CONTROL_FORBIDDEN`
+  otherwise, inside the caller's transaction.
+
 ## 0.1.7 - 2026-11-09
 
 ### Changed
