@@ -26,16 +26,18 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behavior; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
+Scope: package behavior; the runner commits when `input.trx` is omitted; supplied transactions remain caller-owned and may later roll back; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
 
 ```mermaid
 flowchart TD
-    A["MembershipService.transferOwnership"] --> B["transaction locks actor/target users and scope"]
+    A["MembershipService.transferOwnership"] --> O{"Owner role configured?"}
+    O -->|No| E["throw domain error"]
+    O -->|Yes| B["transaction locks actor/target users and scope"]
     B --> C["require active owner and distinct active target"]
-    C --> D{"Configured owner role and valid target?"}
+    C --> D{"Valid target?"}
     D -->|No| E["throw domain error"]
     D -->|Yes| F["update both roles atomically and emit ownership_transferred"]
-    F --> G["commit transaction"]
+    F --> G["runner commits if trx omitted; otherwise caller owns commit"]
 ```
 
 **Code references:** [transferOwnership](../src/memberships.ts), [lock order](../src/locks.ts)

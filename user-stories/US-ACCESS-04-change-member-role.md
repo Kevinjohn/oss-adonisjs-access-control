@@ -26,7 +26,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behavior; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
+Scope: package behavior; the runner commits when `input.trx` is omitted; supplied transactions remain caller-owned and may later roll back; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
 
 ```mermaid
 flowchart TD
@@ -36,7 +36,7 @@ flowchart TD
     D -->|No| E["throw rule error"]
     D -->|Yes| F{"Role changed?"}
     F -->|No| G["return without write/event"]
-    F -->|Yes| H["update role; emit membership.role_changed; commit"]
+    F -->|Yes| H["update role; emit membership.role_changed; runner commits only if trx omitted"]
 ```
 
 **Code references:** [changeRole](../src/memberships.ts), [canAssign](../src/rules.ts)

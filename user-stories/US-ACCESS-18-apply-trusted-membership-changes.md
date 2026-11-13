@@ -30,8 +30,8 @@ Scope: trusted membership creation; application eligibility and transaction comm
 
 ```mermaid
 flowchart TD
-    A["MembershipService.grant(input)"] --> B["require caller trx; normalize and lock user/scope"]
-    B --> C["check known non-owner role, user exists, not already member"]
+    A["MembershipService.grant(input)"] --> B["require caller trx; validate known non-owner role; normalize and lock user/scope"]
+    B --> C["check user exists and not already member"]
     C --> D{"All checks pass?"}
     D -->|No| E["throw domain error"]
     D -->|Yes| F["insert active membership and emit granted event"]
