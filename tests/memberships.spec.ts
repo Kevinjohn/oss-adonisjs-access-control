@@ -48,12 +48,12 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     // A role below the permission, a non-member, an unknown key and another scope are refused.
     const otherScope = await f.createScope()
     for (const refused of [
-      check(viewer, 'members:manage'),
-      check(outsider, 'project:read'),
-      check(owner, 'lexcorp:audit'),
-      check(owner, 'project:read', otherScope),
+      () => check(viewer, 'members:manage'),
+      () => check(outsider, 'project:read'),
+      () => check(owner, 'lexcorp:audit'),
+      () => check(owner, 'project:read', otherScope),
     ])
-      assert.equal(await codeOf(refused), 'E_ACCESS_CONTROL_FORBIDDEN')
+      assert.equal(await codeOf(refused()), 'E_ACCESS_CONTROL_FORBIDDEN')
     // A suspended membership and a stored role outside the configured roles are refused.
     await f.memberships.setStatus({
       actor: actor(owner),
