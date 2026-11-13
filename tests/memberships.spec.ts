@@ -43,14 +43,14 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       role: 'admin',
       status: 'active',
     })
-    assert.equal((await check(viewer, 'members:list')).role, 'viewer')
+    assert.equal((await check(viewer, 'project:read')).role, 'viewer')
     // A role below the permission, a non-member, an unknown key and another scope are refused.
     const otherScope = await f.createScope()
     for (const refused of [
       check(viewer, 'members:manage'),
-      check(outsider, 'members:list'),
+      check(outsider, 'project:read'),
       check(owner, 'lexcorp:audit'),
-      check(owner, 'members:list', otherScope),
+      check(owner, 'project:read', otherScope),
     ])
       assert.equal(await codeOf(refused), 'E_ACCESS_CONTROL_FORBIDDEN')
     // A suspended membership and a stored role outside the configured roles are refused.
@@ -60,16 +60,16 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       userId: editor,
       status: 'suspended',
     })
-    assert.equal(await codeOf(check(editor, 'members:list')), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(await codeOf(check(editor, 'project:read')), 'E_ACCESS_CONTROL_FORBIDDEN')
     await f.db.from(f.names.memberships).where('user_id', admin).update({ role: 'intern' })
-    assert.equal(await codeOf(check(admin, 'members:list')), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(await codeOf(check(admin, 'project:read')), 'E_ACCESS_CONTROL_FORBIDDEN')
     // The check needs the transaction of the work it authorizes.
     assert.equal(
       await codeOf(
         f.memberships.authorize({
           scopeId: scope,
           userId: owner,
-          permission: 'members:list',
+          permission: 'project:read',
         } as never)
       ),
       'E_ACCESS_CONTROL_INVALID_INPUT'
