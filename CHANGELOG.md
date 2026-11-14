@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.8 - 2026-11-14
+
 ### Added
 
 - `memberships.authorize({ scopeId, userId, permission, trx })` returns the user's active
