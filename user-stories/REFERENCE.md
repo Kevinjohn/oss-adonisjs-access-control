@@ -13,6 +13,7 @@
 - Membership lifecycle and transaction/locks: [`src/memberships.ts`](../src/memberships.ts), [`src/locks.ts`](../src/locks.ts), [`src/kit_transaction.ts`](../src/kit_transaction.ts).
 - Scope entry and permission evaluation: [`middleware/main.ts`](../middleware/main.ts), [`src/abilities.ts`](../src/abilities.ts).
 - Client membership projection: [`src/payload.ts`](../src/payload.ts).
+- Error codes, statuses and response handler: [`src/errors.ts`](../src/errors.ts); instance binding (`attach`): [`src/define.ts`](../src/define.ts), [`providers/access_control_provider.ts`](../providers/access_control_provider.ts).
 - Account Kit invitation, deletion and export callbacks: [`account_kit/main.ts`](../account_kit/main.ts).
 - Setup and diagnosis: [`configure.ts`](../configure.ts), [`src/doctor.ts`](../src/doctor.ts), [adoption guide](../docs/guide/adopting.md).
 - User docs: [scope/Bouncer](../docs/guide/bouncer.md), [memberships](../docs/guide/memberships.md), [management rules](../docs/guide/rules.md), [Account Kit integration](../docs/guide/account-kit.md), [client payload](../docs/guide/client.md), [roles](../docs/guide/roles.md).

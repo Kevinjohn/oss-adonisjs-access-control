@@ -12,7 +12,7 @@ As an active scope owner, I want to transfer scope ownership so that a scope con
 ## Acceptance criteria
 
 - Transfer is unavailable if no owner role is configured.
-- Actor must be the active owner; target must be a different active member.
+- Actor must be the active owner; target must be a different active member. A scope row that does not exist is refused with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404) when the scope is locked, before the actor is checked.
 - The target becomes owner and prior owner is demoted to highest non-owner role in same transaction; event records transfer.
 
 ## User flow

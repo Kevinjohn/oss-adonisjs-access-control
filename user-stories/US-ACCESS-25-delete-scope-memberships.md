@@ -14,6 +14,7 @@ As an application operator, I want to remove memberships when deleting a scope s
 - The method snapshots current member IDs, locks user rows then scope, and checks the set did not change.
 - Concurrent membership-set change raises `E_ACCESS_CONTROL_CONFLICT`; host retries the whole deletion transaction.
 - Membership rows and `membership.removed` events with reason `scope_deleted` share the host transaction. Optional actor is recorded in events only, not authorized by this method.
+- The method does not touch the scope's pending Account Kit invitations. Revoke them ([US-ACCESS-24](US-ACCESS-24-revoke-invitation.md)) when deleting the scope: a matched invitation to a deleted scope makes the invitee's activation or confirming password reset fail on every retry ([US-ACCESS-10](US-ACCESS-10-accept-invitation.md)).
 
 ## User flow
 
@@ -33,7 +34,7 @@ Scope: package behavior and host callback boundary; the application owns its scr
 flowchart TD
     A["MembershipService.removeAllForScope({ scopeId, trx })"] --> B["snapshot members; lock users then scope"]
     B --> C["read member set again"]
-    C --> D{"Same membership IDs?"}
+    C --> D{"Same member user IDs?"}
     D -->|No| E["throw CONFLICT"]
     D -->|Yes| F["delete memberships and emit scope_deleted events"]
     F --> G["host deletes scope row in same trx"]

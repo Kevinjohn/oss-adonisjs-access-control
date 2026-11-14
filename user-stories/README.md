@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `a20701e4e5ee4fe009a06ceb5c7614b4621ea357` (origin/main, 2026-11-12). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client payload, and Account Kit callbacks. Source-reviewed only; no runtime journeys were exercised for this catalogue.
+Source baseline: `f418f2e6c8644984af4d07fef4abf974a8de15b1` (origin/main, 2026-11-14). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client payload, and Account Kit callbacks. Source-reviewed only; no runtime journeys were exercised for this catalogue.
 
 ## Index
 
@@ -31,6 +31,9 @@ Source baseline: `a20701e4e5ee4fe009a06ceb5c7614b4621ea357` (origin/main, 2026-1
 | [US-ACCESS-23](US-ACCESS-23-resend-invitation.md)                | Resend a pending invitation                       | Current  |
 | [US-ACCESS-24](US-ACCESS-24-revoke-invitation.md)                | Revoke a pending invitation                       | Current  |
 | [US-ACCESS-25](US-ACCESS-25-delete-scope-memberships.md)         | Remove memberships when deleting a scope          | Current  |
+| [US-ACCESS-26](US-ACCESS-26-react-to-membership-changes.md)      | Audit or react to membership changes              | Current  |
+| [US-ACCESS-27](US-ACCESS-27-localize-error-responses.md)         | Localize Access Control error responses           | Current  |
+| [US-ACCESS-28](US-ACCESS-28-attach-without-provider.md)          | Attach Access Control without the provider        | Operator |
 
 ## Files
 

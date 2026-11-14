@@ -4,7 +4,7 @@ As a scope member, I want to review a paginated scope member list so that scope 
 
 **Status:** Current
 **Access:** Actor must have an active membership and a role satisfying `members:list`; this permission need not imply `members:manage`.
-**Entry:** Route loads a page through `memberships.listForScope({ actor, scopeId, cursor, limit })`.
+**Entry:** Route loads a page through `memberships.listForScope({ actor, scopeId, cursor, limit, trx? })`.
 **Documentation:** [memberships.md](../docs/guide/memberships.md)
 **Source:** [src/memberships.ts](../src/memberships.ts)
 **Coverage:** [`tests/memberships.spec.ts`](../tests/memberships.spec.ts)
@@ -29,7 +29,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: package transaction and host callback boundary; the host owns screens, response mapping and application-specific policy.
+Scope: a plain read through the caller-supplied transaction or the default database connection; it opens no transaction and takes no lock, callback or event; the host owns screens, response mapping and application-specific policy.
 
 ```mermaid
 flowchart TD
