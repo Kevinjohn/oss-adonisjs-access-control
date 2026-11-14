@@ -12,6 +12,7 @@ export type {
   LeaveInput,
   TransferOwnershipInput,
   ListForScopeInput,
+  AuthorizeInput,
   CreateFirstMemberInput,
   AcceptInvitationInput,
   GrantMembershipInput,

@@ -26,6 +26,7 @@ whether someone is a member from a 404 versus a 403.
 | `find`              | `scopeId, userId, trx?`                     | membership or null | none                               |
 | `listForUser`       | `userId, trx?`                              | memberships        | none                               |
 | `listForScope`      | `{ actor, scopeId, cursor?, limit?, trx? }` | a page             | none                               |
+| `authorize`         | `{ scopeId, userId, permission, trx }`      | membership         | none                               |
 | `add`               | `{ actor, scopeId, userId, role, trx? }`    | membership         | `membership.added`                 |
 | `changeRole`        | `{ actor, scopeId, userId, role, trx? }`    | membership         | `membership.role_changed`          |
 | `setStatus`         | `{ actor, scopeId, userId, status, trx? }`  | membership         | `membership.status_changed`        |

@@ -30,6 +30,57 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     return () => f.cleanup()
   })
 
+  test('authorize: returns the active membership that holds the permission, in the caller transaction', async ({
+    assert,
+  }) => {
+    const check = (userId: number | string, permission: string, scopeId = scope) =>
+      f.runner.transaction(f.db, (trx) =>
+        f.memberships.authorize({ scopeId, userId, permission, trx })
+      )
+    assert.deepInclude(await check(admin, 'members:manage'), {
+      scopeId: scope,
+      userId: admin,
+      role: 'admin',
+      status: 'active',
+    })
+    const asViewer = await check(viewer, 'project:read')
+    assert.equal(asViewer.role, 'viewer')
+    // A role below the permission, a non-member, an unknown key and another scope are refused.
+    const otherScope = await f.createScope()
+    for (const refused of [
+      () => check(viewer, 'members:manage'),
+      () => check(outsider, 'project:read'),
+      () => check(owner, 'lexcorp:audit'),
+      () => check(owner, 'project:read', otherScope),
+    ])
+      assert.equal(await codeOf(refused()), 'E_ACCESS_CONTROL_FORBIDDEN')
+    // A suspended membership and a stored role outside the configured roles are refused.
+    await f.memberships.setStatus({
+      actor: actor(owner),
+      scopeId: scope,
+      userId: editor,
+      status: 'suspended',
+    })
+    assert.equal(await codeOf(check(editor, 'project:read')), 'E_ACCESS_CONTROL_FORBIDDEN')
+    await f.db.from(f.names.memberships).where('user_id', admin).update({ role: 'intern' })
+    assert.equal(await codeOf(check(admin, 'project:read')), 'E_ACCESS_CONTROL_FORBIDDEN')
+    // The check needs the transaction of the work it authorizes.
+    assert.equal(
+      await codeOf(
+        f.memberships.authorize({
+          scopeId: scope,
+          userId: owner,
+          permission: 'project:read',
+        } as never)
+      ),
+      'E_ACCESS_CONTROL_INVALID_INPUT'
+    )
+    assert.deepEqual(
+      f.events.map((event) => event.type),
+      ['membership.status_changed']
+    )
+  })
+
   test('add: happy path returns the membership and emits membership.added', async ({ assert }) => {
     const membership = await f.memberships.add({
       actor: actor(admin),
