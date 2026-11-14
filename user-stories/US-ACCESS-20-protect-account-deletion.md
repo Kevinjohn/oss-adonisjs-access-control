@@ -26,7 +26,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behavior and host callback boundary; the application owns its screens, scope records and transaction commit.
+Scope: package behavior and host callback boundary; the application owns its screens and scope records; Account Kit owns the deletion transaction and its commit.
 
 ```mermaid
 flowchart TD

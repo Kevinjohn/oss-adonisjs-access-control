@@ -11,8 +11,9 @@ As an application developer, I want to declare ordered roles and permission keys
 
 ## Acceptance criteria
 
-- Roles are ordered lowest to highest; names and resource/action keys meet documented syntax; reserved member-list/manage and invitation-manage keys are declared.
-- Optional owner role is last and has another role below it. Table names and integer/string/UUID key types validate.
+- Roles are ordered lowest to highest. Role names match `^[a-z][a-z0-9_-]*$`, have at most 32 characters and are not duplicated; resource and action names match `^[a-z][a-zA-Z0-9]*$`.
+- The reserved keys `members:list`, `members:manage` and `invitations:manage` must be declared, each mapped to a listed role.
+- Optional owner role is last and has another role below it. Users, scope and memberships table names are plain SQL identifiers; `membershipsTable` defaults to `memberships`; key types are `integer`, `string` or `uuid`.
 - Typed keys and runtime helpers expose permission/rank/assignment/management predicates from the same matrix.
 
 ## User flow
