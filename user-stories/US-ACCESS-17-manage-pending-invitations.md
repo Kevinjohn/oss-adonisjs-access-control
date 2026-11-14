@@ -4,7 +4,7 @@ As an active member allowed to manage invitations, I want to list pending invita
 
 **Status:** Current when Account Kit callback integration is configured
 **Access:** Actor must be admitted when admission checks are on, active in the canonical current scope, and have `invitations:manage`.
-**Entry:** Account Kit `listInvitations` invokes `accessControlKitCallbacks().authorize.listInvitations`.
+**Entry:** Account Kit `invitations.list({ actorId, scope, limit?, cursor? })` invokes `accessControlKitCallbacks().authorize.listInvitations`.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
 **Source:** [account_kit/main.ts](../account_kit/main.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
@@ -12,6 +12,7 @@ As an active member allowed to manage invitations, I want to list pending invita
 ## Acceptance criteria
 
 - Listing requires an active membership in the canonical current scope with `invitations:manage`; admission is also checked when enabled.
+- A scope is required for authorization: a list call without `scope` reaches the callback with an empty context and is refused.
 - The callback returns authorization only; Account Kit performs listing and the host owns page rendering.
 
 ## User flow
@@ -29,7 +30,7 @@ Scope: the package callback authorizes; Account Kit performs the invitation quer
 
 ```mermaid
 flowchart TD
-    A["Account Kit listInvitations"] --> B["authorize.listInvitations"]
+    A["Account Kit invitations.list"] --> B["authorize.listInvitations"]
     B --> C["resolve active membership and canonical scope"]
     C --> D["check optional admission and invitations:manage"]
     D --> E{"Allowed?"}

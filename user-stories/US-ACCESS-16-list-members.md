@@ -29,7 +29,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: package transaction and host callback boundary; the host owns screens, response mapping and application-specific policy.
+Scope: a plain read through the supplied client or the default database connection, with no lock, transaction, callback or event; the host owns screens, response mapping and application-specific policy.
 
 ```mermaid
 flowchart TD

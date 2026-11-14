@@ -33,7 +33,7 @@ Scope: package behavior and host callback boundary; the application owns its scr
 flowchart TD
     A["MembershipService.removeAllForScope({ scopeId, trx })"] --> B["snapshot members; lock users then scope"]
     B --> C["read member set again"]
-    C --> D{"Same membership IDs?"}
+    C --> D{"Same member user IDs?"}
     D -->|No| E["throw CONFLICT"]
     D -->|Yes| F["delete memberships and emit scope_deleted events"]
     F --> G["host deletes scope row in same trx"]

@@ -12,7 +12,7 @@ As an active scope manager, I want to add a member to a scope so that the added 
 ## Acceptance criteria
 
 - Add is an actor-authorized membership write in the Kit transaction/lock process.
-- Unknown role, unknown user, existing member, inactive/missing actor, self-management or role above actor is refused.
+- Unknown role, unknown user, existing member, inactive/missing actor, self-management or role above actor is refused. A scope row that does not exist is refused with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404) when the scope is locked, before the actor is checked.
 - Successful add creates membership and emits `membership.added` inside the same transaction.
 
 ## User flow
@@ -32,7 +32,7 @@ Scope: package behavior; the runner commits when `input.trx` is omitted; supplie
 
 ```mermaid
 flowchart TD
-    A["MembershipService.add"] --> B["normalize keys; enter transaction and fixed-order locks"]
+    A["MembershipService.add"] --> B["normalize keys; enter transaction; lock users then scope row (missing scope: SCOPE_NOT_FOUND)"]
     B --> C["load and require actor membership"]
     C --> D["canAssign(actorRole, newRole)"]
     D --> E{"User exists and no membership?"}
