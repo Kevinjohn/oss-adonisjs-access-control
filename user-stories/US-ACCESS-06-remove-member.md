@@ -11,12 +11,12 @@ As an active scope manager, I want to remove a member from a scope so that a rem
 
 ## Acceptance criteria
 
-| Field     | Control              | Required/default/conditions                                                                 |
-| --------- | -------------------- | ------------------------------------------------------------------------------------------- |
-| `actor`   | API input `{ id }`   | Required; the acting user, who must be an active member of the scope with `members:manage`. |
-| `scopeId` | API input            | Required; normalised to the configured scope key type.                                      |
-| `userId`  | API input            | Required; the member to remove. Not a member: `E_ACCESS_CONTROL_NOT_A_MEMBER` (404).        |
-| `trx`     | Optional transaction | Omitted: the runner opens and commits one. Supplied: the caller owns commit and rollback.   |
+| Field     | Control              | Required/default/conditions                                                                                 |
+| --------- | -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `actor`   | API input `{ id }`   | Required; the acting user, who must be an active member of the scope with `members:manage`.                 |
+| `scopeId` | API input            | Required; normalised to the configured scope key type.                                                      |
+| `userId`  | API input            | Required; the member to remove. Not a member: `E_ACCESS_CONTROL_NOT_A_MEMBER` (404), after the actor check. |
+| `trx`     | Optional transaction | Omitted: the runner opens and commits one. Supplied: the caller owns commit and rollback.                   |
 
 - Removing self is refused; use `leave` for that action.
 - Owner and higher-ranked targets are protected. A target who is not a member is refused with `NOT_A_MEMBER`, and a scope row that does not exist with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404).

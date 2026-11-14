@@ -11,13 +11,13 @@ As an active scope manager, I want to suspend or reactivate a member so that sco
 
 ## Acceptance criteria
 
-| Field     | Control              | Required/default/conditions                                                                                 |
-| --------- | -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `actor`   | API input `{ id }`   | Required; the acting user, who must be an active member of the scope with `members:manage`.                 |
-| `scopeId` | API input            | Required; normalised to the configured scope key type.                                                      |
-| `userId`  | API input            | Required; the member to suspend or reactivate. Not a member: `E_ACCESS_CONTROL_NOT_A_MEMBER` (404).         |
-| `status`  | API input            | Required; `active` or `suspended`. Any other value: `E_ACCESS_CONTROL_INVALID_INPUT` (422), before locking. |
-| `trx`     | Optional transaction | Omitted: the runner opens and commits one. Supplied: the caller owns commit and rollback.                   |
+| Field     | Control              | Required/default/conditions                                                                                                |
+| --------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `actor`   | API input `{ id }`   | Required; the acting user, who must be an active member of the scope with `members:manage`.                                |
+| `scopeId` | API input            | Required; normalised to the configured scope key type.                                                                     |
+| `userId`  | API input            | Required; the member to suspend or reactivate. Not a member: `E_ACCESS_CONTROL_NOT_A_MEMBER` (404), after the actor check. |
+| `status`  | API input            | Required; `active` or `suspended`. Any other value: `E_ACCESS_CONTROL_INVALID_INPUT` (422), before locking.                |
+| `trx`     | Optional transaction | Omitted: the runner opens and commits one. Supplied: the caller owns commit and rollback.                                  |
 
 - Supported statuses are `active` and `suspended`.
 - Self, owner, unknown-role and rank restrictions refuse the change. A target who is not a member is refused with `NOT_A_MEMBER`, and a scope row that does not exist with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404).
@@ -41,8 +41,8 @@ Scope: package behavior; the host owns team records, page rendering, route place
 
 ```mermaid
 flowchart TD
-    A["MembershipService.setStatus"] --> B["validate status (INVALID_INPUT); transaction; lock users then scope row (missing scope: SCOPE_NOT_FOUND); load target (NOT_A_MEMBER)"]
-    B --> C["require active actor and apply canManage"]
+    A["MembershipService.setStatus"] --> B["validate status (INVALID_INPUT); transaction; lock users then scope row (missing scope: SCOPE_NOT_FOUND)"]
+    B --> C["require active actor with members:manage (FORBIDDEN); load target (NOT_A_MEMBER); apply canManage"]
     C --> D{"Allowed?"}
     D -->|No| E["throw rule error"]
     D -->|Yes| F["update when changed and emit status_changed"]
