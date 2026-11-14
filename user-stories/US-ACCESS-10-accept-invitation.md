@@ -1,6 +1,6 @@
 # US-ACCESS-10 — Accept a scoped invitation
 
-As an invited account holder, I want to accept a scoped invitation so that acceptance creates the access promised by the invitation.
+As an invitee, I want to accept a scoped invitation so that acceptance creates the access promised by the invitation.
 
 **Status:** Current when Account Kit acceptance callback is wired
 **Access:** Invitation token/recipient validation is owned by Account Kit; acceptance creates the account and is refused for an already registered email. Scoped membership is created only for a canonical configured scope.
@@ -13,7 +13,7 @@ As an invited account holder, I want to accept a scoped invitation so that accep
 
 - Accepting by token creates the account; a token for an already registered email is refused and no account is created. Matched invitations (social sign-up, activation, confirming password reset) run the same callback for an account that already exists.
 - For a scoped invitation, scope must use canonical configured key spelling; invalid scope is refused.
-- For scoped invitations, trusted `acceptInvitation` refuses unknown/owner roles, a deleted scope (`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`) and existing membership, otherwise creates membership inside the Account Kit transaction. Any refusal rolls back the whole acceptance, so no account is left behind. The optional host callback runs for both scoped and global invitations in that transaction.
+- For scoped invitations, trusted `acceptInvitation` refuses unknown/owner roles, a deleted scope (`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`) and existing membership, otherwise creates membership inside the Account Kit transaction. Any refusal rolls back the whole acceptance: token acceptance and social sign-up leave no new account behind, while activation and a confirming password reset roll back only that step and the existing account stays. The optional host callback runs for both scoped and global invitations in that transaction.
 - Global invitation (`scope: null`) does not create team membership.
 
 ## User flow

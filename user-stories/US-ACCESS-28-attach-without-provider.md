@@ -11,10 +11,10 @@ As an application operator, I want to attach the database and transaction runner
 
 ## Acceptance criteria
 
-| Field    | Control             | Required/default/conditions                                                                                                                                                  |
-| -------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `db`     | Lucid `Database`    | Required; the connection the membership service reads and writes.                                                                                                            |
-| `runner` | `TransactionRunner` | Required; `{ source: 'account-kit', transaction, lockRow, sqlTimestamp, readTimestamp }`. Account Kit's `@kevinjohn/adonisjs-account-kit/transaction` export has this shape. |
+| Field    | Control             | Required/default/conditions                                                                                                                                                                                                                                                                                                     |
+| -------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db`     | Lucid `Database`    | Required; the connection the membership service reads and writes.                                                                                                                                                                                                                                                               |
+| `runner` | `TransactionRunner` | Required; `{ source: 'account-kit', transaction, lockRow, sqlTimestamp, readTimestamp }`. The four functions are Account Kit's `@kevinjohn/adonisjs-account-kit/transaction` exports (0.3.4); `source: 'account-kit'` is added by Access Control, which builds the runner in [`kit_transaction.ts`](../src/kit_transaction.ts). |
 
 - `attach` returns the same `AccessControl` instance, now with `memberships` available.
 - Reading `memberships` before any attach throws `E_ACCESS_CONTROL_INVALID_CONFIG` with a message that names `attach(db, runner)`.
