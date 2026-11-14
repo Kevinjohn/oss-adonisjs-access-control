@@ -68,6 +68,15 @@ export interface ListForScopeInput {
   limit?: number
   trx?: Trx
 }
+/** Input of `authorize`: the scope, the user, the permission key and the caller's transaction. */
+export interface AuthorizeInput {
+  scopeId: ScopeKey
+  userId: UserKey
+  /** A permission key from the configured matrix. */
+  permission: string
+  /** Required: the check belongs to the transaction that does the work it authorizes. */
+  trx: Trx
+}
 /** Input of the trusted `createFirstMember`. */
 export interface CreateFirstMemberInput {
   scopeId: ScopeKey
@@ -338,6 +347,27 @@ export class MembershipService<Role extends string = string> {
   /** Every membership of the user, ordered by `created_at, id`. A plain read without locks. */
   async listForUser(userId: UserKey, trx?: Trx): Promise<Membership[]> {
     return this.#readAll(this.#client(trx), this.#userKey(userId))
+  }
+
+  /**
+   * The user's active membership when its role holds `permission`, read through the caller's
+   * transaction. Throws `E_ACCESS_CONTROL_FORBIDDEN` for a missing or suspended membership, a
+   * stored role outside the configured roles, and a role without the permission. Does not lock.
+   */
+  async authorize(input: AuthorizeInput): Promise<Membership> {
+    const trx = this.#requireTrx(input.trx, 'authorize')
+    const membership = await this.#read(
+      trx,
+      this.#scopeKey(input.scopeId),
+      this.#userKey(input.userId)
+    )
+    if (
+      !membership ||
+      membership.status !== 'active' ||
+      !this.#access.can(membership.role, input.permission)
+    )
+      throw error('E_ACCESS_CONTROL_FORBIDDEN')
+    return membership
   }
 
   /** One page of a scope's members for an actor with `members:list`. Does not lock. */
