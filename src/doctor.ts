@@ -1,6 +1,7 @@
 // `node ace access-control:doctor`: read-only consistency checks (specification 17.2).
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { Database } from '@adonisjs/lucid/database'
 import type { AccessControl } from './define.js'
 import { normaliseKey } from './keys.js'
@@ -130,19 +131,32 @@ async function accountKitCheck(input: DoctorInput): Promise<DoctorCheck[]> {
   ]
 }
 
-/** The installed Account Kit version next to this package, and the exact version it expects. */
-export function accountKitVersions(): { installed: string | null; expected: string } {
+/**
+ * The installed Account Kit version next to this package, and the exact version it expects.
+ * `installed` is `null` when Account Kit is not installed, which the doctor reports as a mismatch.
+ * A manifest that is installed but cannot be read, or has no version, throws: the check could not
+ * run.
+ */
+export function accountKitVersions(
+  resolve: (specifier: string) => string = (specifier) => import.meta.resolve(specifier)
+): { installed: string | null; expected: string } {
   const here = dirname(fileURLToPath(import.meta.url))
   const own = packageManifest(here, '@kevinjohn/adonisjs-access-control')
   const expected = String(
     (own.peerDependencies as Record<string, string>)['@kevinjohn/adonisjs-account-kit']
   )
-  let installed: string | null = null
+  let entry: string
   try {
-    const entry = fileURLToPath(import.meta.resolve('@kevinjohn/adonisjs-account-kit'))
-    installed = String(packageManifest(dirname(entry), '@kevinjohn/adonisjs-account-kit').version)
-  } catch {
-    installed = null
+    entry = fileURLToPath(resolve('@kevinjohn/adonisjs-account-kit'))
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ERR_MODULE_NOT_FOUND') {
+      return { installed: null, expected }
+    }
+    throw error
   }
-  return { installed, expected }
+  const { version } = packageManifest(dirname(entry), '@kevinjohn/adonisjs-account-kit')
+  if (typeof version !== 'string') {
+    throw new RuntimeException('@kevinjohn/adonisjs-account-kit: installed manifest has no version')
+  }
+  return { installed: version, expected }
 }

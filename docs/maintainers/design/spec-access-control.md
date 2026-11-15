@@ -258,7 +258,7 @@ changelog, packs, and publishes the prerelease with the SHA-256.
 | `@adonisjs/lucid`                 | `^22.4.2`                                                         | no       |
 | `@adonisjs/bouncer`               | `^4.0.0`                                                          | no       |
 | `@adonisjs/auth`                  | `^10.0.0`                                                         | no       |
-| `luxon`                           | `^3.0.0`                                                          | no       |
+| `luxon`                           | `^3.4.4` (the Luxon peer of Lucid `22.4.2`)                       | no       |
 | `@kevinjohn/adonisjs-account-kit` | exact version of the first release containing #768, #769 and #770 | no       |
 | `typescript`                      | `^5.9.3 \|\| ^6.0.3`                                              | yes      |
 

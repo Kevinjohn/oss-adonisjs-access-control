@@ -118,6 +118,8 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     assert.equal(await add(editor, outsider, 'viewer'), 'E_ACCESS_CONTROL_FORBIDDEN')
     assert.equal(await add(admin, 999_999, 'viewer'), 'E_ACCESS_CONTROL_USER_NOT_FOUND')
     assert.equal(await add(admin, viewer, 'viewer'), 'E_ACCESS_CONTROL_ALREADY_MEMBER')
+    // Adding oneself is not self-management: the actor is a manager, so already a member.
+    assert.equal(await add(admin, admin, 'viewer'), 'E_ACCESS_CONTROL_ALREADY_MEMBER')
     assert.equal(await add(admin, outsider, 'ceo'), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
     assert.equal(await add(admin, outsider, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
     assert.equal(await add(owner, outsider, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')

@@ -424,7 +424,8 @@ export class MembershipService<Role extends string = string> {
           actorRole: actor.role,
           targetRole: input.role,
           nextRole: input.role,
-          isSelf: actorId === userId,
+          // An actor adding themselves is already a member: ALREADY_MEMBER below, not SELF_MANAGEMENT.
+          isSelf: false,
         })
       )
       const user = await trx.from(this.#usersTable).select('id').where('id', userId).first()
