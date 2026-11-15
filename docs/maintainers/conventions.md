@@ -110,10 +110,6 @@ GitHub-visible text. Review complete outgoing content before publication.
 
 ## Deviations
 
-- The `luxon` peer range is `^3.4.4`, not the `^3.0.0` in specification section 1.12: Lucid
-  `22.4.2`, the Lucid floor, itself requires `luxon ^3.4.4`, so a `3.0.0` floor cannot be
-  installed alongside the required Lucid peer. The packed floor consumer installs `luxon 3.4.4`.
-  Pending the owner's confirmation.
 - `leave` answers `NOT_A_MEMBER`, not `SCOPE_NOT_FOUND`, when the scope row is missing
   (specification section 6 lists `SCOPE_NOT_FOUND` for a missing row during a lock). `leave` is
   routed without the scope middleware, so any signed-in user may call it; one code for a missing

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- `memberships.add` with the actor as the user answers `E_ACCESS_CONTROL_ALREADY_MEMBER`, as the
+  specification says, instead of `E_ACCESS_CONTROL_SELF_MANAGEMENT`.
+- `access-control:doctor` exits `2` (the check could not run) when the installed Account Kit
+  manifest cannot be read or has no version, instead of reporting a version mismatch. Account Kit
+  not being installed is still a mismatch (exit `1`).
+
 ## 0.1.8 - 2026-11-14
 
 ### Added
