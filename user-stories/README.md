@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `f418f2e6c8644984af4d07fef4abf974a8de15b1` (origin/main, 2026-11-14). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client payload, and Account Kit callbacks. Source-reviewed only; no runtime journeys were exercised for this catalogue.
+Source baseline: `2e6390f4aa78ef8ea0f52309df3f549930324b47` (origin/main, 2026-11-14). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client payload, and Account Kit callbacks. Source-reviewed only; no runtime journeys were exercised for this catalogue.
 
 ## Index
 
