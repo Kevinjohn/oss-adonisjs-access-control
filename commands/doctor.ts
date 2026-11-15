@@ -12,6 +12,11 @@ export default class AccessControlDoctor extends BaseCommand {
   static description = 'Check the memberships table against config/access_control.ts'
   static options = { startApp: true }
 
+  /** The Account Kit version check's input; throws when the installed manifest cannot be read. */
+  protected accountKitVersions() {
+    return accountKitVersions()
+  }
+
   @flags.string({ description: 'Restrict the row checks to one scope id' })
   declare scope?: string
 
@@ -26,7 +31,7 @@ export default class AccessControlDoctor extends BaseCommand {
         access,
         db,
         scope: this.scope,
-        accountKit: accountKitVersions(),
+        accountKit: this.accountKitVersions(),
       })
       if (this.json) {
         this.logger.log(JSON.stringify(report))

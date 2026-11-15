@@ -22,6 +22,10 @@ together. `bin/release_check.sh` refuses to release unless the dev dependency is
 tarball of the exact peer version, so a kit commit or another kit release never ships as the
 declared peer.
 
+The `luxon` peer floor is `^3.4.4`, the Luxon peer of Lucid `22.4.2`, which is the Lucid floor. The
+packed floor consumer installs `luxon 3.4.4`. Decided on 2026-11-15 under the owner's delegation;
+specification section 1.12 matches.
+
 ## Architecture and boundaries
 
 - Roles and permission keys are declared in code (`config/access_control.ts`); nothing about the

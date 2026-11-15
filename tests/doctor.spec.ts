@@ -297,6 +297,36 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     }
   })
 
+  test('the command reports a version mismatch with exit 1 and an unreadable manifest with exit 2', async ({
+    assert,
+  }) => {
+    const run = async (versions: () => { installed: string | null; expected: string }) => {
+      class Probe extends AccessControlDoctor {
+        protected accountKitVersions() {
+          return versions()
+        }
+      }
+      const kernel = new Kernel(booted.app)
+      kernel.addLoader(new ListLoader([Probe]))
+      kernel.ui.switchMode('raw')
+      const command = await kernel.exec('access-control:doctor', [])
+      const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map((l) => l.message)
+      return { exitCode: command.exitCode, logs }
+    }
+    const missing = await run(() => ({ installed: null, expected: '0.3.4' }))
+    assert.equal(missing.exitCode, 1)
+    assert.isTrue(missing.logs.some((line) => line.includes('account_kit_version: 1')))
+    const unreadable = await run(() => {
+      throw new Error('@kevinjohn/adonisjs-account-kit: cannot read package.json')
+    })
+    assert.equal(unreadable.exitCode, 2)
+    assert.isTrue(
+      unreadable.logs.some((line) =>
+        line.includes('the doctor could not run: @kevinjohn/adonisjs-account-kit: cannot read')
+      )
+    )
+  })
+
   test('a malformed --scope exits 2', async ({ assert }) => {
     const result = await exec('--scope=not-a-scope')
     assert.equal(result.exitCode, 2)
