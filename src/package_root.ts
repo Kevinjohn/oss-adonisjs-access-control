@@ -9,11 +9,14 @@ export function packageRoot(from: string, packageName: string): string {
   for (;;) {
     const file = join(directory, 'package.json')
     if (existsSync(file)) {
+      let name: unknown
       try {
-        if (JSON.parse(readFileSync(file, 'utf8')).name === packageName) return directory
-      } catch {
-        // Not a readable manifest; keep walking.
+        name = JSON.parse(readFileSync(file, 'utf8')).name
+      } catch (cause) {
+        // A manifest that cannot be read or parsed may be the one sought: never skip past it.
+        throw new RuntimeException(`${packageName}: cannot read ${file}`, { cause })
       }
+      if (name === packageName) return directory
     }
     const parent = dirname(directory)
     if (parent === directory)

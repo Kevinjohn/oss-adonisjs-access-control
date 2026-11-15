@@ -1,4 +1,8 @@
 // Specification 17.2: `access-control:doctor` over a booted application.
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { test } from '@japa/runner'
 import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import AccessControlDoctor from '../commands/doctor.js'
@@ -252,6 +256,44 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       assert.equal(versions.installed, '0.3.4')
     } finally {
       await booted.db.connection().schema.dropTableIfExists(emptyUsers)
+    }
+  })
+
+  test('Account Kit missing is a mismatch; an unreadable installed manifest cannot be checked', async ({
+    assert,
+  }) => {
+    const notFound = Object.assign(new Error('not found'), { code: 'ERR_MODULE_NOT_FOUND' })
+    assert.deepEqual(
+      accountKitVersions(() => {
+        throw notFound
+      }),
+      { installed: null, expected: '0.3.4' }
+    )
+    const other = Object.assign(new Error('bad exports'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' })
+    assert.throws(
+      () =>
+        accountKitVersions(() => {
+          throw other
+        }),
+      'bad exports'
+    )
+
+    const root = await mkdtemp(join(tmpdir(), 'access-control-doctor-'))
+    try {
+      const manifest = join(root, 'package.json')
+      const entry = pathToFileURL(join(root, 'build', 'index.js')).href
+      await mkdir(join(root, 'build'))
+      await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit",')
+      assert.throws(() => accountKitVersions(() => entry), /cannot read .*package\.json/)
+      await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit"}')
+      assert.throws(() => accountKitVersions(() => entry), /installed manifest has no version/)
+      await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit","version":"0.3.3"}')
+      assert.deepEqual(
+        accountKitVersions(() => entry),
+        { installed: '0.3.3', expected: '0.3.4' }
+      )
+    } finally {
+      await rm(root, { recursive: true, force: true })
     }
   })
 
