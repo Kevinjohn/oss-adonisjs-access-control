@@ -24,8 +24,14 @@ if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Nod
 const directory = join(root, 'tmp', 'consumers', `run_${randomUUID()}`)
 await mkdir(directory, { recursive: true })
 const processRunner = new ConsumerProcessRunner(directory)
-const onInt = () => processRunner.interrupt('SIGINT')
-const onTerm = () => processRunner.interrupt('SIGTERM')
+const onInt = () => {
+  processRunner.interrupt('SIGINT')
+  process.exitCode = processRunner.interruptedBy === 'SIGINT' ? 130 : 143
+}
+const onTerm = () => {
+  processRunner.interrupt('SIGTERM')
+  process.exitCode = processRunner.interruptedBy === 'SIGINT' ? 130 : 143
+}
 process.on('SIGINT', onInt)
 process.on('SIGTERM', onTerm)
 const floor = {
@@ -358,8 +364,6 @@ if (failure !== undefined) {
     `[consumer] Complete: ${args.has('scaffold-only') ? directory : join(directory, 'results.json')}`
   )
 }
-process.removeListener('SIGINT', onInt)
-process.removeListener('SIGTERM', onTerm)
 
 async function writeResults(): Promise<void> {
   await writeFile(

@@ -92,13 +92,16 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
   const shim = join(root, 'shim')
   const ready = join(root, 'writer_ready')
   const term = join(root, 'writer_term')
+  const stop = join(root, 'writer_stop')
   const groupLeader = join(root, 'group_leader')
   const lock = join(root, 'tmp', 'consumer-build.lock')
+  const privateTmp = join(root, 'private')
   mkdirSync(shim)
+  mkdirSync(privateTmp)
   const writer = join(root, 'writer.cjs')
   writeFileSync(
     writer,
-    `const fs = require('node:fs'); process.on('SIGTERM', () => { fs.writeFileSync(${JSON.stringify(term)}, 'TERM'); }); fs.writeFileSync(${JSON.stringify(ready + '.tmp')}, String(process.pid)); fs.renameSync(${JSON.stringify(ready + '.tmp')}, ${JSON.stringify(ready)}); setInterval(() => {}, 1000);`
+    `const fs = require('node:fs'); process.on('SIGTERM', () => { fs.writeFileSync(${JSON.stringify(term)}, 'TERM'); }); fs.writeFileSync(${JSON.stringify(ready + '.tmp')}, String(process.pid)); fs.renameSync(${JSON.stringify(ready + '.tmp')}, ${JSON.stringify(ready)}); setInterval(() => { if (fs.existsSync(${JSON.stringify(stop)})) process.exit(0); }, 20);`
   )
   const pnpm = join(shim, 'pnpm')
   writeFileSync(
@@ -117,7 +120,7 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
     process.execPath,
     ['--import', loader, cli, '--profile=floor', '--database=sqlite', '--scaffold-only'],
     {
-      env: { ...process.env, PATH: `${shim}:${process.env.PATH}` },
+      env: { ...process.env, PATH: `${shim}:${process.env.PATH}`, TMPDIR: privateTmp },
       stdio: ['ignore', 'pipe', 'pipe'],
     }
   )
@@ -143,10 +146,12 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
       await new Promise((resolve) => setTimeout(resolve, 20))
     }
   }
+  let writerAlive: (() => boolean) | undefined
   try {
     await waitFor(ready)
     const owner = readFileSync(lock, 'utf8')
     const writerPid = fixturePid(readFileSync(ready, 'utf8'))
+    writerAlive = observeWriter(writerPid)
     child.kill('SIGTERM')
     await waitFor(term)
     const leaderPid = fixturePid(readFileSync(groupLeader, 'utf8'))
@@ -162,7 +167,7 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
       await new Promise((resolve) => setTimeout(resolve, 20))
     }
     assert.equal(readFileSync(lock, 'utf8'), owner)
-    assert.doesNotThrow(() => process.kill(writerPid, 0))
+    assert.isTrue(writerAlive())
     assert.equal(readFileSync(lock, 'utf8'), owner)
     await assert.rejects(
       () =>
@@ -174,7 +179,8 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
     )
     const exit = await exitObserved
     assert.deepEqual(exit, [143, null])
-    if (groupAlive(leaderPid)) {
+    const groupAlive = observeGroup(leaderPid)
+    if (groupAlive()) {
       assert.equal(readFileSync(lock, 'utf8'), owner)
       assert.include(childError, 'could not be confirmed stopped')
     } else if (existsSync(lock)) {
@@ -182,27 +188,16 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
       assert.equal(readFileSync(lock, 'utf8'), owner)
       assert.include(childError, 'could not be confirmed stopped')
     } else {
-      assert.isFalse(groupAlive(leaderPid))
-      assert.throws(() => process.kill(writerPid, 0), /ESRCH/)
+      assert.isFalse(writerAlive())
     }
   } finally {
-    if (child.exitCode === null) child.kill('SIGKILL')
-    if (existsSync(groupLeader)) {
-      try {
-        const ownedGroup = fixturePid(readFileSync(groupLeader, 'utf8'))
-        if (groupAlive(ownedGroup)) process.kill(-ownedGroup, 'SIGKILL')
-        const teardownDeadline = Date.now() + 5000
-        while (groupAlive(ownedGroup)) {
-          if (Date.now() >= teardownDeadline)
-            assert.fail('Owned fixture group did not stop before removal')
-          await new Promise((resolve) => setTimeout(resolve, 20))
-        }
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') assert.fail(String(error))
-      }
-    }
-    await exitObserved.catch(() => {})
-    rmSync(root, { recursive: true, force: true })
+    writeFileSync(stop, '')
+    await closeOwnedCli(child)
+    if (!writerAlive && existsSync(ready))
+      writerAlive = observeWriter(fixturePid(readFileSync(ready, 'utf8')))
+    const writerStopped = writerAlive ? await waitUntilStopped(writerAlive, 5000) : false
+    if (writerStopped) rmSync(root, { recursive: true, force: true })
+    else assert.fail('Fixture writer remained executable; retained its private directory')
   }
 }).timeout(25_000)
 
@@ -212,6 +207,97 @@ function fixturePid(record: string): number {
   const pid = Number(value)
   if (!Number.isSafeInteger(pid) || pid <= 1) throw new Error('Invalid fixture process record')
   return pid
+}
+
+function observeGroup(pid: number): () => boolean {
+  let retired = false
+  return () => {
+    if (retired) return false
+    try {
+      process.kill(-pid, 0)
+      return true
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ESRCH') {
+        retired = true
+        return false
+      }
+      throw error
+    }
+  }
+}
+
+function observeWriter(pid: number): () => boolean {
+  let retired = false
+  return () => {
+    if (retired) return false
+    try {
+      process.kill(pid, 0)
+      if (process.platform === 'linux') {
+        const state = readFileSync(`/proc/${pid}/stat`, 'utf8').match(/^\d+ \(.+\) ([A-Z])/)?.[1]
+        if (state === 'Z' || state === 'X') retired = true
+      }
+      return !retired
+    } catch (error) {
+      if (
+        (error as NodeJS.ErrnoException).code === 'ESRCH' ||
+        (error as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
+        retired = true
+        return false
+      }
+      throw error
+    }
+  }
+}
+
+async function waitUntilStopped(isAlive: () => boolean, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (isAlive()) {
+    if (Date.now() >= deadline) return false
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+  return true
+}
+
+async function closeOwnedCli(child: ReturnType<typeof spawn>): Promise<void> {
+  const closed = () =>
+    (child.exitCode !== null || child.signalCode !== null) &&
+    (child.stdout?.closed ?? true) &&
+    (child.stderr?.closed ?? true)
+  const waitClose = (timeoutMs: number) =>
+    new Promise<void>((resolve, reject) => {
+      if (closed()) return resolve()
+      const timer = setTimeout(() => {
+        child.removeListener('close', onClose)
+        child.removeListener('error', onError)
+        reject(new Error('Owned consumer CLI did not close'))
+      }, timeoutMs)
+      const onClose = () => {
+        clearTimeout(timer)
+        child.removeListener('error', onError)
+        resolve()
+      }
+      const onError = (error: Error) => {
+        clearTimeout(timer)
+        child.removeListener('close', onClose)
+        reject(error)
+      }
+      child.once('close', onClose)
+      child.once('error', onError)
+    })
+  if (closed()) return
+  const stopped = waitClose(12_000)
+  if (child.exitCode === null && child.signalCode === null) {
+    child.kill('SIGTERM')
+    child.kill('SIGINT')
+  }
+  try {
+    await stopped
+  } catch {
+    const killed = waitClose(5000)
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+    await killed
+  }
 }
 
 test('incomplete fixture records never select a signal target', ({ assert }) => {
@@ -231,16 +317,6 @@ test('incomplete fixture records never select a signal target', ({ assert }) => 
   assert.equal(result.status, 0, result.stderr)
 })
 
-function groupAlive(pid: number): boolean {
-  try {
-    process.kill(-pid, 0)
-    return true
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ESRCH') return false
-    throw error
-  }
-}
-
 test('the real CLI releases a reaped interrupted producer and permits a retry', async ({
   assert,
 }) => {
@@ -249,17 +325,20 @@ test('the real CLI releases a reaped interrupted producer and permits a retry', 
   const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url))
   const shim = join(root, 'shim')
   const ready = join(root, 'ready')
+  const stop = join(root, 'stop')
   const retryMode = join(root, 'retry_mode')
   const retryStarted = join(root, 'retry_started')
   const lock = join(root, 'tmp', 'consumer-build.lock')
+  const privateTmp = join(root, 'private')
   mkdirSync(shim)
+  mkdirSync(privateTmp)
   cpSync(join(repositoryRoot, 'bin'), join(root, 'bin'), { recursive: true })
   cpSync(join(repositoryRoot, 'package.json'), join(root, 'package.json'))
   symlinkSync(join(repositoryRoot, 'node_modules'), join(root, 'node_modules'), 'dir')
   const pnpm = join(shim, 'pnpm')
   writeFileSync(
     pnpm,
-    `#!/bin/sh\nif [ "$1" = build ]; then\n  if [ -f ${JSON.stringify(retryMode)} ]; then\n    touch ${JSON.stringify(retryStarted)}\n    exit 47\n  fi\n  printf '%s' "$$" > ${JSON.stringify(ready + '.tmp')}\n  mv ${JSON.stringify(ready + '.tmp')} ${JSON.stringify(ready)}\n  trap 'exit 143' TERM\n  while :; do sleep 1; done\nfi\nexit 9\n`
+    `#!/bin/sh\nif [ "$1" = build ]; then\n  if [ -f ${JSON.stringify(retryMode)} ]; then\n    touch ${JSON.stringify(retryStarted)}\n    exit 47\n  fi\n  trap 'exit 143' TERM\n  printf '%s' "$$" > ${JSON.stringify(ready + '.tmp')}\n  mv ${JSON.stringify(ready + '.tmp')} ${JSON.stringify(ready)}\n  while :; do\n    if [ -f ${JSON.stringify(stop)} ]; then exit 0; fi\n    sleep 1\n  done\nfi\nexit 9\n`
   )
   chmodSync(pnpm, 0o755)
   const loader = fileURLToPath(import.meta.resolve('@poppinss/ts-exec'))
@@ -275,7 +354,7 @@ test('the real CLI releases a reaped interrupted producer and permits a retry', 
         '--scaffold-only',
       ],
       {
-        env: { ...process.env, PATH: `${shim}:${process.env.PATH}` },
+        env: { ...process.env, PATH: `${shim}:${process.env.PATH}`, TMPDIR: privateTmp },
         stdio: ['ignore', 'pipe', 'pipe'],
       }
     )
@@ -297,36 +376,42 @@ test('the real CLI releases a reaped interrupted producer and permits a retry', 
     return { child, closed, stderr: () => stderr }
   }
   const first = launch()
-  let producer: number | undefined
+  let retry: ReturnType<typeof launch> | undefined
+  let firstGroupAlive: (() => boolean) | undefined
   try {
     const deadline = Date.now() + 5000
     while (!existsSync(ready)) {
       if (Date.now() >= deadline) throw new Error('Producer did not publish readiness')
       await new Promise((resolve) => setTimeout(resolve, 20))
     }
-    producer = fixturePid(readFileSync(ready, 'utf8'))
-    assert.isTrue(groupAlive(producer))
+    firstGroupAlive = observeGroup(fixturePid(readFileSync(ready, 'utf8')))
+    assert.isTrue(firstGroupAlive())
     assert.isTrue(existsSync(lock))
     first.child.kill('SIGTERM')
     assert.equal(await first.closed, 143)
     assert.include(first.stderr(), 'Interrupted by SIGTERM')
-    assert.isFalse(groupAlive(producer))
+    assert.isFalse(firstGroupAlive())
     assert.isFalse(existsSync(lock))
     writeFileSync(retryMode, '')
-    const retry = launch()
+    retry = launch()
     assert.equal(await retry.closed, 1)
     assert.isTrue(existsSync(retryStarted))
     assert.include(retry.stderr(), 'exited with code 47')
     assert.isFalse(existsSync(lock))
   } finally {
-    if (first.child.exitCode === null) first.child.kill('SIGKILL')
-    if (producer && groupAlive(producer)) process.kill(-producer, 'SIGKILL')
-    await first.closed.catch(() => {})
-    rmSync(root, { recursive: true, force: true })
+    writeFileSync(stop, '')
+    await closeOwnedCli(first.child)
+    if (retry) await closeOwnedCli(retry.child)
+    if (!firstGroupAlive && existsSync(ready))
+      firstGroupAlive = observeGroup(fixturePid(readFileSync(ready, 'utf8')))
+    const stopped = firstGroupAlive ? await waitUntilStopped(firstGroupAlive, 5000) : false
+    if (stopped) rmSync(root, { recursive: true, force: true })
+    else assert.fail('First fixture group remained active; retained its private directory')
   }
 }).timeout(25_000)
 
 test('the real CLI drains a long preflight recovery diagnostic', async ({ assert }) => {
+  if (process.platform === 'win32') return
   const root = mkdtempSync(join(tmpdir(), 'consumer_diagnostic_test_'))
   const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url))
   const lock = join(root, 'tmp', 'consumer-build.lock')
@@ -335,15 +420,36 @@ test('the real CLI drains a long preflight recovery diagnostic', async ({ assert
   cpSync(join(repositoryRoot, 'package.json'), join(root, 'package.json'))
   symlinkSync(join(repositoryRoot, 'node_modules'), join(root, 'node_modules'), 'dir')
   writeFileSync(lock, 'owner=' + 'x'.repeat(2_000_000))
+  const fault = join(root, 'signal_drain.mjs')
+  writeFileSync(
+    fault,
+    `const original = console.error; let sent = false; console.error = (...args) => { if (!sent) { sent = true; process.kill(process.pid, 'SIGTERM'); } original(...args); }; process.on('SIGTERM', () => process.stdout.write('first-signal-observed\\n')); process.on('SIGINT', () => process.stdout.write('second-listener-count:' + process.listenerCount('SIGINT') + '\\n'));`
+  )
   const loader = fileURLToPath(import.meta.resolve('@poppinss/ts-exec'))
   const child = spawn(
     process.execPath,
-    ['--import', loader, join(root, 'bin', 'test_consumer.ts'), '--profile=floor'],
+    [
+      '--import',
+      fault,
+      '--import',
+      loader,
+      join(root, 'bin', 'test_consumer.ts'),
+      '--profile=floor',
+    ],
     { stdio: ['ignore', 'pipe', 'pipe'] }
   )
   let stderr = ''
   child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()))
-  child.stdout.on('data', () => {})
+  child.stderr.pause()
+  let stdout = ''
+  child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()))
+  const waitForOutput = async (marker: string) => {
+    const deadline = Date.now() + 5000
+    while (!stdout.includes(marker)) {
+      if (Date.now() >= deadline) throw new Error(`Consumer CLI did not report ${marker}`)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+  }
   const closed = new Promise<number | null>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Consumer CLI did not close')), 15_000)
     child.once('error', (error) => {
@@ -355,14 +461,19 @@ test('the real CLI drains a long preflight recovery diagnostic', async ({ assert
       resolve(code)
     })
   })
+  void closed.catch(() => {})
   try {
-    assert.equal(await closed, 1)
+    await waitForOutput('first-signal-observed')
+    child.kill('SIGINT')
+    await waitForOutput('second-listener-count:2')
+    child.stderr.resume()
+    assert.equal(await closed, 143)
     assert.include(stderr, 'owner=' + 'x'.repeat(2_000_000))
     assert.include(stderr, 'Inspect the owner before removing a stale lock.')
     assert.isTrue(existsSync(lock))
   } finally {
-    if (child.exitCode === null) child.kill('SIGKILL')
-    await closed.catch(() => {})
+    child.stderr.resume()
+    await closeOwnedCli(child)
     rmSync(root, { recursive: true, force: true })
   }
 }).timeout(20_000)
@@ -376,6 +487,7 @@ test('the real CLI retains its original claim when group proof is unavailable', 
   const shim = join(root, 'shim')
   const privateTmp = join(root, 'private')
   const ready = join(root, 'ready')
+  const stop = join(root, 'stop')
   const lock = join(root, 'tmp', 'consumer-build.lock')
   mkdirSync(shim)
   mkdirSync(privateTmp)
@@ -385,7 +497,7 @@ test('the real CLI retains its original claim when group proof is unavailable', 
   const pnpm = join(shim, 'pnpm')
   writeFileSync(
     pnpm,
-    `#!/bin/sh\nif [ "$1" = build ]; then\n  printf '%s' "$$" > ${JSON.stringify(ready + '.tmp')}\n  mv ${JSON.stringify(ready + '.tmp')} ${JSON.stringify(ready)}\n  trap 'exit 143' TERM\n  while :; do sleep 1; done\nfi\nexit 9\n`
+    `#!/bin/sh\nif [ "$1" = build ]; then\n  trap 'exit 143' TERM\n  printf '%s' "$$" > ${JSON.stringify(ready + '.tmp')}\n  mv ${JSON.stringify(ready + '.tmp')} ${JSON.stringify(ready)}\n  while :; do\n    if [ -f ${JSON.stringify(stop)} ]; then exit 0; fi\n    sleep 1\n  done\nfi\nexit 9\n`
   )
   chmodSync(pnpm, 0o755)
   const fault = join(root, 'probe_fault.mjs')
@@ -426,25 +538,25 @@ test('the real CLI retains its original claim when group proof is unavailable', 
     })
   })
   void closed.catch(() => {})
-  let producer: number | undefined
+  let producerGroupAlive: (() => boolean) | undefined
   try {
     const deadline = Date.now() + 5000
     while (!existsSync(ready)) {
       if (Date.now() >= deadline) throw new Error('Producer did not publish readiness')
       await new Promise((resolve) => setTimeout(resolve, 20))
     }
-    producer = fixturePid(readFileSync(ready, 'utf8'))
+    producerGroupAlive = observeGroup(fixturePid(readFileSync(ready, 'utf8')))
     const owner = readFileSync(lock, 'utf8')
     child.kill('SIGTERM')
     assert.equal(await closed, 143)
-    assert.isFalse(groupAlive(producer))
-    assert.equal(readFileSync(lock, 'utf8'), owner)
+    assert.isFalse(producerGroupAlive())
     assert.include(stderr, 'could not be confirmed stopped')
     assert.include(stderr, owner)
     const retained = stderr.match(/Retained .+ and (.+)\. Inspect/)?.[1]
     assert.isDefined(retained)
     assert.isTrue(existsSync(retained!))
     assert.isTrue(retained!.startsWith(privateTmp))
+    assert.equal(readFileSync(lock, 'utf8'), owner)
     await assert.rejects(
       () =>
         consumerArtifact(root, undefined, {
@@ -454,10 +566,13 @@ test('the real CLI retains its original claim when group proof is unavailable', 
       /Default consumer build lock exists/
     )
   } finally {
-    if (child.exitCode === null) child.kill('SIGKILL')
-    if (producer && groupAlive(producer)) process.kill(-producer, 'SIGKILL')
-    await closed.catch(() => {})
-    rmSync(root, { recursive: true, force: true })
+    writeFileSync(stop, '')
+    await closeOwnedCli(child)
+    if (!producerGroupAlive && existsSync(ready))
+      producerGroupAlive = observeGroup(fixturePid(readFileSync(ready, 'utf8')))
+    const stopped = producerGroupAlive ? await waitUntilStopped(producerGroupAlive, 5000) : false
+    if (stopped) rmSync(root, { recursive: true, force: true })
+    else assert.fail('Fixture group remained active; retained its private directory')
   }
 }).timeout(25_000)
 
@@ -587,24 +702,37 @@ test('log write failure after producer exit releases the build lock', async ({ a
     new URL('../../bin/helpers/consumer_process.ts', import.meta.url)
   )
   const source = `import { ConsumerProcessRunner } from ${JSON.stringify(runnerModule)}; import { consumerArtifact } from ${JSON.stringify(helper)}; const runner = new ConsumerProcessRunner(${JSON.stringify(logFile)}); try { await consumerArtifact(${JSON.stringify(root)}, undefined, runner) } catch (error) { console.error(error); process.exitCode = 1 }`
-  try {
-    const child = spawn(
-      process.execPath,
-      ['--import', loader, '--input-type=module', '--eval', source],
-      {
-        env: { ...process.env, PATH: `${shim}:${process.env.PATH}` },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      }
-    )
-    let stderr = ''
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString()
+  const child = spawn(
+    process.execPath,
+    ['--import', loader, '--input-type=module', '--eval', source],
+    {
+      env: { ...process.env, PATH: `${shim}:${process.env.PATH}` },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }
+  )
+  let stderr = ''
+  child.stderr.on('data', (chunk: Buffer) => {
+    stderr += chunk.toString()
+  })
+  child.stdout.on('data', () => {})
+  const closed = new Promise<number | null>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Consumer log fixture did not close')), 15_000)
+    child.once('error', (error) => {
+      clearTimeout(timer)
+      reject(error)
     })
-    const exit = await new Promise<number | null>((resolve) => child.once('exit', resolve))
-    assert.equal(exit, 1)
+    child.once('close', (code) => {
+      clearTimeout(timer)
+      resolve(code)
+    })
+  })
+  void closed.catch(() => {})
+  try {
+    assert.equal(await closed, 1)
     assert.include(stderr, 'ENOTDIR')
     assert.isFalse(existsSync(lock))
   } finally {
+    await closeOwnedCli(child)
     rmSync(root, { recursive: true, force: true })
   }
-})
+}).timeout(20_000)

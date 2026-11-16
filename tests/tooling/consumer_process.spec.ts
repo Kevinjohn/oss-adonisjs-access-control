@@ -40,7 +40,10 @@ test('a late signal cannot target a confirmed stopped consumer group', async ({ 
       await new Promise((resolve) => setTimeout(resolve, 20))
     }
     process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
-      if (pid < 0 && signal !== 0) observedGroupSignals++
+      if (pid < 0 && signal !== 0) {
+        observedGroupSignals++
+        return true
+      }
       return originalKill(pid, signal)
     }) as typeof process.kill
     runner.interrupt('SIGTERM')
@@ -63,11 +66,12 @@ test('a second signal accelerates a still-owned consumer group', async ({ assert
   const shim = join(root, 'shim')
   const ready = join(root, 'ready')
   const term = join(root, 'term')
+  const stop = join(root, 'stop')
   mkdirSync(shim)
   const pnpm = join(shim, 'pnpm')
   writeFileSync(
     pnpm,
-    `#!/bin/sh\nprintf '%s' "$$" > ${JSON.stringify(ready + '.tmp')}\nmv ${JSON.stringify(ready + '.tmp')} ${JSON.stringify(ready)}\ntrap 'touch ${term}' TERM\nwhile :; do sleep 1; done\n`
+    `#!/bin/sh\ntrap 'touch ${term}' TERM\nprintf READY > ${JSON.stringify(ready + '.tmp')}\nmv ${JSON.stringify(ready + '.tmp')} ${JSON.stringify(ready)}\nwhile :; do\n  if [ -f ${JSON.stringify(stop)} ]; then exit 0; fi\n  sleep 1\ndone\n`
   )
   chmodSync(pnpm, 0o755)
   const runner = new ConsumerProcessRunner(root)
@@ -76,8 +80,10 @@ test('a second signal accelerates a still-owned consumer group', async ({ assert
     PATH: `${shim}:${process.env.PATH}`,
   })
   void running.catch(() => {})
-  let group: number | undefined
   let escalationTimer: ReturnType<typeof setTimeout> | undefined
+  const originalKill = process.kill
+  const unexpectedSignals: number[] = []
+  let groupRetired = false
   try {
     const waitFor = async (path: string) => {
       const deadline = Date.now() + 5000
@@ -87,10 +93,21 @@ test('a second signal accelerates a still-owned consumer group', async ({ assert
       }
     }
     await waitFor(ready)
-    const record = readFileSync(ready, 'utf8').trim()
-    group = Number(record)
-    if (!/^[0-9]+$/.test(record) || !Number.isSafeInteger(group) || group <= 1)
-      throw new Error('Invalid fixture process group')
+    assert.equal(readFileSync(ready, 'utf8'), 'READY')
+    const ownedGroup = runner.unconfirmedProducer?.pid
+    if (!ownedGroup || !Number.isSafeInteger(ownedGroup) || ownedGroup <= 1)
+      throw new Error('Runner did not establish a safe owned group')
+    process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
+      if (
+        signal !== 0 &&
+        (pid <= 0 || !Number.isSafeInteger(pid)) &&
+        (groupRetired || pid !== -ownedGroup)
+      ) {
+        unexpectedSignals.push(pid)
+        return true
+      }
+      return originalKill(pid, signal)
+    }) as typeof process.kill
     runner.interrupt('SIGTERM')
     await waitFor(term)
     runner.interrupt('SIGINT')
@@ -104,29 +121,18 @@ test('a second signal accelerates a still-owned consumer group', async ({ assert
           ))
       ),
     ])
+    groupRetired = true
     assert.equal(runner.interruptedBy, 'SIGTERM')
     assert.isUndefined(runner.unconfirmedProducer)
+    assert.deepEqual(unexpectedSignals, [])
   } finally {
     if (escalationTimer) clearTimeout(escalationTimer)
-    if (group) {
-      try {
-        process.kill(-group, 'SIGKILL')
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') assert.fail(String(error))
-      }
-      const deadline = Date.now() + 5000
-      while (true) {
-        try {
-          process.kill(-group, 0)
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code === 'ESRCH') break
-          assert.fail(String(error))
-        }
-        if (Date.now() >= deadline) assert.fail('Fixture group did not stop before removal')
-        await new Promise((resolve) => setTimeout(resolve, 20))
-      }
-    }
+    writeFileSync(stop, '')
+    if (runner.unconfirmedProducer === undefined) groupRetired = true
+    runner.interrupt('SIGTERM')
+    runner.interrupt('SIGINT')
     await running.catch(() => {})
-    rmSync(root, { recursive: true, force: true })
+    process.kill = originalKill
+    if (runner.unconfirmedProducer === undefined) rmSync(root, { recursive: true, force: true })
   }
 }).timeout(15_000)
