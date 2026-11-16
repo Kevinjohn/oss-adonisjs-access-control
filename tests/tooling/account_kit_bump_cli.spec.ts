@@ -1,7 +1,17 @@
 import { test } from '@japa/runner'
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import {
+  chmod,
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat as fileStat,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -78,9 +88,14 @@ async function fixture(version: '0.3.3' | '0.3.4') {
   const preload = join(root, 'preload.cjs')
   await writeFile(
     preload,
-    `globalThis.fetch = async (url) => { if (process.env.KIT_FETCH_FAIL === '1') throw new Error('fixture download failed'); return ({ ok: true, arrayBuffer: async () => Uint8Array.from(Buffer.from(url.includes('v0.3.4') ? ${JSON.stringify([...releases['0.3.4']])} : ${JSON.stringify([...releases['0.3.3']])})).buffer }) }`
+    "globalThis.fetch = async (url) => { if (process.env.KIT_FETCH_FAIL === '1') throw new Error('fixture download failed'); const source = url.includes('v0.3.4') ? process.env.KIT_TARGET_ARCHIVE : process.env.KIT_SOURCE_ARCHIVE; const bytes = Uint8Array.from(Buffer.from(source, 'base64')); return { ok: true, arrayBuffer: async () => bytes.buffer }; }"
   )
-  const env = { ...process.env, PATH: `${shim}:${process.env.PATH}` }
+  const env = {
+    ...process.env,
+    PATH: `${shim}:${process.env.PATH}`,
+    KIT_SOURCE_ARCHIVE: releases['0.3.3'].toString('base64'),
+    KIT_TARGET_ARCHIVE: releases['0.3.4'].toString('base64'),
+  }
   const invoke = (extra: string[] = [], overrides: NodeJS.ProcessEnv = {}) =>
     run(process.execPath, ['--import', loader, '--require', preload, ...extra, script, '0.3.4'], {
       cwd: root,
@@ -191,7 +206,6 @@ test('fresh command creates a verified plan and rewrites live fields', async ({ 
 })
 
 test('fresh bump resumes after interruption during a sibling file write', async ({ assert }) => {
-  const { stat } = await import('node:fs/promises')
   const setup = await fixture('0.3.3')
   try {
     await chmod(join(setup.root, 'README.md'), 0o755)
@@ -225,12 +239,77 @@ test('fresh bump resumes after interruption during a sibling file write', async 
       await readFile(join(setup.root, 'pnpm-lock.yaml'), 'utf8'),
       fact('0.3.4').integrity
     )
-    const readmeStat = await stat(join(setup.root, 'README.md'))
+    const readmeStat = await fileStat(join(setup.root, 'README.md'))
     assert.equal(readmeStat.mode & 0o777, 0o755)
     await assert.rejects(
       () => readFile(join(setup.root, 'tmp/account-kit-bump-plan.json')),
       /ENOENT/
     )
+  } finally {
+    await discard(setup)
+  }
+})
+
+test('final staged check rejects a same-byte replacement and preserves later files', async ({
+  assert,
+}) => {
+  const setup = await fixture('0.3.3')
+  try {
+    const packagePath = join(setup.root, 'package.json')
+    const original = await fileStat(packagePath, { bigint: true })
+    await writeFile(join(setup.root, 'package.replacement'), setup.files['package.json'])
+    const fault = join(setup.root, 'same_bytes_replacement.cjs')
+    await writeFile(
+      fault,
+      "const fs = require('node:fs/promises'); const fssync = require('node:fs'); const path = require('node:path'); const mod = require('node:module'); const originalOpen = fs.open; let replaced = false; fs.open = async (name, ...args) => { if (!replaced && path.resolve(String(name)) === path.resolve('package.json') && fssync.readdirSync('.').some((entry) => entry.startsWith('package.json.account-kit-'))) { replaced = true; await fs.rename(name, String(name) + '.original'); await fs.rename('package.replacement', name); } return originalOpen(name, ...args); }; mod.syncBuiltinESMExports();"
+    )
+    let failure: { stderr?: string; stdout?: string } | undefined
+    try {
+      await setup.invoke(['--require', fault])
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.isDefined(failure)
+    assert.match(failure?.stderr ?? '', /Planned file changed during bump: package\.json/)
+    assert.notInclude(failure?.stdout ?? '', 'Add the changelog entry')
+    const replaced = await fileStat(packagePath, { bigint: true })
+    assert.notEqual(replaced.ino, original.ino)
+    assert.equal(await readFile(packagePath, 'utf8'), setup.files['package.json'])
+    assert.equal(
+      await readFile(join(setup.root, 'pnpm-lock.yaml'), 'utf8'),
+      setup.files['pnpm-lock.yaml']
+    )
+    assert.ok(await readFile(join(setup.root, 'tmp/account-kit-bump-plan.json'), 'utf8'))
+  } finally {
+    await discard(setup)
+  }
+})
+
+test('apply rejects a hard-linked planned file before modifying other files', async ({
+  assert,
+}) => {
+  const setup = await fixture('0.3.3')
+  try {
+    await link(join(setup.root, 'README.md'), join(setup.root, 'README.shared'))
+    let failure: { stderr?: string; stdout?: string } | undefined
+    try {
+      await setup.invoke()
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(
+      failure?.stderr ?? '',
+      /Planned path is not an independent regular file: .*README\.md/
+    )
+    assert.notInclude(failure?.stdout ?? '', 'Add the changelog entry')
+    assert.equal(
+      await readFile(join(setup.root, 'package.json'), 'utf8'),
+      setup.files['package.json']
+    )
+    assert.equal(await readFile(join(setup.root, 'README.md'), 'utf8'), setup.files['README.md'])
+    const linkedStat = await fileStat(join(setup.root, 'README.md'))
+    assert.equal(linkedStat.nlink, 2)
+    assert.ok(await readFile(join(setup.root, 'tmp/account-kit-bump-plan.json'), 'utf8'))
   } finally {
     await discard(setup)
   }
@@ -411,6 +490,45 @@ test('ordinary staged write failure removes its own scratch file and preserves t
     assert.ok(await readFile(join(setup.root, 'tmp/account-kit-bump-plan.json'), 'utf8'))
     await setup.invoke([], { KIT_OFFLINE: '1' })
     assert.include(await readFile(join(setup.root, 'package.json'), 'utf8'), fact('0.3.4').url)
+  } finally {
+    await discard(setup)
+  }
+})
+
+test('failed exclusive staging leaves an existing scratch file untouched', async ({ assert }) => {
+  const setup = await fixture('0.3.3')
+  try {
+    const interrupt = join(setup.root, 'interrupt.cjs')
+    await writeFile(
+      interrupt,
+      `const fs = require('node:fs/promises'); const mod = require('node:module'); const originalOpen = fs.open; fs.open = async (...args) => { const handle = await originalOpen(...args); if (String(args[0]).includes('package.json.account-kit-')) process.exit(73); return handle }; mod.syncBuiltinESMExports();`
+    )
+    try {
+      await setup.invoke(['--require', interrupt])
+    } catch {
+      /* planned files remain unchanged after the staged interruption */
+    }
+    const collision = join(setup.root, 'package.json.account-kit-collision.tmp')
+    const sentinel = 'owned by another attempt\n'
+    await writeFile(collision, sentinel)
+    const fixedId = join(setup.root, 'fixed_random_id.cjs')
+    await writeFile(
+      fixedId,
+      "const crypto = require('node:crypto'); const mod = require('node:module'); crypto.randomUUID = () => 'collision'; mod.syncBuiltinESMExports();"
+    )
+    let failure: { stderr?: string } | undefined
+    try {
+      await setup.invoke(['--require', fixedId], { KIT_OFFLINE: '1' })
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(failure?.stderr ?? '', /EEXIST/)
+    assert.equal(await readFile(collision, 'utf8'), sentinel)
+    assert.equal(
+      await readFile(join(setup.root, 'package.json'), 'utf8'),
+      setup.files['package.json']
+    )
+    assert.ok(await readFile(join(setup.root, 'tmp/account-kit-bump-plan.json'), 'utf8'))
   } finally {
     await discard(setup)
   }
