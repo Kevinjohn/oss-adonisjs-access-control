@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Pure rule successes return independent results, so one caller cannot change another caller's
+  later decision.
 - Client payload types expose stored historical roles as strings, matching the payload returned
   while a role migration is pending.
 - `memberships.add` with the actor as the user answers `E_ACCESS_CONTROL_ALREADY_MEMBER`, as the

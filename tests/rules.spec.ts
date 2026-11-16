@@ -27,6 +27,20 @@ const withoutOwner = defineAccessControl({
 const ALLOWED = { allowed: true } as const
 const denied = (code: string) => ({ allowed: false, code: `E_ACCESS_CONTROL_${code}` })
 
+test('successful rule results are independent across instances', ({ assert }) => {
+  const first = withOwner.canManage({ actorRole: 'admin', targetRole: 'viewer', isSelf: false })
+  assert.isTrue(first.allowed)
+  first.allowed = false
+  const second = withoutOwner.canAssign({
+    actorRole: 'admin',
+    targetRole: 'viewer',
+    nextRole: 'editor',
+    isSelf: false,
+  })
+  assert.deepEqual(second, { allowed: true })
+  assert.isTrue(second.allowed)
+})
+
 test.group('rules: rank, can and permissionsFor (spec 3)', () => {
   test('rank is the index in roles, -1 when unknown', ({ assert }) => {
     assert.equal(withOwner.rank('viewer'), 0)

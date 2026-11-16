@@ -9,7 +9,6 @@ export interface RoleMatrix {
   minimumRole: ReadonlyMap<string, string>
 }
 
-const allowed: RuleResult = { allowed: true }
 const deny = (
   code: 'UNKNOWN_ROLE' | 'SELF_MANAGEMENT' | 'FORBIDDEN' | 'OWNER_PROTECTED' | 'RANK_TOO_LOW'
 ): RuleResult => ({
@@ -55,7 +54,7 @@ export function canManage(
   if (matrix.ownerRole !== undefined && input.targetRole === matrix.ownerRole)
     return deny('OWNER_PROTECTED')
   if (targetRank > actorRank) return deny('RANK_TOO_LOW')
-  return allowed
+  return { allowed: true }
 }
 
 /** Assignment (3.2): `canManage` first, then the next role's own rows. */
@@ -70,7 +69,7 @@ export function canAssign(
   if (matrix.ownerRole !== undefined && input.nextRole === matrix.ownerRole)
     return deny('OWNER_PROTECTED')
   if (nextRank > rank(matrix, input.actorRole)) return deny('RANK_TOO_LOW')
-  return allowed
+  return { allowed: true }
 }
 
 /**
