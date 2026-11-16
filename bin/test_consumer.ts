@@ -21,23 +21,17 @@ const database = args.get('database') ?? 'all'
 if (!['all', 'floor', 'latest'].includes(profile) || !['all', 'sqlite', 'pg'].includes(database))
   throw new Error('Use --profile=floor|latest|all --database=sqlite|pg|all')
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Node 24')
-const snapshot = await consumerArtifact(root, args.get('package'))
-const artifact = snapshot.path
-process.once('exit', snapshot.cleanup)
-const digest = createHash('sha256')
-  .update(await readFile(artifact))
-  .digest('hex')
-const directory = join(
-  root,
-  'tmp',
-  'consumers',
-  `${digest.slice(0, 12)}_${randomUUID().slice(0, 8)}`
-)
+const directory = join(root, 'tmp', 'consumers', `run_${randomUUID()}`)
 await mkdir(directory, { recursive: true })
 const processRunner = new ConsumerProcessRunner(directory)
-for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(signal, () => processRunner.interrupt(signal))
-}
+const onInt = () => processRunner.interrupt('SIGINT')
+const onTerm = () => processRunner.interrupt('SIGTERM')
+process.on('SIGINT', onInt)
+process.on('SIGTERM', onTerm)
+process.once('exit', () => {
+  process.removeListener('SIGINT', onInt)
+  process.removeListener('SIGTERM', onTerm)
+})
 const floor = {
   '@adonisjs/core': '7.0.0',
   '@adonisjs/auth': '10.0.0',
@@ -46,14 +40,46 @@ const floor = {
   'luxon': '3.4.4',
   'typescript': '5.9.3',
 }
-const packedManifest = JSON.parse(
-  execFileSync('tar', ['-xOf', artifact, 'package/package.json'], { encoding: 'utf8' })
-)
-const ranges: Record<string, string> = packedManifest.peerDependencies
-for (const [name, version] of Object.entries(floor)) {
-  const declaredFloor = ranges[name]?.match(/\d+\.\d+\.\d+/)?.[0]
-  if (declaredFloor !== version)
-    throw new Error(`Floor selection mismatch for ${name}: ${version} vs declared ${declaredFloor}`)
+let snapshot: Awaited<ReturnType<typeof consumerArtifact>> | undefined
+let artifact: string
+let digest: string
+let ranges: Record<string, string>
+let archiveCleaned = false
+let cleanupArchive = () => {}
+try {
+  snapshot = await consumerArtifact(root, args.get('package'), processRunner)
+  artifact = snapshot.path
+  const prepared = snapshot
+  cleanupArchive = () => {
+    if (archiveCleaned) return
+    prepared.cleanup()
+    archiveCleaned = true
+  }
+  process.once('exit', cleanupArchive)
+  digest = createHash('sha256')
+    .update(await readFile(artifact))
+    .digest('hex')
+  const packedManifest = JSON.parse(
+    execFileSync('tar', ['-xOf', artifact, 'package/package.json'], { encoding: 'utf8' })
+  )
+  ranges = packedManifest.peerDependencies
+  for (const [name, version] of Object.entries(floor)) {
+    const declaredFloor = ranges[name]?.match(/\d+\.\d+\.\d+/)?.[0]
+    if (declaredFloor !== version)
+      throw new Error(
+        `Floor selection mismatch for ${name}: ${version} vs declared ${declaredFloor}`
+      )
+  }
+  if (processRunner.interruptedBy) throw new Error(`Interrupted by ${processRunner.interruptedBy}`)
+} catch (error) {
+  console.error(`[consumer] FAILED: ${describeFailure(error)}`)
+  process.exit(
+    processRunner.interruptedBy === 'SIGINT'
+      ? 130
+      : processRunner.interruptedBy === 'SIGTERM'
+        ? 143
+        : 1
+  )
 }
 const results: Array<Record<string, unknown>> = []
 let ownsPostgres = false
@@ -343,12 +369,25 @@ if (process.exitCode === undefined) {
     }
   }
 }
-if (process.exitCode === undefined) {
+try {
+  cleanupArchive()
+} catch (error) {
+  console.error(`[consumer] archive cleanup failed: ${describeFailure(error)}`)
+  process.exitCode ??=
+    processRunner.interruptedBy === 'SIGINT'
+      ? 130
+      : processRunner.interruptedBy === 'SIGTERM'
+        ? 143
+        : 1
+}
+if (process.exitCode === undefined && !processRunner.interruptedBy) {
   console.log(
     `[consumer] Complete: ${args.has('scaffold-only') ? directory : join(directory, 'results.json')}`
   )
-  if (processRunner.interruptedBy === 'SIGINT') process.exitCode = 130
-  else if (processRunner.interruptedBy === 'SIGTERM') process.exitCode = 143
+}
+if (process.exitCode === undefined && processRunner.interruptedBy) {
+  console.error(`[consumer] FAILED: Interrupted by ${processRunner.interruptedBy}`)
+  process.exitCode = processRunner.interruptedBy === 'SIGINT' ? 130 : 143
 }
 
 async function writeResults(): Promise<void> {
