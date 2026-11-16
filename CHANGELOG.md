@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Resume interrupted Account Kit bumps from a checked rewrite plan and preserve scan failures.
+
 - List the membership, rank and admission checks that single-scope invitation adapters must
   preserve, alongside acceptance transaction requirements.
 
