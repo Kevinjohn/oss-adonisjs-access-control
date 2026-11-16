@@ -78,3 +78,33 @@ for (const operation of ['add', 'changeRole', 'setStatus', 'grant', 'acceptInvit
     }
   })
 }
+
+test('acceptInvitation captures the recipient before its first parent lookup', async ({
+  assert,
+}) => {
+  const f = await membershipFixture({ scopeKeyType: 'string' })
+  try {
+    const scopeId = await f.createScope()
+    const original = await f.createUser()
+    const replacement = await f.createUser()
+    await f.runner.transaction(f.db, async (trx) => {
+      const input = { scopeId, userId: original, role: 'editor', invitationId: 55, trx }
+      const pending = f.memberships.acceptInvitation(input)
+      input.userId = replacement
+      const membership = await pending
+      assert.equal(membership.userId, original)
+    })
+    const storedOriginal = await f.memberships.find(scopeId, original)
+    assert.equal(storedOriginal?.role, 'editor')
+    assert.isNull(await f.memberships.find(scopeId, replacement))
+    assert.deepInclude(f.events[0], {
+      type: 'membership.invitation_accepted',
+      scopeId,
+      userId: original,
+      role: 'editor',
+      invitationId: 55,
+    })
+  } finally {
+    await f.cleanup()
+  }
+})

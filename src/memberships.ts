@@ -169,7 +169,8 @@ function allow(result: RuleResult): void {
  * section 3 under the locks of section 4.2; trusted operations take no actor and must not be
  * exposed to request input without the application's own checks. Write methods capture role, status
  * and invitation event values before asynchronous work, so reusing an input object cannot change
- * the validated value or the event written for that call.
+ * the validated value or the event written for that call. Invitation acceptance also captures
+ * its recipient key before resolving the scope.
  */
 export class MembershipService<Role extends string = string> {
   readonly #access: AccessControl<any, any>
@@ -707,8 +708,10 @@ export class MembershipService<Role extends string = string> {
         'E_ACCESS_CONTROL_INVALID_INPUT',
         'an invitation role must be a known non-owner role'
       )
-    const scopeId = await this.#invitationScope(trx, this.#scopeKey(input.scopeId))
-    const userId = await this.#storedUser(trx, this.#userKey(input.userId))
+    const normalizedScopeId = this.#scopeKey(input.scopeId)
+    const normalizedUserId = this.#userKey(input.userId)
+    const scopeId = await this.#invitationScope(trx, normalizedScopeId)
+    const userId = await this.#storedUser(trx, normalizedUserId)
     await this.#lock(trx, scopeId, [userId])
     if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
     const membership = await this.#insert(trx, scopeId, userId, role)
