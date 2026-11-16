@@ -252,8 +252,8 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         'updated_at',
       ])
       const versions = accountKitVersions()
-      assert.equal(versions.expected, '0.3.4')
-      assert.equal(versions.installed, '0.3.4')
+      assert.equal(versions.expected, '0.4.0')
+      assert.equal(versions.installed, '0.4.0')
     } finally {
       await booted.db.connection().schema.dropTableIfExists(emptyUsers)
     }
@@ -267,7 +267,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       accountKitVersions(() => {
         throw notFound
       }),
-      { installed: null, expected: '0.3.4' }
+      { installed: null, expected: '0.4.0' }
     )
     const other = Object.assign(new Error('bad exports'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' })
     assert.throws(
@@ -290,7 +290,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit","version":"0.3.3"}')
       assert.deepEqual(
         accountKitVersions(() => entry),
-        { installed: '0.3.3', expected: '0.3.4' }
+        { installed: '0.3.3', expected: '0.4.0' }
       )
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -313,7 +313,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map((l) => l.message)
       return { exitCode: command.exitCode, logs }
     }
-    const missing = await run(() => ({ installed: null, expected: '0.3.4' }))
+    const missing = await run(() => ({ installed: null, expected: '0.4.0' }))
     assert.equal(missing.exitCode, 1)
     assert.isTrue(missing.logs.some((line) => line.includes('account_kit_version: 1')))
     const unreadable = await run(() => {

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Requires Account Kit 0.4.0 (exact).
+
 ### Fixed
 
 - `memberships.add` with the actor as the user answers `E_ACCESS_CONTROL_ALREADY_MEMBER`, as the

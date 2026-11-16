@@ -9,7 +9,7 @@ runs the same steps end to end.
 ## Before you start
 
 - Node.js 24 and AdonisJS 7 with Lucid and Bouncer installed.
-- Account Kit 0.3.4 configured: `config/account_kit.ts` exists and the kit's migrations have run,
+- Account Kit 0.4.0 configured: `config/account_kit.ts` exists and the kit's migrations have run,
   including its `account_transaction_lock` table.
 - A users table and a `teams` table, each with an `increments()` primary key.
 
