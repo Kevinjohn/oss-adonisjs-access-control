@@ -315,6 +315,16 @@ export class MembershipService<Role extends string = string> {
     return (await this.#storedParent(client, table, String(key))) ?? key
   }
 
+  /** Serialized invitations must use exactly the spelling stored in a string scope parent. */
+  async #invitationScope(client: QueryClientContract, scopeId: ScopeKey): Promise<ScopeKey> {
+    if (this.#access.config.scope.keyType !== 'string') return scopeId
+    const stored = await this.#storedParent(client, this.#scopeTable, String(scopeId))
+    if (stored === undefined) throw error('E_ACCESS_CONTROL_SCOPE_NOT_FOUND')
+    if (stored !== scopeId)
+      throw error('E_ACCESS_CONTROL_INVALID_INPUT', 'invitation scope must use the stored spelling')
+    return stored
+  }
+
   #storedUser(client: QueryClientContract, userId: UserKey): Promise<UserKey> {
     return this.#stored(client, this.#usersTable, this.#access.config.users.keyType, userId)
   }
@@ -362,6 +372,19 @@ export class MembershipService<Role extends string = string> {
       await this.#storedScope(client, normalizedScope),
       await this.#storedUser(client, normalizedUser)
     )
+  }
+
+  /** @internal The actor membership of a serialized invitation scope, only for its stored spelling. */
+  async findInvitationMembership(
+    scopeId: ScopeKey,
+    userId: UserKey,
+    trx?: Trx
+  ): Promise<Membership | null> {
+    const normalizedScope = this.#scopeKey(scopeId)
+    const normalizedUser = this.#userKey(userId)
+    const client = this.#client(trx)
+    const exactScope = await this.#invitationScope(client, normalizedScope)
+    return this.#read(client, exactScope, await this.#storedUser(client, normalizedUser))
   }
 
   /** Every membership of the user, ordered by `created_at, id`. A plain read without locks. */
@@ -677,10 +700,8 @@ export class MembershipService<Role extends string = string> {
         'E_ACCESS_CONTROL_INVALID_INPUT',
         'an invitation role must be a known non-owner role'
       )
-    const { scopeId, userIds } = await this.#storedKeys(trx, this.#scopeKey(input.scopeId), [
-      this.#userKey(input.userId),
-    ])
-    const [userId] = userIds
+    const scopeId = await this.#invitationScope(trx, this.#scopeKey(input.scopeId))
+    const userId = await this.#storedUser(trx, this.#userKey(input.userId))
     await this.#lock(trx, scopeId, [userId])
     if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
     const membership = await this.#insert(trx, scopeId, userId, input.role)

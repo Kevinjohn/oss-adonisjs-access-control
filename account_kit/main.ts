@@ -74,10 +74,14 @@ async function activeMembership(
   const canonical = canonicalScope(access, scope)
   if (canonical === null) return null
   try {
-    const membership = await access.memberships.find(canonical, actor.id, trx)
+    const membership = await access.memberships.findInvitationMembership(canonical, actor.id, trx)
     return membership !== null && membership.status === 'active' ? membership : null
   } catch (error) {
-    if (error instanceof AccessControlError && error.code === 'E_ACCESS_CONTROL_INVALID_INPUT')
+    if (
+      error instanceof AccessControlError &&
+      (error.code === 'E_ACCESS_CONTROL_INVALID_INPUT' ||
+        error.code === 'E_ACCESS_CONTROL_SCOPE_NOT_FOUND')
+    )
       return null
     throw error
   }

@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- String invitation scopes require the stored parent spelling before authorization or acceptance, preserving batch lock order and rollback on an alias.
+
 - First-member and string-key input guidance now reflects the supported rules.
 - Membership reads resolve string key aliases through their parent rows, matching write behavior.
 - Cleanup event role types admit historical stored strings; newly assigned role events keep their

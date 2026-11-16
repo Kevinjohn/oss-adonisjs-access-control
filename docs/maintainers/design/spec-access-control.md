@@ -18,8 +18,8 @@ this spec; **[prereq]** something that must exist before the milestone that need
      `context.scope: string | null` alongside `context.trx`.
    - `authorize.manageInvitation(actor, invitation, context?)` reads `invitation.scope`.
    - `onInvitationAccepted(user, invitation, trx)` runs once per pending invitation for the address,
-     in ascending `scope` order (`ORDER BY scope, id`, binary collation), so multi-scope acceptance
-     locks scope rows in the same order as every other package operation (4.2).
+     in JavaScript code-unit order of stored `scope` strings (then id). Canonical invitation scopes
+     therefore make multi-scope acceptance follow the package's scope lock order (4.2).
    - The managed list query filters by the requested scope.
 
    - The initial context-free `authorize.invite` call on send also receives `{ scope }` (no `trx`).
@@ -522,7 +522,8 @@ row → package user rows (ascending) → scope rows (ascending) → membership 
 
 **Ascending** means code-unit order of `String(key)` for every multi-row lock sequence in this
 package, for every key type (so integer keys sort as strings: `'10'` before `'9'`). This matches the
-order #768 uses when it calls `onInvitationAccepted` per invitation (section 0).
+order Account Kit uses when it calls `onInvitationAccepted` per invitation (section 0),
+provided serialized invitation scopes use their stored parent spelling.
 Operations spanning several scopes (identity checks, account deletion) hold the user rows first, which
 freezes those users' membership sets, then lock the scope rows they read, ascending.
 
@@ -627,7 +628,10 @@ export interface MembershipPage {
 
 Keys are normalised on read: `keyType: 'integer'` → JS number (throw `INVALID_INPUT` if not a safe
 positive integer); `'uuid'` → lower-case string matching the UUID pattern (else `INVALID_INPUT`);
-`'string'` → string of 1-254 characters. Comparisons use the normalised value.
+`'string'` → string of 1-254 characters. For string keys, ordinary reads and writes use a matching parent row's stored spelling under
+that parent's collation, or the supplied spelling if no parent matches. A serialized invitation
+scope must exactly equal the stored string parent spelling before acceptance locks its scope;
+otherwise a matching alias is `INVALID_INPUT` and a missing parent is `SCOPE_NOT_FOUND`.
 
 ### 5.2 Ordinary operations (actor-authorized)
 

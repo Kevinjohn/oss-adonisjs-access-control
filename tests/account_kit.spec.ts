@@ -618,3 +618,86 @@ test.group('Account Kit callbacks: canonical scope keys (spec 5.1)', (group) => 
     assert.equal(accepted?.role, 'editor')
   })
 })
+
+test('string invitation authorization uses exact stored scope spelling on both clients', async ({
+  assert,
+}) => {
+  const booted = await bootTestApp({
+    keyTypes: { users: 'integer', scope: 'string' },
+    caseInsensitiveKeys: true,
+  })
+  try {
+    const access = await booted.app.container.make(AccessControl)
+    const owner = idOf(
+      await booted.db.table(booted.names.users).returning('id').insert({ name: 'owner' })
+    )
+    const scope = 'team_alpha'
+    await booted.db.table(booted.names.scope).insert({ id: scope, name: 'team' })
+    await access.memberships.createFirstMember({ scopeId: scope, userId: owner })
+    const canonical = { scope }
+    const alias = { scope: scope.toUpperCase() }
+    const canManage = (candidate: string) =>
+      callbacks.authorize.manageInvitation(
+        user(owner),
+        invitation({ id: 100, scope: candidate, role: 'editor' })
+      )
+    assert.isTrue(await callbacks.authorize.invite(user(owner), 'editor', canonical))
+    assert.isTrue(await callbacks.authorize.listInvitations(user(owner), canonical))
+    assert.isTrue(await canManage(scope))
+    assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', { scope: 'missing' }))
+    await booted.db.transaction(async (trx) => {
+      assert.equal(
+        await codeOf(
+          callbacks.onInvitationAccepted(
+            user(owner),
+            invitation({ id: 103, scope: 'missing', role: 'editor' }),
+            trx
+          )
+        ),
+        'E_ACCESS_CONTROL_SCOPE_NOT_FOUND'
+      )
+      await trx.rollback()
+    })
+    if (booted.db.connection().dialect.name !== 'postgres') {
+      assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', alias))
+      assert.isFalse(await callbacks.authorize.listInvitations(user(owner), alias))
+      assert.isFalse(await canManage(alias.scope))
+      // A historical child row with the alias spelling must not make authorization succeed.
+      await booted.db
+        .from(booted.names.memberships)
+        .where({ scope_id: scope, user_id: owner })
+        .update({ scope_id: alias.scope })
+      assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', alias))
+    }
+    await booted.db.transaction(async (trx) => {
+      const pending = 'team_beta'
+      await trx.table(booted.names.scope).insert({ id: pending, name: 'pending' })
+      await access.memberships.createFirstMember({ scopeId: pending, userId: owner, trx })
+      const context = { scope: pending, trx }
+      assert.isTrue(await callbacks.authorize.invite(user(owner), 'editor', context))
+      assert.isTrue(await callbacks.authorize.listInvitations(user(owner), context))
+      assert.isTrue(
+        await callbacks.authorize.manageInvitation(
+          user(owner),
+          invitation({ id: 101, scope: pending, role: 'editor' }),
+          { trx }
+        )
+      )
+      if (booted.db.connection().dialect.name !== 'postgres') {
+        const wrong = { scope: pending.toUpperCase(), trx }
+        assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', wrong))
+        assert.isFalse(await callbacks.authorize.listInvitations(user(owner), wrong))
+        assert.isFalse(
+          await callbacks.authorize.manageInvitation(
+            user(owner),
+            invitation({ id: 102, scope: wrong.scope, role: 'editor' }),
+            { trx }
+          )
+        )
+      }
+      await trx.rollback()
+    })
+  } finally {
+    await booted.close()
+  }
+})
