@@ -43,6 +43,10 @@ export function membershipsMigrationSchema(input: {
 }): MembershipsMigrationSchema {
   for (const name of ['membershipsTable', 'usersTable', 'scopeTable'] as const)
     if (!isSqlIdentifier(input[name])) throw invalid(`${name} must be a plain SQL identifier`)
+  // The released stub's longest generated name is `${membershipsTable}_scope_user_unique`.
+  // PostgreSQL truncates identifiers beyond 63 bytes, which can collide with the other indexes.
+  if (Buffer.byteLength(`${input.membershipsTable}_scope_user_unique`) > 63)
+    throw invalid('membershipsTable must be at most 45 characters for generated SQL identifiers')
   for (const name of ['userKeyType', 'scopeKeyType'] as const)
     if (!keyTypes.includes(input[name])) throw invalid(`${name} must be integer, string or uuid`)
   return {
