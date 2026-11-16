@@ -15,7 +15,7 @@ let active: ChildProcess | undefined
 let interruptedBy: NodeJS.Signals | undefined
 let interruptionCleanup: Promise<void> | undefined
 const signalErrors: unknown[] = []
-let abandonActive: ((error: unknown) => void) | undefined
+let abandonActive: ((error?: unknown) => void) | undefined
 
 function describeError(error: unknown): string {
   if (error instanceof AggregateError) {
@@ -152,10 +152,21 @@ function changedFiles(base: string): ChangedFile[] {
   return changes
 }
 
+function worktreeSnapshot(): string {
+  const status = git(['status', '--porcelain', '-z'])
+  const trackedContent = git(['diff', '--binary', 'HEAD'])
+  const untracked = git(['ls-files', '--others', '--exclude-standard', '-z'])
+    .split('\0')
+    .filter(Boolean)
+    .map((path) => `${path}\0${git(['hash-object', '--', path]).trim()}`)
+    .join('\0')
+  return `${status}\0${trackedContent}\0${untracked}`
+}
+
 /** Run one step in its own process group so an interrupt can stop descendants too. */
 function run(
   step: ChangedCheckStep
-): Promise<{ status: number | null; output: string; cleanupError?: unknown }> {
+): Promise<{ status: number | null; output: string; cleanupError?: unknown; timedOut: boolean }> {
   return new Promise((resolve) => {
     const child = spawn(step.command[0], step.command.slice(1), {
       cwd: root,
@@ -166,16 +177,17 @@ function run(
     let output = ''
     let spawnError: Error | undefined
     let timedOut = false
+    let timeoutCleanup: Promise<void> | undefined
     child.stdout.on('data', (chunk) => (output += chunk))
     child.stderr.on('data', (chunk) => (output += chunk))
     const timer = setTimeout(() => {
       timedOut = true
       output += `\n[check:changed] stopped after ${stepLimitMs / 60000} minutes\n`
-      try {
-        signalOwnedProcess(child, 'SIGKILL')
-      } catch (error) {
-        output += `[check:changed] timeout cleanup failed: ${describeError(error)}\n`
-      }
+      timeoutCleanup = terminateOwnedProcess(child)
+      void timeoutCleanup.then(
+        () => abandonActive?.(),
+        (error) => abandonActive?.(error)
+      )
     }, stepLimitMs)
     child.once('error', (error) => {
       spawnError = error
@@ -203,13 +215,20 @@ function run(
           cleanupError = error
         }
       }
+      if (timedOut && timeoutCleanup) {
+        try {
+          await timeoutCleanup
+        } catch (error) {
+          cleanupError = error
+        }
+      }
       if (active === child) active = undefined
       abandonActive = undefined
       if (spawnError) output += `\n[check:changed] spawn failed: ${spawnError.message}\n`
       if (cleanupError !== undefined) {
         output += `\n[check:changed] cleanup failed: ${describeError(cleanupError)}\n`
       }
-      resolve({ status: timedOut || signal ? null : status, output, cleanupError })
+      resolve({ status: timedOut || signal ? null : status, output, cleanupError, timedOut })
     }
     child.once('close', (status, signal) => void finish(status, signal))
   })
@@ -237,8 +256,8 @@ for (const step of planChangedChecks(changes, { static: flags.includes('--static
     console.log(`skip ${step.label} (${step.skip})`)
     continue
   }
-  const before = step.requiresCleanTree ? git(['status', '--porcelain']) : ''
-  const { status, output } = await run(step)
+  const before = step.requiresCleanTree ? worktreeSnapshot() : ''
+  const { status, output, cleanupError, timedOut } = await run(step)
   const tests = step.countsTests ? executedTests(output) : undefined
   const problem =
     status !== 0
@@ -247,7 +266,7 @@ for (const step of planChangedChecks(changes, { static: flags.includes('--static
         ? `interrupted by ${interruptedBy}`
         : step.requiresTests && tests === 0
           ? 'no tests executed'
-          : step.requiresCleanTree && git(['status', '--porcelain']) !== before
+          : step.requiresCleanTree && worktreeSnapshot() !== before
             ? 'left the worktree dirty'
             : undefined
   if (problem) {
@@ -257,6 +276,7 @@ for (const step of planChangedChecks(changes, { static: flags.includes('--static
   } else {
     console.log(`pass ${step.label}${tests === undefined ? '' : ` (${tests} tests)`}`)
   }
+  if (timedOut || cleanupError !== undefined) break
 }
 for (const error of signalErrors) {
   failed = true

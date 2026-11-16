@@ -1,21 +1,26 @@
-import { once } from 'node:events'
 import type { ChildProcess } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 
 /** Collect a child's stdout and stderr as it runs. */
-export async function outputOf(child: ChildProcess): Promise<{ text: () => string }> {
+export async function outputOf(child: ChildProcess): Promise<{
+  text: () => string
+  closed: Promise<[number | null, NodeJS.Signals | null]>
+}> {
   let output = ''
   child.stdout!.setEncoding('utf8').on('data', (chunk: string) => (output += chunk))
   child.stderr!.setEncoding('utf8').on('data', (chunk: string) => (output += chunk))
-  return { text: () => output }
+  const closed = new Promise<[number | null, NodeJS.Signals | null]>((resolve) => {
+    child.once('close', (code, signal) => resolve([code, signal]))
+  })
+  return { text: () => output, closed }
 }
 
 /** Wait for a child to exit and return its status with the output collected so far. */
 export async function collectExit(
-  child: ChildProcess,
-  output: { text: () => string }
+  _child: ChildProcess,
+  output: { text: () => string; closed: Promise<[number | null, NodeJS.Signals | null]> }
 ): Promise<{ code: number | null; signal: NodeJS.Signals | null; text: string }> {
-  const [code, signal] = (await once(child, 'exit')) as [number | null, NodeJS.Signals | null]
+  const [code, signal] = await output.closed
   return { code, signal, text: output.text() }
 }
 
@@ -45,4 +50,21 @@ export async function waitForFile(filePath: string, timeoutMs = 5000): Promise<s
     await new Promise((resolve) => setTimeout(resolve, 20))
   }
   throw new Error(`Timed out waiting for ${filePath}`)
+}
+
+/** Wait for a complete, positive process ID written with a final newline. */
+export async function waitForPidFile(filePath: string, timeoutMs = 5000): Promise<number> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const value = await readFile(filePath, 'utf8').catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return ''
+      throw error
+    })
+    if (/^[1-9]\d*\n$/.test(value)) {
+      const pid = Number(value.trim())
+      if (Number.isSafeInteger(pid) && pid <= 2_147_483_647) return pid
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+  throw new Error(`Timed out waiting for a complete process ID in ${filePath}`)
 }

@@ -128,28 +128,108 @@ cleanup() {
     if stop_cluster; then :; else echo 'cleanup failed: owned PostgreSQL shutdown' >&2; cleanup_result=1; fi
   fi
   if [ "$locked" -eq 1 ]; then
-    if rm "$LOCK/owner" && rmdir "$LOCK"; then :; else echo "cleanup failed: release $LOCK" >&2; cleanup_result=1; fi
+    if lock_operation release; then :; else echo "cleanup failed: release $LOCK" >&2; cleanup_result=1; fi
   fi
   if [ "$result" -eq 0 ] && [ "$cleanup_result" -ne 0 ]; then result=1; fi
   exit "$result"
 }
-# Takes the lock directory; a lock whose recorded owner process is gone (a killed run) is replaced.
-acquire_lock() {
-  local owner
-  mkdir "$LOCK" 2>/dev/null && return 0
-  owner="$(cat "$LOCK/owner" 2>/dev/null || :)"
-  case "$owner" in ''|*[!0-9]*) return 1;; esac
-  if kill -0 "$owner" 2>/dev/null; then return 1; fi
-  echo "removing stale lock left by process $owner" >&2
-  rm -f "$LOCK/owner" && rmdir "$LOCK" && mkdir "$LOCK"
+lock_operation() {
+  node - "$1" "$LOCK" "$$" <<'LOCK_OPERATION'
+const fs = require('node:fs')
+const path = require('node:path')
+const [mode, lock, shellPid] = process.argv.slice(2)
+const maxPid = 2147483647
+function owner() {
+  const stat = fs.lstatSync('owner')
+  if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('invalid cluster lock owner type')
+  const value = fs.readFileSync('owner', 'utf8')
+  if (value === '') return null
+  if (!/^[1-9][0-9]*\n$/.test(value) || Number(value.trim()) > maxPid)
+    throw new Error('invalid cluster lock owner PID')
+  return Number(value.trim())
+}
+try {
+  if (mode === 'acquire') {
+    const candidate = fs.mkdtempSync(path.join(path.dirname(lock), 'pg16.lock.candidate-'))
+    let published = false
+    try {
+      fs.writeFileSync(path.join(candidate, 'owner'), `${shellPid}\n`, { flag: 'wx' })
+      for (;;) {
+        if (process.ppid !== Number(shellPid)) throw new Error('cluster lock caller exited')
+        try {
+          fs.renameSync(candidate, lock)
+          published = true
+          break
+        } catch (error) {
+          if (error.code !== 'EEXIST' && error.code !== 'ENOTEMPTY') throw error
+        }
+        try {
+          process.chdir(lock)
+        } catch (error) {
+          if (error.code === 'ENOENT') continue
+          throw error
+        }
+        let current
+        try {
+          current = owner()
+        } catch (error) {
+          if (error.code === 'ENOENT' && fs.readdirSync('.').length === 0) continue
+          throw error
+        }
+        if (current === null) {
+          try { fs.unlinkSync('owner') } catch (error) { if (error.code !== 'ENOENT') throw error }
+          continue
+        }
+        try {
+          process.kill(current, 0)
+          console.error(`cluster lock busy: owned by process ${current}`)
+          process.exitCode = 2
+          break
+        } catch (error) {
+          if (error.code === 'EPERM') {
+            console.error(`cluster lock busy: cannot inspect process ${current}`)
+            process.exitCode = 2
+            break
+          }
+          if (error.code !== 'ESRCH') throw error
+        }
+        console.error(`removing stale lock left by process ${current}`)
+        try { fs.unlinkSync('owner') } catch (error) { if (error.code !== 'ENOENT') throw error }
+      }
+    } finally {
+      if (!published) fs.rmSync(candidate, { recursive: true, force: true })
+    }
+  } else if (mode === 'release') {
+    process.chdir(lock)
+    if (owner() !== Number(shellPid)) throw new Error('cluster lock owner changed before release')
+    fs.unlinkSync('owner')
+    const retired = fs.statSync('.')
+    try {
+      fs.rmdirSync(lock)
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        if (error.code !== 'ENOTEMPTY' && error.code !== 'EEXIST') throw error
+        try {
+          const current = fs.statSync(lock)
+          if (current.dev === retired.dev && current.ino === retired.ino) throw error
+        } catch (inspectionError) {
+          if (inspectionError.code !== 'ENOENT') throw inspectionError
+        }
+      }
+    }
+  } else throw new Error('invalid cluster lock operation')
+} catch (error) {
+  console.error(`cluster lock ${mode} failed: ${error.message}`)
+  process.exitCode = 1
+}
+LOCK_OPERATION
 }
 if [ "$COMMAND" != status ]; then
   mkdir -p "$ROOT/tmp"
-  if acquire_lock; then locked=1; else fail "cluster lock busy: $LOCK"; fi
   trap cleanup EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
-  echo "$$" > "$LOCK/owner"
+  if lock_operation acquire; then locked=1; else exit $?; fi
 fi
 start_cluster() {
   local result actual existing

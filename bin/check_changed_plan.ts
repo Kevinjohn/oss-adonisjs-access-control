@@ -36,6 +36,7 @@ const consumerInputs = [
   /^bin\/test_consumer\.ts$/,
   /^bin\/helpers\/consumer_.*\.ts$/,
   /^package\.json$/,
+  /^pnpm-(lock\.yaml|workspace\.yaml)$/,
 ]
 const dependencyFiles = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']
 // Formatter configuration (and package.json, which pins Prettier) can change any file's format.
@@ -52,7 +53,7 @@ const isEslintIgnored = (path: string) => /^(stubs|examples|tmp)\//.test(path)
 const isLintable = (path: string) =>
   (/\.[cm]?[jt]sx?$/.test(path) && !isEslintIgnored(path)) || dependencyFiles.includes(path)
 const isDatabaseCode = (path: string) =>
-  /^(src\/(memberships|locks|kit_transaction|pagination)\.ts|stubs\/migrations\/.*|tests\/helpers\/schema\.ts)$/.test(
+  /^(src\/(memberships|locks|kit_transaction|pagination|migration_schema|doctor)\.ts|stubs\/migrations\/.*|tests\/helpers\/schema\.ts)$/.test(
     path
   )
 
