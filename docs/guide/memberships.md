@@ -17,26 +17,31 @@ reads use the stored parent spelling when the database matches an alias; if no p
 the supplied spelling is used. This follows the parent table's collation without changing
 historical rows.
 
+## Raw reads
+
+`find(scopeId, userId, trx?)` and `listForUser(userId, trx?)` return stored memberships without
+authorising a caller. Neither writes data or emits events. Keep them behind application checks;
+a request-supplied user ID does not
+prove the caller may read that user's memberships. `authorize` checks the supplied user's active
+membership and permission inside the required transaction; the application still chooses whose
+identity to pass. It returns the membership without writing data or emitting events.
+
 ## Actor-authorised operations
 
-Every write takes an `actor` (the acting user), opens a transaction through Account Kit's runner,
-locks the rows in a fixed order, loads the actor's own membership in the scope and applies the
+Manager writes take an `actor` (the acting user), open a transaction through Account Kit's runner,
+lock the rows in a fixed order, load the actor's own membership in the scope and apply the
 [rules](rules.md). The actor must be an active member; a missing or suspended actor gets
 `E_ACCESS_CONTROL_FORBIDDEN` before the target is looked at, so a non-manager cannot learn
 whether someone is a member from a 404 versus a 403.
 
-| Method              | Input                                       | Result             | Event                              |
-| ------------------- | ------------------------------------------- | ------------------ | ---------------------------------- |
-| `find`              | `scopeId, userId, trx?`                     | membership or null | none                               |
-| `listForUser`       | `userId, trx?`                              | memberships        | none                               |
-| `listForScope`      | `{ actor, scopeId, cursor?, limit?, trx? }` | a page             | none                               |
-| `authorize`         | `{ scopeId, userId, permission, trx }`      | membership         | none                               |
-| `add`               | `{ actor, scopeId, userId, role, trx? }`    | membership         | `membership.added`                 |
-| `changeRole`        | `{ actor, scopeId, userId, role, trx? }`    | membership         | `membership.role_changed`          |
-| `setStatus`         | `{ actor, scopeId, userId, status, trx? }`  | membership         | `membership.status_changed`        |
-| `remove`            | `{ actor, scopeId, userId, trx? }`          | nothing            | `membership.removed`               |
-| `leave`             | `{ scopeId, userId, trx? }`                 | nothing            | `membership.left`                  |
-| `transferOwnership` | `{ actor, scopeId, toUserId, trx? }`        | nothing            | `membership.ownership_transferred` |
+| Method              | Input                                       | Result     | Event                              |
+| ------------------- | ------------------------------------------- | ---------- | ---------------------------------- |
+| `listForScope`      | `{ actor, scopeId, cursor?, limit?, trx? }` | a page     | none                               |
+| `add`               | `{ actor, scopeId, userId, role, trx? }`    | membership | `membership.added`                 |
+| `changeRole`        | `{ actor, scopeId, userId, role, trx? }`    | membership | `membership.role_changed`          |
+| `setStatus`         | `{ actor, scopeId, userId, status, trx? }`  | membership | `membership.status_changed`        |
+| `remove`            | `{ actor, scopeId, userId, trx? }`          | nothing    | `membership.removed`               |
+| `transferOwnership` | `{ actor, scopeId, toUserId, trx? }`        | nothing    | `membership.ownership_transferred` |
 
 - `listForScope` requires `members:list`, pages by `created_at` then `id` with an opaque cursor,
   and accepts a `limit` from 1 to 100 (default 25).
@@ -46,8 +51,13 @@ whether someone is a member from a 404 versus a 403.
 - `transferOwnership` requires the owner role to be configured, the actor to be the active owner
   and the target to be an active member who is not the actor. The old owner is demoted to the
   highest non-owner role in the same transaction.
-- `leave` takes no actor and works for a suspended member. Route it without the scope middleware,
-  which refuses suspended members.
+
+## Authenticated self-service
+
+`leave({ scopeId, userId, trx? })` takes no manager actor and works for a suspended member;
+the owner must transfer ownership first. Require authentication and derive `userId` from
+`ctx.auth.user.id`, never a request parameter or body. Route it without the scope middleware,
+which refuses suspended members. Authentication must still run before this handler.
 
 ## Trusted operations
 
@@ -64,6 +74,19 @@ directly.
 | `prepareAccountDeletion`      | Removes every membership of a user inside the kit's deletion transaction; refuses an active owner with `LAST_OWNER`.                                                                                                                          |
 | `removeAllForScope`           | Removes every membership of a scope inside your scope-deletion transaction, just before you delete the scope row. A member set that changed since the first read is `CONFLICT`; retry the transaction.                                        |
 | `exportFor`                   | The user's memberships with ISO timestamps, for the kit's data export.                                                                                                                                                                        |
+
+`createFirstMember` expects an existing user row. Create or load that user first and pass its
+verified ID; this trusted bootstrap method does not promise the `USER_NOT_FOUND` mapping of
+`add` and `grant`. A nonexistent user can fail at the database foreign key, and unexpected
+database errors must propagate so the enclosing transaction rolls back.
+
+In an owner-enabled scope, call `createFirstMember` before trusted `grant` calls. `grant` may
+create a non-owner membership in an empty scope; it does not bootstrap an owner. Once any row
+exists, `createFirstMember` refuses with `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY`. Keep bootstrap and
+initial grants in the same transaction when they form one operation. If grants already exist,
+repair ownership with an application-owned data migration, or remove the existing memberships
+through a trusted cleanup and bootstrap again only when discarding them is intended. Back up and
+account for membership events and other application data before recovery.
 
 ## Events
 

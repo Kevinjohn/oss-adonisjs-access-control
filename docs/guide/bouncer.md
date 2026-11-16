@@ -53,6 +53,22 @@ middleware and the Bouncer initializer read; the example consumer's scoped route
 Under Masquerade the effective guard is the business guard, so the user, the membership and the
 Bouncer subject are the same customer.
 
+## Permission-read consistency
+
+Membership reads follow the application's Lucid connection policy. With asynchronous read
+replicas, a default read can still see an active membership after its primary has revoked it.
+The middleware reads once for the request; Bouncer then uses that loaded membership. No package
+cache does not mean primary freshness or protection from a revocation after the check.
+
+If the application needs primary-backed permission checks, use a primary-only Lucid connection
+for the database attached to Access Control. The built-in scope middleware does not accept a
+transaction or a per-request primary-read option. For an application-owned transactional path,
+pass the Account Kit runner's `trx` to `find`, `listForScope` or `authorize` and perform the
+protected database work through that same transaction. `authorize` requires `trx`; see
+[membership transactions](memberships.md#transactions-and-locks). Package mutations recheck their
+own rules inside the write transaction. Choose and test the host's freshness policy before
+configuring replicas; a read alone cannot guarantee access remains valid for the rest of a request.
+
 ## Generated abilities
 
 `accessControl.abilities(resolve)` returns one Bouncer ability per permission key, named by the

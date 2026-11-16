@@ -8,6 +8,31 @@
 
 ### Fixed
 
+- List the membership, rank and admission checks that single-scope invitation adapters must
+  preserve, alongside acceptance transaction requirements.
+
+- Explain replica-backed permission-read consistency and the host choices for primary-backed
+  middleware or transactional authorization.
+
+- Document configure source-transform prerequisites and manual provider, command and middleware
+  registration when the framework skips those edits.
+
+- State that configure processes must run sequentially for each application.
+
+- Clarify that changing table names or key types in an existing installation needs explicit
+  application-owned configuration and schema migration, rather than a configure rerun.
+
+- Explain that the doctor requires a bootable application and resolvable installed peers.
+
+- State the existing-user precondition and database failure behavior of trusted first-member
+  bootstrap.
+
+- Document owner bootstrap before trusted grants and explicit recovery choices for an already
+  populated ownerless scope.
+
+- Membership documentation separates unauthorised raw reads, manager operations and authenticated
+  self-service, including the session-derived identity required when leaving.
+
 - First-member and string-key input guidance now reflects the supported rules.
 - Membership reads resolve string key aliases through their parent rows, matching write behavior.
 - Cleanup event role types admit historical stored strings; newly assigned role events keep their
