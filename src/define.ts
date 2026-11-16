@@ -165,7 +165,7 @@ export class AccessControl<
     return abilities<P>(this, resolve)
   }
 
-  /** The payload a client receives for a membership (section 10); `null` when none or suspended. */
+  /** The payload for a membership; its role may be a historical string outside this configuration. */
   clientPayload(
     membership: Membership | null | undefined
   ): ClientPayload<R[number], PermissionKeyOf<P>> | null {

@@ -214,10 +214,10 @@ export interface TransactionRunner {
   readTimestamp(value: unknown): DateTime | null
 }
 
-/** The payload a client receives for the current membership. */
+/** The payload a client receives for the current membership. A stored role may be historical. */
 export interface ClientPayload<Role extends string = string, Key extends string = string> {
   scopeId: string
-  role: Role
+  role: string
   permissions: Key[]
   assignableRoles: Role[]
 }

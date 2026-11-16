@@ -34,9 +34,11 @@ void bouncer.allows('project.write')
 const payload: ClientPayload<RoleOf<typeof config>, PermissionKeyOf<typeof config>> | null =
   config.clientPayload(null)
 if (payload) {
-  const role: 'viewer' | 'editor' | 'owner' = payload.role
+  const role: string = payload.role
+  // @ts-expect-error persisted roles can predate the current configuration
+  const configuredRole: RoleOf<typeof config> = payload.role
   const key:
     'project:read' | 'project:write' | 'members:list' | 'members:manage' | 'invitations:manage' =
     payload.permissions[0]
-  void [role, key]
+  void [role, configuredRole, key]
 }

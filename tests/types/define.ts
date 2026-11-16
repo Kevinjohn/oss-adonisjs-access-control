@@ -19,6 +19,13 @@ type Key = PermissionKeyOf<typeof config>
 
 const role: Role = 'editor'
 const key: Key = 'project:write'
+const payload = config.clientPayload({} as import('../../src/types.js').Membership)
+if (payload) {
+  const storedRole: string = payload.role
+  // @ts-expect-error stored roles need not be in the current configuration
+  const configuredRole: Role = payload.role
+  void [storedRole, configuredRole]
+}
 // @ts-expect-error unknown role
 const badRole: Role = 'ceo'
 // @ts-expect-error unknown key

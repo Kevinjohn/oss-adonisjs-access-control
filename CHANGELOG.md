@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Client payload types expose stored historical roles as strings, matching the payload returned
+  while a role migration is pending.
 - `memberships.add` with the actor as the user answers `E_ACCESS_CONTROL_ALREADY_MEMBER`, as the
   specification says, instead of `E_ACCESS_CONTROL_SELF_MANAGEMENT`.
 - `access-control:doctor` exits `2` (the check could not run) when the installed Account Kit
