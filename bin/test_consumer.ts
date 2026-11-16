@@ -21,7 +21,7 @@ const database = args.get('database') ?? 'all'
 if (!['all', 'floor', 'latest'].includes(profile) || !['all', 'sqlite', 'pg'].includes(database))
   throw new Error('Use --profile=floor|latest|all --database=sqlite|pg|all')
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Node 24')
-const snapshot = consumerArtifact(root, args.get('package'))
+const snapshot = await consumerArtifact(root, args.get('package'))
 const artifact = snapshot.path
 process.once('exit', snapshot.cleanup)
 const digest = createHash('sha256')
