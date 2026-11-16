@@ -29,6 +29,7 @@ export async function bootTestApp(
     permissions?: PermissionMap<Role>
     /** Key types of the users and scope tables; default integer. */
     keyTypes?: { users: KeyType; scope: KeyType }
+    caseInsensitiveKeys?: boolean
   } = {}
 ): Promise<TestApp> {
   const client = testClient()
@@ -82,7 +83,9 @@ export async function bootTestApp(
     await app.boot()
     db = await app.container.make('lucid.db')
     if (client === 'pg') await db.rawQuery(`create schema "${schema}"`)
-    await createSchema(db, names, options.keyTypes ?? { users: 'integer', scope: 'integer' })
+    await createSchema(db, names, options.keyTypes ?? { users: 'integer', scope: 'integer' }, {
+      caseInsensitiveKeys: options.caseInsensitiveKeys,
+    })
   } catch (error) {
     try {
       if (db && client === 'pg') await db.rawQuery(`drop schema if exists "${schema}" cascade`)

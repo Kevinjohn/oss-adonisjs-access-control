@@ -27,6 +27,10 @@ export default defineAccessControl({
 of equal or lower rank and may assign roles of equal or lower rank. Role names are lower-case
 identifiers of up to 32 characters (`^[a-z][a-z0-9_-]*$`), unique within the tuple.
 
+`defineAccessControl` copies and freezes the resolved configuration. The caller's input object
+remains writable, but `config` on the returned instance exposes readonly roles, table settings
+and permission entries.
+
 `ownerRole`, when set, must be the last role. The owner of a scope is protected: nobody changes,
 suspends or removes an owner, nobody assigns the owner role, and the owner cannot leave. Ownership
 moves only through `transferOwnership`, which demotes the previous owner to the highest non-owner
@@ -64,6 +68,14 @@ the request and the Bouncer abilities return false. Renaming or removing a role,
 `ownerRole`, therefore needs a data migration deployed with the configuration change; the
 [changing roles guide](changing-roles.md) gives the steps and the doctor command that verifies
 them.
+
+For an active membership with a historical role, `clientPayload` still returns that stored role
+as a string. Its `permissions` and `assignableRoles` arrays are empty. Consumers should handle a
+role outside the current configured tuple while the data migration is pending.
+
+Cleanup hooks can also receive historical role strings in `membership.left` and
+`membership.removed` events. Treat those event roles as raw stored values. Events for newly
+validated role assignments remain typed to the configured role tuple.
 
 ## Types
 

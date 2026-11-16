@@ -16,8 +16,8 @@ one scope. `--json` prints `{ "checks": [{ "name", "ok", "count", "sampleIds" }]
 | Check                    | Finds                                                                                  |
 | ------------------------ | -------------------------------------------------------------------------------------- |
 | `memberships_table`      | A missing table, or missing columns (listed in `sampleIds`).                           |
-| `unknown_role`           | Memberships whose role is not in `roles`.                                              |
-| `unknown_status`         | Memberships whose status is neither `active` nor `suspended`.                          |
+| `unknown_role`           | Memberships whose role is null or not in `roles`.                                      |
+| `unknown_status`         | Memberships whose status is null, or neither `active` nor `suspended`.                 |
 | `scope_without_owner`    | With `ownerRole` set: scopes that have members but no active owner.                    |
 | `scope_with_many_owners` | With `ownerRole` set: scopes with more than one active owner.                          |
 | `orphan_scope`           | Memberships whose scope row is gone (possible only without the foreign keys).          |
@@ -26,6 +26,8 @@ one scope. `--json` prints `{ "checks": [{ "name", "ok", "count", "sampleIds" }]
 
 Exit code 0 when every check is clean, 1 when a check finds rows, 2 when a check could not run
 (for example a malformed `--scope`). The command writes nothing and takes no locks.
+Schema checks run first: a missing memberships table or required column is reported with exit 1
+even when `--scope` is malformed. With a complete schema, a malformed scope exits 2.
 
 ### Run it in CI
 
@@ -65,8 +67,8 @@ Move its members to another role first with the same migration shape, then remov
 
 ## Turn the owner role on later
 
-1. Run the doctor with the new configuration in a dry run: `scope_without_owner` lists every scope
-   that needs an owner.
+1. Run the doctor with the new configuration in a dry run: `scope_without_owner` reports the
+   total count and samples up to 20 scope ids that need an owner.
 2. Assign one owner per scope with an application migration, choosing by your own rule (for
    example the earliest active member with the highest role).
 3. Set `ownerRole` and deploy.

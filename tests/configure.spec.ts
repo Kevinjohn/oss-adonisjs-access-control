@@ -203,6 +203,25 @@ test.group('configure (spec 11)', (group) => {
     }
   })
 
+  test('rejects a generated index name beyond the PostgreSQL limit before writing files', async ({
+    assert,
+  }) => {
+    const app = await freshApp()
+    try {
+      const rejected = await app.run('--scope-table=teams', `--memberships-table=${'m'.repeat(46)}`)
+      assert.equal(rejected.exitCode, 1)
+      assert.isTrue(rejected.logs.some((line) => line.includes('at most 45 characters')))
+      assert.deepEqual(await readdir(join(app.root, 'config')), ['account_kit.ts'])
+      assert.deepEqual(await app.migrations(), [])
+      assert.notInclude(await app.read('adonisrc.ts'), 'access_control_provider')
+      const accepted = await app.run('--scope-table=teams', `--memberships-table=${'m'.repeat(45)}`)
+      assert.equal(accepted.exitCode, 0, accepted.logs.join('\n'))
+      assert.lengthOf(await app.migrations(), 1)
+    } finally {
+      await app.cleanup()
+    }
+  })
+
   test('a re-run after a second released stub publishes only the new migration', async ({
     assert,
   }) => {

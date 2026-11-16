@@ -1,6 +1,6 @@
 # Setup
 
-Access Control needs an AdonisJS 7 application that already runs Account Kit 0.3.4 (the release
+Access Control needs an AdonisJS 7 application that already runs Account Kit 0.4.0 (the release
 with the `./transaction` export, scoped invitations and `ctx.auth.user` after its middleware), a
 users table and a table for the scope your members belong to (teams, organisations, workspaces). Install the release tarball, then let `configure` write the
 files.
@@ -23,7 +23,9 @@ node ace migration:run
 | 6    | Prints the Bouncer initializer and Account Kit config changes for you to apply.              |
 
 Existing files are skipped with a message, never rewritten. Re-running after a package upgrade
-publishes only migrations that are new to the application.
+publishes only migrations that are new to the application. Run one configure process at a time
+for an application. Sequential reruns are supported; concurrent configure processes are not
+coordinated and can race while publishing migrations or editing application source.
 
 Flags:
 
@@ -37,7 +39,28 @@ Flags:
 
 The key types must match the primary keys of the users and scope tables: `integer` for
 `increments()` columns, `uuid` for `uuid()` columns and `string` for string keys up to 254
-characters.
+characters. For string keys, the parent table's stored spelling is used when a read or write
+finds a matching parent under its collation. Choose a stable spelling for each key.
+The memberships table name must be at most 45 ASCII characters so the released migration's
+generated index names fit PostgreSQL's 63-byte identifier limit. Configure rejects longer names
+before writing application files.
+
+## Source registration prerequisites
+
+Configure's provider, command and middleware edits use the framework's assembler transformer.
+Run configure in a development installation with `@adonisjs/assembler` available and check its
+warnings. If the framework skips a source edit, the printed next steps do not mean registration
+succeeded. Repair the development installation and rerun configure, or register these entries
+manually alongside the application's existing entries:
+
+- In `adonisrc.ts`, add `() => import('@kevinjohn/adonisjs-access-control/access_control_provider')`
+  to `providers`, after Lucid and Account Kit.
+- In `adonisrc.ts`, add `() => import('@kevinjohn/adonisjs-access-control/commands')` to `commands`.
+- In `start/kernel.ts`, add `scope: () => import('@kevinjohn/adonisjs-access-control/middleware')`
+  to the object passed to `router.named()`.
+
+Then complete the Bouncer and Account Kit steps below and verify the scoped route as shown in
+[getting started](getting-started.md).
 
 ## The two manual steps
 
@@ -55,12 +78,24 @@ node ace access-control:doctor
 The doctor reads the memberships table against the configuration and exits 0 when everything is
 consistent. The [changing roles guide](changing-roles.md) lists its checks.
 
+The command starts the application, so its installed peers (including Account Kit), providers
+and configuration must load first. If boot fails because a peer is missing or cannot be loaded,
+repair the installation with `pnpm install` and verify the configured versions before running
+the doctor again. Its version check is not a pre-boot dependency recovery command.
+
 ## Not supported after install
 
 Changing `membershipsTable`, `users.table`, `scope.table` or any key type once the migration has
-run is not supported. Treat it as a new install: configure with the new values, migrate, and copy
-the rows with your own migration. An application that already stores memberships in its own table
-follows the [adoption guide](adopting.md).
+run is not an automatic configure operation. In a separate fresh application, configure the new
+values and migrate before copying data with an application-owned migration.
+
+In an existing application, rerunning configure with different flags preserves the existing
+configuration and skips already-published migration suffixes; it does not convert the schema.
+Plan an application-owned migration and data copy, update the configuration explicitly, and
+verify foreign keys, key representations and all consumers before cutover. Back up the data
+and plan rollback before running it. Keep released package migration stubs unchanged. An
+application that already stores memberships in its own table follows the
+[adoption guide](adopting.md).
 
 ## Testing your application
 

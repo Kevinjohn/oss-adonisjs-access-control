@@ -194,3 +194,20 @@ test.group('scope middleware (spec 7)', (group) => {
     assert.equal(second.membership?.role, 'viewer')
   })
 })
+
+test('scope middleware resolves a route alias through the stored string scope', async ({
+  assert,
+}) => {
+  const f = await membershipFixture({ keyType: 'string', caseInsensitiveKeys: true })
+  try {
+    if (!f.caseInsensitiveKeys) return
+    const scope = await f.createScope()
+    const owner = await f.createUser()
+    await f.memberships.createFirstMember({ scopeId: scope, userId: owner })
+    const ctx = context(f, { id: owner }, String(scope).toUpperCase())
+    assert.deepEqual(await run(named, ctx), { next: true })
+    assert.deepInclude(ctx.membership, { scopeId: scope, userId: owner })
+  } finally {
+    await f.cleanup()
+  }
+})

@@ -36,16 +36,27 @@ look the `AccessControl` instance up on every call rather than at creation.
 The checks read through the kit's transaction when one is given and never lock rows, so they
 cannot change the kit's lock order. An invitation without a scope is not a team invitation and is
 refused by these callbacks; keep your own callbacks for those if you send them. The scope must be
-spelled the way the package normalises keys (a lower-case UUID, a plain integer): the kit stores
-and accepts invitations in the order of the strings it was given, so an alias would let that order
-differ from the package's lock order. `invite` refuses an alias and acceptance fails with
-`E_ACCESS_CONTROL_INVALID_INPUT`.
+spelled canonically: a lower-case UUID, a plain integer, or the exact stored parent spelling
+for a bounded string key. The spelling includes case and accents even when the database compares
+those as equal. The kit accepts an address's pending invitations sequentially in JavaScript
+code-unit order of their stored scope strings. Actor send, manage and list callbacks deny aliases;
+operator issuance can bypass those callbacks. Acceptance independently rejects a matching string
+alias with `E_ACCESS_CONTROL_INVALID_INPUT` before locking that scope; a missing string parent is
+`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`. Earlier accepted invitations in that batch are rolled back
+with the account and invitation consumption if a later one fails.
 
 `onInvitationAccepted` creates the membership for the invitation's scope and role inside the
 kit's acceptance transaction. A deleted scope, a role that no longer exists, the owner role or an
 existing membership makes the whole acceptance fail, so no account is created for an invitation
 that cannot be honoured. Invitations are stored grants: acceptance does not check the inviter
 again. An invitation without a scope creates nothing.
+
+An outstanding aliased invitation prevents acceptance of the matching batch, including when a
+different token for the same email starts it. Actor revoke and resend also deny that alias. Let
+it expire, prune expired invitations, then reissue with the stored spelling. For immediate repair,
+the application owner should identify the pending row by ID, verify its intended scope and role
+and other invitations for that address, remove the invalid grant through a privileged maintenance
+procedure, then issue a canonical grant. Do not rewrite invitation scopes blindly across matches.
 
 To keep an existing callback, pass it in; it runs after the membership exists, in the same
 transaction:

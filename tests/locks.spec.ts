@@ -319,6 +319,40 @@ test.group('keys: case-insensitive string keys (MySQL default collation)', () =>
           [scope, other],
         ]
       )
+      calls.length = 0
+      const found = await f.config.memberships.find(upper(scope), upper(other))
+      assert.equal(found?.userId, other)
+      const listed = await f.config.memberships.listForUser(upper(other))
+      assert.deepEqual(
+        listed.map((m) => [m.scopeId, m.userId]),
+        [[scope, other]]
+      )
+      const exported = await f.config.memberships.exportFor({ userId: upper(other) })
+      assert.deepEqual(
+        exported.memberships.map((m) => [m.scopeId, m.role]),
+        [[scope, 'admin']]
+      )
+      const page = await f.config.memberships.listForScope({
+        actor: actor(upper(owner)),
+        scopeId: upper(scope),
+      })
+      assert.deepEqual(
+        page.items.map((m) => [m.scopeId, m.userId]),
+        [
+          [scope, owner],
+          [scope, other],
+        ]
+      )
+      await f.runner.transaction(f.db, async (trx) => {
+        const member = await f.config.memberships.authorize({
+          scopeId: upper(scope),
+          userId: upper(other),
+          permission: 'members:list',
+          trx,
+        })
+        assert.deepEqual([member.scopeId, member.userId], [scope, other])
+      })
+      assert.deepEqual(calls, [])
       assert.deepEqual(
         f.events.map((event) => ('userId' in event ? [event.scopeId, event.userId] : null)),
         [
@@ -355,4 +389,26 @@ test.group('keys: case-insensitive string keys (MySQL default collation)', () =>
       await f.cleanup()
     }
   })
+})
+
+test('case-sensitive string parents keep distinct spellings and historical roles readable', async ({
+  assert,
+}) => {
+  const f = await membershipFixture({ keyType: 'string' })
+  try {
+    if (f.engine === 'mysql') return
+    const scope = await f.createScope()
+    const owner = await f.createUser()
+    await f.memberships.createFirstMember({ scopeId: scope, userId: owner })
+    assert.isNull(await f.memberships.find(String(scope).toUpperCase(), owner))
+    assert.isNull(await f.memberships.find(scope, String(owner).toUpperCase()))
+    await f.db
+      .from(f.names.memberships)
+      .where({ scope_id: scope, user_id: owner })
+      .update({ role: 'legacy' })
+    const found = await f.memberships.find(scope, owner)
+    assert.equal(found?.role, 'legacy')
+  } finally {
+    await f.cleanup()
+  }
 })

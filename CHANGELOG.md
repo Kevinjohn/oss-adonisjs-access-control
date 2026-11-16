@@ -2,8 +2,67 @@
 
 ## Unreleased
 
+### Changed
+
+- Requires Account Kit 0.4.0 (exact).
+- Adoption guidance identifies when its data-deleting rollback is safe after cutover.
+
 ### Fixed
 
+- Release checks refuse failed or malformed archive checksums before writing release notes or
+  successful outputs.
+- Configure rejects memberships table names longer than 45 characters before writing files, keeping generated index names within PostgreSQL and MySQL limits.
+- The doctor reports null roles and statuses in drifted memberships tables.
+- Clarified that doctor schema findings take precedence over a malformed scope argument.
+- Resume interrupted Account Kit bumps from a checked rewrite plan and preserve scan failures.
+
+- Snapshot consumer archives before inspection and installation, and serialize default builds.
+
+- List the membership, rank and admission checks that single-scope invitation adapters must
+  preserve, alongside acceptance transaction requirements.
+
+- Explain replica-backed permission-read consistency and the host choices for primary-backed
+  middleware or transactional authorization.
+
+- Document configure source-transform prerequisites and manual provider, command and middleware
+  registration when the framework skips those edits.
+
+- State that configure processes must run sequentially for each application.
+
+- Clarify that changing table names or key types in an existing installation needs explicit
+  application-owned configuration and schema migration, rather than a configure rerun.
+
+- Explain that the doctor requires a bootable application and resolvable installed peers.
+
+- State the existing-user precondition and database failure behavior of trusted first-member
+  bootstrap.
+
+- Document owner bootstrap before trusted grants and explicit recovery choices for an already
+  populated ownerless scope.
+
+- Membership documentation separates unauthorised raw reads, manager operations and authenticated
+  self-service, including the session-derived identity required when leaving.
+
+- Adoption copy guidance writes Account Kit timestamps so imported members remain visible across cursor pages.
+- Membership writes capture mutable role, status and invitation event input before asynchronous work, keeping persisted rows and events aligned.
+
+- String invitation scopes require the stored parent spelling before authorization or acceptance, preserving batch lock order and rollback on an alias.
+
+- PostgreSQL helper locks publish complete owners and preserve replacement owners during stale recovery.
+- Process test fixtures wait for complete positive PIDs and capture child output through close.
+- Changed-file step timeouts settle after bounded process cleanup, including signaling failures.
+- Changed-file docs checks detect content rewritten in an already modified worktree.
+- Changed-file reminders include dependency manifests for consumer checks and schema diagnostics for database checks.
+- First-member and string-key input guidance now reflects the supported rules.
+- Membership reads resolve string key aliases through their parent rows, matching write behavior.
+- Cleanup event role types admit historical stored strings; newly assigned role events keep their
+  configured role type.
+- Resolved configuration types mark copied roles, table settings and permission entries readonly,
+  matching the frozen runtime values while caller input stays writable.
+- Pure rule successes return independent results, so one caller cannot change another caller's
+  later decision.
+- Client payload types expose stored historical roles as strings, matching the payload returned
+  while a role migration is pending.
 - `memberships.add` with the actor as the user answers `E_ACCESS_CONTROL_ALREADY_MEMBER`, as the
   specification says, instead of `E_ACCESS_CONTROL_SELF_MANAGEMENT`.
 - `access-control:doctor` exits `2` (the check could not run) when the installed Account Kit

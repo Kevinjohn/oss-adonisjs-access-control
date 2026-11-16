@@ -122,3 +122,7 @@ GitHub-visible text. Review complete outgoing content before publication.
   before locking, so a database that compares keys case-insensitively (MySQL's default collation)
   cannot store an alias or reverse the lock order of specification 4.2. Integer and UUID keys
   are canonical after normalisation (5.1) and are not read first. Owner-approved on 2026-11-06.
+- Ordinary membership reads resolve matching string parent spellings without row locks; missing
+  parents retain the supplied spelling. Serialized string invitation scopes must exactly match
+  the stored scope spelling before acceptance locks the scope, so the kit's JavaScript code-unit
+  order remains the package's scope lock order (specification 5.1).

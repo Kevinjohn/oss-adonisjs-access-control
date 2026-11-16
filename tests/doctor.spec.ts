@@ -168,6 +168,64 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       .delete()
   })
 
+  test('nullable schema drift reports null roles and statuses within the requested scope', async ({
+    assert,
+  }) => {
+    const tableName = `${booted.names.memberships}_nullable`
+    await booted.db.connection().schema.createTable(tableName, (table) => {
+      table.increments('id')
+      table.integer('scope_id')
+      table.integer('user_id')
+      table.string('role', 32).nullable()
+      table.string('status', 16).nullable()
+      table.timestamp('created_at')
+      table.timestamp('updated_at')
+    })
+    try {
+      const [scope, otherScope] = await Promise.all([createScope(), createScope()])
+      const [owner, u1, u2, u3] = await Promise.all([
+        createUser(),
+        createUser(),
+        createUser(),
+        createUser(),
+      ])
+      const now = sqlTimestamp(booted.db)
+      const insert = async (
+        scopeId: number,
+        userId: number,
+        role: string | null,
+        status: string | null
+      ) =>
+        idOf(
+          await booted.db.table(tableName).returning('id').insert({
+            scope_id: scopeId,
+            user_id: userId,
+            role,
+            status,
+            created_at: now,
+            updated_at: now,
+          })
+        )
+      await insert(scope, owner, 'owner', 'active')
+      const noRole = await insert(scope, u1, null, 'active')
+      const noStatus = await insert(scope, u2, 'editor', null)
+      const neither = await insert(scope, u3, null, null)
+      await insert(otherScope, owner, null, null)
+      const drifted = defineAccessControl({ ...access.config, membershipsTable: tableName })
+      const report = await runDoctor({ access: drifted as AccessControl, db: booted.db, scope })
+      assert.deepEqual(failing(report), {
+        unknown_role: [String(noRole), String(neither)],
+        unknown_status: [String(noStatus), String(neither)],
+      })
+      assert.deepEqual(
+        report.checks.filter((entry) => !entry.ok).map((entry) => entry.count),
+        [2, 2]
+      )
+    } finally {
+      await booted.db.connection().schema.dropTable(tableName)
+    }
+  })
+
   test('sample ids stop at 20 while the count is exact', async ({ assert }) => {
     const scope = await createScope()
     const ids: number[] = []
@@ -252,8 +310,8 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         'updated_at',
       ])
       const versions = accountKitVersions()
-      assert.equal(versions.expected, '0.3.4')
-      assert.equal(versions.installed, '0.3.4')
+      assert.equal(versions.expected, '0.4.0')
+      assert.equal(versions.installed, '0.4.0')
     } finally {
       await booted.db.connection().schema.dropTableIfExists(emptyUsers)
     }
@@ -267,7 +325,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       accountKitVersions(() => {
         throw notFound
       }),
-      { installed: null, expected: '0.3.4' }
+      { installed: null, expected: '0.4.0' }
     )
     const other = Object.assign(new Error('bad exports'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' })
     assert.throws(
@@ -290,7 +348,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit","version":"0.3.3"}')
       assert.deepEqual(
         accountKitVersions(() => entry),
-        { installed: '0.3.3', expected: '0.3.4' }
+        { installed: '0.3.3', expected: '0.4.0' }
       )
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -313,7 +371,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map((l) => l.message)
       return { exitCode: command.exitCode, logs }
     }
-    const missing = await run(() => ({ installed: null, expected: '0.3.4' }))
+    const missing = await run(() => ({ installed: null, expected: '0.4.0' }))
     assert.equal(missing.exitCode, 1)
     assert.isTrue(missing.logs.some((line) => line.includes('account_kit_version: 1')))
     const unreadable = await run(() => {
@@ -331,5 +389,45 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     const result = await exec('--scope=not-a-scope')
     assert.equal(result.exitCode, 2)
     assert.isTrue(result.logs.some((line) => line.includes('the doctor could not run')))
+  })
+
+  test('schema findings take precedence over a malformed scope in the command', async ({
+    assert,
+  }) => {
+    const fixture = await bootTestApp()
+    try {
+      const original = await fixture.app.container.make(AccessControl)
+      const commandFor = async (table: string) => {
+        const configured = defineAccessControl({ ...original.config, membershipsTable: table })
+        fixture.app.container.bindValue(AccessControl, configured as AccessControl)
+        const kernel = new Kernel(fixture.app)
+        kernel.addLoader(new ListLoader([AccessControlDoctor]))
+        kernel.ui.switchMode('raw')
+        const command = await kernel.exec('access-control:doctor', ['--scope=bad', '--json'])
+        const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map(
+          (log) => log.message
+        )
+        return { exitCode: command.exitCode, logs }
+      }
+      const absent = await commandFor('missing_memberships')
+      assert.equal(absent.exitCode, 1, absent.logs.join('\n'))
+      assert.equal(
+        JSON.parse(absent.logs.find((line) => line.startsWith('{'))!).checks[0].name,
+        'memberships_table'
+      )
+      const sparse = `${fixture.names.users}_sparse`
+      await createParentTable(fixture.db, sparse, 'integer')
+      const columns = await commandFor(sparse)
+      assert.equal(columns.exitCode, 1, columns.logs.join('\n'))
+      assert.include(
+        JSON.parse(columns.logs.find((line) => line.startsWith('{'))!).checks[0].sampleIds,
+        'scope_id'
+      )
+      const validSchema = await commandFor(fixture.names.memberships)
+      assert.equal(validSchema.exitCode, 2)
+      assert.isTrue(validSchema.logs.some((line) => line.includes('the doctor could not run')))
+    } finally {
+      await fixture.close()
+    }
   })
 })
