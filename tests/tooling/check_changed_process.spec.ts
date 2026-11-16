@@ -5,7 +5,13 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from '@japa/runner'
-import { collectExit, isAlive, outputOf, waitForFile } from '../helpers/child_process.js'
+import {
+  collectExit,
+  isAlive,
+  outputOf,
+  waitForFile,
+  waitForPidFile,
+} from '../helpers/child_process.js'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -62,7 +68,7 @@ async function fixture(options: FixtureOptions = {}): Promise<Fixture> {
 
   await writeFile(
     path.join(root, 'worker.js'),
-    `import { writeFile } from 'node:fs/promises'\nprocess.on('SIGTERM', () => {})\nawait writeFile(${JSON.stringify(ready)}, String(process.pid))\nsetInterval(() => {}, 1000)\n`
+    `import { writeFile } from 'node:fs/promises'\nprocess.on('SIGTERM', () => {})\nawait writeFile(${JSON.stringify(ready)}, String(process.pid) + '\\n')\nsetInterval(() => {}, 1000)\n`
   )
   if (options.command !== 'missing') {
     const commandPath = path.join(bin, 'pnpm')
@@ -104,13 +110,22 @@ function launch(f: Fixture): ChildProcess {
   )
 }
 
+async function launchOwned(f: Fixture, cleanup: (callback: () => Promise<void>) => void) {
+  const child = launch(f)
+  const output = await outputOf(child)
+  cleanup(async () => {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+    await output.closed
+  })
+  return { child, output }
+}
+
 test('runs selected static checks normally and observes a missing command spawn error', async ({
   cleanup,
 }) => {
   const normal = await fixture()
   cleanup(() => rm(normal.directory, { recursive: true, force: true }))
-  const normalChild = launch(normal)
-  const normalOutput = await outputOf(normalChild)
+  const { child: normalChild, output: normalOutput } = await launchOwned(normal, cleanup)
   const normalResult = await collectExit(normalChild, normalOutput)
   assert.equal(normalResult.code, 0, normalResult.text)
   assert.match(normalResult.text, /pass format/)
@@ -118,8 +133,7 @@ test('runs selected static checks normally and observes a missing command spawn 
 
   const missing = await fixture({ command: 'missing' })
   cleanup(() => rm(missing.directory, { recursive: true, force: true }))
-  const missingChild = launch(missing)
-  const missingOutput = await outputOf(missingChild)
+  const { child: missingChild, output: missingOutput } = await launchOwned(missing, cleanup)
   const missingResult = await collectExit(missingChild, missingOutput)
   assert.equal(missingResult.code, 1, missingResult.text)
   assert.match(missingResult.text, /spawn failed: spawn pnpm ENOENT/)
@@ -132,8 +146,7 @@ test('docs build fails after rewriting an already modified tracked file', async 
   await writeFile(path.join(f.root, 'README.md'), 'local draft\n')
   await mkdir(path.join(f.root, 'docs/guide'), { recursive: true })
   await writeFile(path.join(f.root, 'docs/guide/setup.md'), 'docs input\n')
-  const child = launch(f)
-  const output = await outputOf(child)
+  const { child, output } = await launchOwned(f, cleanup)
   const result = await collectExit(child, output)
   assert.equal(result.code, 1, result.text)
   assert.match(result.text, /fail docs build \(left the worktree dirty\)/)
@@ -145,10 +158,8 @@ test('TERM-resistant descendants receive KILL, are reaped, and block later selec
 }) => {
   const f = await fixture({ command: 'hang' })
   cleanup(() => rm(f.directory, { recursive: true, force: true }))
-  const child = launch(f)
-  const output = await outputOf(child)
-  await waitForFile(f.ready)
-  const descendantPid = Number(await readFile(f.ready, 'utf8'))
+  const { child, output } = await launchOwned(f, cleanup)
+  const descendantPid = await waitForPidFile(f.ready)
   child.kill('SIGTERM')
   const result = await collectExit(child, output)
   assert.equal(result.code, 143, result.text)
@@ -163,10 +174,8 @@ test('a second signal escalates immediately while the first signal determines th
 }) => {
   const f = await fixture({ command: 'hang', hook: 'record-term' })
   cleanup(() => rm(f.directory, { recursive: true, force: true }))
-  const child = launch(f)
-  const output = await outputOf(child)
-  await waitForFile(f.ready)
-  const descendantPid = Number(await readFile(f.ready, 'utf8'))
+  const { child, output } = await launchOwned(f, cleanup)
+  const descendantPid = await waitForPidFile(f.ready)
   child.kill('SIGTERM')
   await waitForFile(f.termSent)
   child.kill('SIGINT')
@@ -179,9 +188,8 @@ test('a second signal escalates immediately while the first signal determines th
 test('reports failed final reap and retains the first signal result', async ({ cleanup }) => {
   const f = await fixture({ command: 'hang', hook: 'fail-reap' })
   cleanup(() => rm(f.directory, { recursive: true, force: true }))
-  const child = launch(f)
-  const output = await outputOf(child)
-  await waitForFile(f.ready)
+  const { child, output } = await launchOwned(f, cleanup)
+  await waitForPidFile(f.ready)
   child.kill('SIGTERM')
   const result = await collectExit(child, output)
   assert.equal(result.code, 143, result.text)
@@ -216,8 +224,7 @@ require('node:module').syncBuiltinESMExports()
 `
   )
   f.env.NODE_OPTIONS = `${f.env.NODE_OPTIONS ?? ''} --require=${hook}`
-  const child = launch(f)
-  const output = await outputOf(child)
+  const { child, output } = await launchOwned(f, cleanup)
   const result = await collectExit(child, output)
   assert.equal(result.code, 143, result.text)
   assert.match(result.text, /did not exit after SIGKILL/)
@@ -253,8 +260,7 @@ require('node:module').syncBuiltinESMExports()
 `
   )
   f.env.NODE_OPTIONS = `${f.env.NODE_OPTIONS ?? ''} --require=${hook}`
-  const child = launch(f)
-  const output = await outputOf(child)
+  const { child, output } = await launchOwned(f, cleanup)
   const result = await collectExit(child, output)
   assert.equal(await readFile(f.log, 'utf8'), 'spawn\n')
   assert.equal(result.code, 1, result.text)
@@ -262,3 +268,22 @@ require('node:module').syncBuiltinESMExports()
   assert.match(result.text, /cleanup failed:.*denied/s)
   assert.match(result.text, /LOCAL_HANDLE_RELEASED/)
 }).timeout(10_000)
+
+test('PID readiness waits for a complete positive record', async ({ cleanup }) => {
+  const f = await fixture()
+  cleanup(() => rm(f.directory, { recursive: true, force: true }))
+  let settled = false
+  await writeFile(f.ready, '')
+  const ready = waitForPidFile(f.ready, 1000).then((pid) => {
+    settled = true
+    return pid
+  })
+  await writeFile(f.ready, '12')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(settled, false)
+  await writeFile(f.ready, '0\n')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(settled, false)
+  await writeFile(f.ready, '123\n')
+  assert.equal(await ready, 123)
+}).timeout(5000)
