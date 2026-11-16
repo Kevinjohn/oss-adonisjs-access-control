@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Resolved configuration types mark copied roles, table settings and permission entries readonly,
+  matching the frozen runtime values while caller input stays writable.
 - Pure rule successes return independent results, so one caller cannot change another caller's
   later decision.
 - Client payload types expose stored historical roles as strings, matching the payload returned

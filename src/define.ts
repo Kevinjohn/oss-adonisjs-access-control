@@ -109,7 +109,7 @@ export class AccessControl<
   /** The validated, frozen configuration. */
   readonly config: ResolvedAccessControlConfig<R, P>
   /** Roles, lowest rank first. */
-  readonly roles: R
+  readonly roles: Readonly<R>
   /** The owner role, when owner rules are enabled. */
   readonly ownerRole: R[number] | undefined
   /** Every permission key, in declaration order. */
@@ -129,7 +129,7 @@ export class AccessControl<
         Object.entries(config.permissions).map(([resource, actions]) => [resource, { ...actions }])
       ) as P,
       membershipsTable: config.membershipsTable ?? 'memberships',
-    })
+    }) as ResolvedAccessControlConfig<R, P>
     this.roles = this.config.roles
     this.ownerRole = this.config.ownerRole
     this.permissionKeys = Object.freeze([

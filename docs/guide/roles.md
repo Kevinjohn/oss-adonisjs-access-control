@@ -27,6 +27,10 @@ export default defineAccessControl({
 of equal or lower rank and may assign roles of equal or lower rank. Role names are lower-case
 identifiers of up to 32 characters (`^[a-z][a-z0-9_-]*$`), unique within the tuple.
 
+`defineAccessControl` copies and freezes the resolved configuration. The caller's input object
+remains writable, but `config` on the returned instance exposes readonly roles, table settings
+and permission entries.
+
 `ownerRole`, when set, must be the last role. The owner of a scope is protected: nobody changes,
 suspends or removes an owner, nobody assigns the owner role, and the owner cannot leave. Ownership
 moves only through `transferOwnership`, which demotes the previous owner to the highest non-owner

@@ -33,6 +33,26 @@ const badKey: Key = 'project:delete'
 // @ts-expect-error dotted keys are not permission keys
 const dottedKey: Key = 'project.write'
 
+const mutableInput = {
+  roles: ['viewer', 'owner'] as [string, string],
+  users: { table: 'users', keyType: 'integer' as const },
+  scope: { table: 'teams', keyType: 'integer' as const },
+  permissions: { members: { list: 'viewer', manage: 'viewer' }, invitations: { manage: 'viewer' } },
+}
+const resolved = defineAccessControl(mutableInput).config
+mutableInput.roles[0] = 'viewer'
+mutableInput.users.table = 'people'
+mutableInput.scope.table = 'groups'
+mutableInput.permissions.members.list = 'owner'
+// @ts-expect-error resolved roles are frozen even when input tuple is mutable
+resolved.roles[0] = 'viewer'
+// @ts-expect-error resolved users settings are frozen
+resolved.users.table = 'people'
+// @ts-expect-error resolved scope settings are frozen
+resolved.scope.table = 'groups'
+// @ts-expect-error resolved permission entries are frozen
+resolved.permissions.members.list = 'owner'
+
 defineAccessControl({
   roles: ['viewer', 'owner'],
   // @ts-expect-error the owner role must be one of the roles
