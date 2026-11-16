@@ -359,3 +359,28 @@ test('same-target command requires a tracked lockfile for a Kit consumer manifes
     await discard(setup)
   }
 })
+
+test('fresh planning stops before writes when a tracked file is missing', async ({ assert }) => {
+  const setup = await fixture('0.3.3')
+  try {
+    await rm(join(setup.root, 'README.md'))
+    let failure: { stderr?: string; stdout?: string } | undefined
+    try {
+      await setup.invoke()
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(failure?.stderr ?? '', /ENOENT.*README.md/)
+    assert.notInclude(failure?.stdout ?? '', 'Account Kit 0.3.3 -> 0.3.4')
+    assert.equal(
+      await readFile(join(setup.root, 'package.json'), 'utf8'),
+      setup.files['package.json']
+    )
+    await assert.rejects(
+      () => readFile(join(setup.root, 'tmp/account-kit-bump-plan.json')),
+      /ENOENT/
+    )
+  } finally {
+    await discard(setup)
+  }
+})
