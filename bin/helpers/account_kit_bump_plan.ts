@@ -93,10 +93,10 @@ export async function applyBumpPlan(
     const temporary = `${destination}.account-kit-${randomUUID()}.tmp`
     let failure: unknown
     try {
-      const handle = await open(temporary, 'wx', metadata.mode & 0o777)
+      const handle = await open(temporary, 'wx', metadata.mode & 0o7777)
       try {
         await handle.writeFile(entry.after)
-        await handle.chmod(metadata.mode & 0o777)
+        await handle.chmod(metadata.mode & 0o7777)
       } catch (error) {
         failure = error
       }
