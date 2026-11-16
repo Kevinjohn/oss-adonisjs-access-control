@@ -166,7 +166,7 @@ function worktreeSnapshot(): string {
 /** Run one step in its own process group so an interrupt can stop descendants too. */
 function run(
   step: ChangedCheckStep
-): Promise<{ status: number | null; output: string; cleanupError?: unknown }> {
+): Promise<{ status: number | null; output: string; cleanupError?: unknown; timedOut: boolean }> {
   return new Promise((resolve) => {
     const child = spawn(step.command[0], step.command.slice(1), {
       cwd: root,
@@ -228,7 +228,7 @@ function run(
       if (cleanupError !== undefined) {
         output += `\n[check:changed] cleanup failed: ${describeError(cleanupError)}\n`
       }
-      resolve({ status: timedOut || signal ? null : status, output, cleanupError })
+      resolve({ status: timedOut || signal ? null : status, output, cleanupError, timedOut })
     }
     child.once('close', (status, signal) => void finish(status, signal))
   })
@@ -257,7 +257,7 @@ for (const step of planChangedChecks(changes, { static: flags.includes('--static
     continue
   }
   const before = step.requiresCleanTree ? worktreeSnapshot() : ''
-  const { status, output } = await run(step)
+  const { status, output, cleanupError, timedOut } = await run(step)
   const tests = step.countsTests ? executedTests(output) : undefined
   const problem =
     status !== 0
@@ -276,6 +276,7 @@ for (const step of planChangedChecks(changes, { static: flags.includes('--static
   } else {
     console.log(`pass ${step.label}${tests === undefined ? '' : ` (${tests} tests)`}`)
   }
+  if (timedOut || cleanupError !== undefined) break
 }
 for (const error of signalErrors) {
   failed = true
