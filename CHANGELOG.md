@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Adoption copy guidance writes Account Kit timestamps so imported members remain visible across cursor pages.
 - First-member and string-key input guidance now reflects the supported rules.
 - Membership reads resolve string key aliases through their parent rows, matching write behavior.
 - Cleanup event role types admit historical stored strings; newly assigned role events keep their

@@ -23,25 +23,36 @@ Write an application migration that runs after the published
 member, mapping the old team column to `scope_id`, the old user column to `user_id`, the old role
 name to a name in `roles`, and the old state to `active` or `suspended`:
 
+<!-- source: ../../examples/adopting/copy_memberships.ts#copy_memberships -->
+
 ```ts
 import { BaseSchema } from '@adonisjs/lucid/schema'
+import type { Database } from '@adonisjs/lucid/database'
+import type { QueryClientContract } from '@adonisjs/lucid/types/database'
+import { sqlTimestamp } from '@kevinjohn/adonisjs-account-kit/transaction'
+
+export async function copyMemberships(
+  db: Database | QueryClientContract,
+  source: string,
+  destination: string
+) {
+  const now = sqlTimestamp(db)
+  const old = await db.from(source).select('team_id', 'user_id', 'role', 'disabled')
+  for (const row of old) {
+    await db.table(destination).insert({
+      scope_id: row.team_id,
+      user_id: row.user_id,
+      role: row.role === 'manager' ? 'admin' : row.role,
+      status: row.disabled ? 'suspended' : 'active',
+      created_at: now,
+      updated_at: now,
+    })
+  }
+}
 
 export default class extends BaseSchema {
   async up() {
-    this.defer(async (db) => {
-      const now = new Date()
-      const old = await db.from('memberships').select('team_id', 'user_id', 'role', 'disabled')
-      for (const row of old) {
-        await db.table('team_memberships').insert({
-          scope_id: row.team_id,
-          user_id: row.user_id,
-          role: row.role === 'manager' ? 'admin' : row.role,
-          status: row.disabled ? 'suspended' : 'active',
-          created_at: now,
-          updated_at: now,
-        })
-      }
-    })
+    this.defer((db) => copyMemberships(db, 'memberships', 'team_memberships'))
   }
 
   async down() {
@@ -51,6 +62,13 @@ export default class extends BaseSchema {
   }
 }
 ```
+
+The `sqlTimestamp` call uses the same database-specific representation as membership writes and
+cursor comparisons. If earlier imports already stored numeric SQLite millisecond timestamps, plan
+an application-owned migration before switching: back up the rows, identify their stored
+representation, convert those rows to the package representation, and verify paging across the
+converted and newly copied rows. A blind conversion can corrupt rows that already use the correct
+representation.
 
 Keep one row per `(scope_id, user_id)`; the unique key refuses duplicates. With `ownerRole` set,
 give every scope exactly one active owner in the same migration; the rules refuse a second one
