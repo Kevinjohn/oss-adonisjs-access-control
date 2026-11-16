@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto'
+import { constants } from 'node:fs'
 import {
   closeSync,
   copyFileSync,
+  fstatSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   openSync,
@@ -9,6 +12,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
+import type { BigIntStats } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { ConsumerProcessRunner } from './consumer_process.js'
@@ -40,9 +44,9 @@ export async function consumerArtifact(
         fd = openSync(lock, 'wx')
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
-          const existing = readFileSync(lock, 'utf8')
+          const existing = readLockOwner(lock)
           throw new Error(
-            `Default consumer build lock exists at ${lock}: ${existing || 'owner not recorded'}. Inspect the owner before removing a stale lock.`
+            `Default consumer build lock exists at ${lock}: ${existing === undefined ? 'owner unavailable (the lock disappeared or changed during inspection)' : existing || 'owner not recorded'}. Inspect the owner before removing a stale lock.`
           )
         }
         throw error
@@ -111,4 +115,69 @@ export async function consumerArtifact(
     }
     throw failure
   }
+}
+
+function readLockOwner(lock: string): string | undefined {
+  let observed: BigIntStats
+  try {
+    observed = lstatSync(lock, { bigint: true })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw error
+  }
+  if (!observed.isFile() || observed.nlink !== 1n) return undefined
+
+  let fd: number
+  try {
+    fd = openSync(
+      lock,
+      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0)
+    )
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ENOENT' || code === 'ELOOP' || code === 'ENXIO') return undefined
+    throw error
+  }
+
+  let contents: string | undefined
+  let readFailure: unknown
+  try {
+    const opened = fstatSync(fd, { bigint: true })
+    let current: BigIntStats | undefined
+    try {
+      current = lstatSync(lock, { bigint: true })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+    const sameFile = opened.dev === observed.dev && opened.ino === observed.ino
+    const nameStillMatches =
+      current !== undefined && current.dev === opened.dev && current.ino === opened.ino
+    if (
+      !opened.isFile() ||
+      opened.nlink !== 1n ||
+      !current ||
+      !current.isFile() ||
+      current.nlink !== 1n ||
+      !sameFile ||
+      !nameStillMatches
+    ) {
+      contents = undefined
+    } else {
+      contents = readFileSync(fd, 'utf8')
+    }
+  } catch (error) {
+    readFailure = error
+  }
+  try {
+    closeSync(fd)
+  } catch (error) {
+    if (readFailure !== undefined)
+      throw new AggregateError(
+        [readFailure, error],
+        `Could not inspect consumer build lock ${lock}`
+      )
+    throw error
+  }
+  if (readFailure !== undefined) throw readFailure
+  return contents
 }
