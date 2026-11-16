@@ -198,3 +198,85 @@ fs.renameSync = (source, destination) => {
   assert.equal(result.code, 0, result.text)
   assert.equal(await readFile(f.statusLog, 'utf8'), 'status\n')
 }).timeout(10_000)
+
+test('invalid owner records are preserved without process probes', async ({ cleanup }) => {
+  const f = await fixture(cleanup)
+  await mkdir(f.lock, { recursive: true })
+  const probe = path.join(f.root, 'probe-called')
+  const hook = path.join(f.root, 'probe-hook.cjs')
+  await writeFile(
+    hook,
+    `
+const original = process.kill
+process.kill = (pid, signal) => {
+  if (process.argv[2] === 'acquire') require('node:fs').writeFileSync(${JSON.stringify(probe)}, String(pid))
+  return original(pid, signal)
+}
+`
+  )
+  for (const value of ['0\n', '-1\n', '12', 'not-a-pid\n', '2147483648\n']) {
+    await writeFile(path.join(f.lock, 'owner'), value)
+    const child = run(f, { ...f.env, NODE_OPTIONS: `--require=${hook}` })
+    const output = await owned(child, cleanup)
+    const result = await collectExit(child, output)
+    assert.equal(result.code, 1, `${value}: ${result.text}`)
+    assert.match(result.text, /invalid cluster lock owner PID/)
+    assert.equal(await readFile(path.join(f.lock, 'owner'), 'utf8'), value)
+  }
+  assert.equal(await readFile(f.statusLog, 'utf8'), '')
+  assert.equal(await readFile(probe, 'utf8').catch(() => ''), '')
+})
+
+test('a denied liveness probe preserves the owner', async ({ cleanup }) => {
+  const f = await fixture(cleanup)
+  await mkdir(f.lock, { recursive: true })
+  await writeFile(path.join(f.lock, 'owner'), '12345\n')
+  const hook = path.join(f.root, 'eperm-hook.cjs')
+  await writeFile(
+    hook,
+    `
+const original = process.kill
+process.kill = (pid, signal) => {
+  if (process.argv[2] === 'acquire' && pid === 12345 && signal === 0) {
+    const error = new Error('denied'); error.code = 'EPERM'; throw error
+  }
+  return original(pid, signal)
+}
+`
+  )
+  const child = run(f, { ...f.env, NODE_OPTIONS: `--require=${hook}` })
+  const output = await owned(child, cleanup)
+  const result = await collectExit(child, output)
+  assert.equal(result.code, 2, result.text)
+  assert.match(result.text, /cluster lock busy: cannot inspect process 12345/)
+  assert.equal(await readFile(path.join(f.lock, 'owner'), 'utf8'), '12345\n')
+  assert.equal(await readFile(f.statusLog, 'utf8'), '')
+})
+
+test('release accepts a successor that exits before inspection', async ({ cleanup }) => {
+  const f = await fixture(cleanup)
+  const hook = path.join(f.root, 'release-hook.cjs')
+  await writeFile(
+    hook,
+    `
+const fs = require('node:fs')
+const original = fs.rmdirSync
+fs.rmdirSync = (lock) => {
+  if (process.argv[2] === 'release' && lock.endsWith('pg16.lock')) {
+    const candidate = fs.mkdtempSync(lock + '.successor-')
+    fs.writeFileSync(candidate + '/owner', '12345\\n')
+    fs.renameSync(candidate, lock)
+    fs.unlinkSync(lock + '/owner')
+    original(lock)
+    const error = new Error('successor changed'); error.code = 'ENOTEMPTY'; throw error
+  }
+  return original(lock)
+}
+`
+  )
+  const child = run(f, { ...f.env, NODE_OPTIONS: `--require=${hook}` })
+  const output = await owned(child, cleanup)
+  const result = await collectExit(child, output)
+  assert.equal(result.code, 0, result.text)
+  assert.equal(await readFile(f.statusLog, 'utf8'), 'status\n')
+})

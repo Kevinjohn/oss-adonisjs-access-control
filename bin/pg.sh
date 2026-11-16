@@ -209,8 +209,12 @@ try {
     } catch (error) {
       if (error.code !== 'ENOENT') {
         if (error.code !== 'ENOTEMPTY' && error.code !== 'EEXIST') throw error
-        const current = fs.statSync(lock)
-        if (current.dev === retired.dev && current.ino === retired.ino) throw error
+        try {
+          const current = fs.statSync(lock)
+          if (current.dev === retired.dev && current.ino === retired.ino) throw error
+        } catch (inspectionError) {
+          if (inspectionError.code !== 'ENOENT') throw inspectionError
+        }
       }
     }
   } else throw new Error('invalid cluster lock operation')
