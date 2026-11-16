@@ -41,6 +41,13 @@ async function fixture(version: '0.3.3' | '0.3.4') {
   const files = {
     'package.json': manifest,
     'pnpm-lock.yaml': lock,
+    'examples/consumer/package.json':
+      JSON.stringify({ dependencies: { '@kevinjohn/adonisjs-account-kit': kit.url } }, null, 2) +
+      '\n',
+    'examples/consumer/pnpm-lock.yaml': lock.replace(
+      'snapshots:',
+      `  '@kevinjohn/adonisjs-access-control@0.1.8':\n    peerDependencies:\n      '@kevinjohn/adonisjs-account-kit': ${version}\nsnapshots:`
+    ),
     'README.md': `Account Kit ${version} (exact).\n`,
     'CHANGELOG.md': `Historical Account Kit ${version} at ${kit.url}\n`,
     'docs/maintainers/requirement-ledger.md': `**Matrix status:** Kit ${version}\n\nHistory Kit 0.3.3\n`,
@@ -99,6 +106,12 @@ test('same-target command rejects each stale owned field without writing', async
       'resolved version',
     ],
     ['README.md', target.version, source.version, 'live Account Kit version'],
+    [
+      'examples/consumer/pnpm-lock.yaml',
+      `      '@kevinjohn/adonisjs-account-kit': ${target.version}`,
+      `      '@kevinjohn/adonisjs-account-kit': ${source.version}`,
+      'Access Control peer',
+    ],
     [
       'docs/maintainers/requirement-ledger.md',
       `Kit ${target.version}`,
@@ -229,7 +242,7 @@ test('restart verifies a completed final rename before clearing the plan', async
     const fault = join(setup.root, 'after_rename.cjs')
     await writeFile(
       fault,
-      `const fs = require('node:fs/promises'); const mod = require('node:module'); const original = fs.rename; fs.rename = async (...args) => { await original(...args); if (String(args[0]).includes('pnpm-lock.yaml.account-kit-')) process.exit(74) }; mod.syncBuiltinESMExports();`
+      `const fs = require('node:fs/promises'); const mod = require('node:module'); const original = fs.rename; fs.rename = async (...args) => { await original(...args); if (String(args[0]).includes('/pnpm-lock.yaml.account-kit-') && !String(args[0]).includes('/examples/')) process.exit(74) }; mod.syncBuiltinESMExports();`
     )
     let failure: { code?: number; stdout?: string } | undefined
     try {
