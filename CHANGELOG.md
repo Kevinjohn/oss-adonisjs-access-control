@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Explain that the doctor requires a bootable application and resolvable installed peers.
+
 - State the existing-user precondition and database failure behavior of trusted first-member
   bootstrap.
 

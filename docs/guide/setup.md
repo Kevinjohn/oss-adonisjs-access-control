@@ -56,6 +56,11 @@ node ace access-control:doctor
 The doctor reads the memberships table against the configuration and exits 0 when everything is
 consistent. The [changing roles guide](changing-roles.md) lists its checks.
 
+The command starts the application, so its installed peers (including Account Kit), providers
+and configuration must load first. If boot fails because a peer is missing or cannot be loaded,
+repair the installation with `pnpm install` and verify the configured versions before running
+the doctor again. Its version check is not a pre-boot dependency recovery command.
+
 ## Not supported after install
 
 Changing `membershipsTable`, `users.table`, `scope.table` or any key type once the migration has
