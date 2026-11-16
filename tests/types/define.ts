@@ -67,7 +67,7 @@ mutableInput.onMembershipChanged = async () => {}
 // @ts-expect-error resolved roles are frozen even when input tuple is mutable
 resolved.roles[0] = 'viewer'
 // @ts-expect-error resolved roles cannot be replaced
-resolved.roles = ['owner']
+resolved.roles = ['viewer', 'owner']
 // @ts-expect-error resolved owner role cannot be replaced
 resolved.ownerRole = 'owner'
 // @ts-expect-error resolved users settings are frozen
