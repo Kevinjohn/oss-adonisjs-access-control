@@ -331,3 +331,31 @@ test('resume refuses a hand edit to a later planned file and preserves an unplan
     await discard(setup)
   }
 })
+
+test('same-target command requires a tracked lockfile for a Kit consumer manifest', async ({
+  assert,
+}) => {
+  const setup = await fixture('0.3.4')
+  try {
+    await run('git', ['rm', '--cached', '--', 'examples/consumer/pnpm-lock.yaml'], {
+      cwd: setup.root,
+    })
+    let failure: { stderr?: string; stdout?: string } | undefined
+    try {
+      await setup.invoke()
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(
+      failure?.stderr ?? '',
+      /examples\/consumer\/package.json: missing tracked examples\/consumer\/pnpm-lock.yaml/
+    )
+    assert.notInclude(failure?.stdout ?? '', 'Already on Account Kit')
+    assert.equal(
+      await readFile(join(setup.root, 'examples/consumer/pnpm-lock.yaml'), 'utf8'),
+      setup.files['examples/consumer/pnpm-lock.yaml']
+    )
+  } finally {
+    await discard(setup)
+  }
+})
