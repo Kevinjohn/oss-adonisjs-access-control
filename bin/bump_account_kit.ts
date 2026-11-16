@@ -87,6 +87,7 @@ if (plan && plan.to.version !== target)
   throw new Error(`An Account Kit bump to ${plan.to.version} is pending; finish it first.`)
 const trackedOutput = await git(['ls-files', '-z'], root)
 const tracked = trackedOutput.split('\0').filter(Boolean)
+await verifyManifestLockPairs(root, tracked)
 const resumed = Boolean(plan)
 if (!plan) {
   if (current === target) {
@@ -146,5 +147,25 @@ async function verifyProjectedPlan(
     if (bytes.includes(0)) continue
     const content = projected.get(path) ?? bytes.toString('utf8')
     projectKitFile(path, content, candidate.to, candidate.to)
+  }
+}
+
+async function verifyManifestLockPairs(projectRoot: string, paths: string[]): Promise<void> {
+  const trackedPaths = new Set(paths)
+  for (const path of paths) {
+    if (path.split('/').pop() !== 'package.json') continue
+    const packageManifest = JSON.parse(await readFile(join(projectRoot, path), 'utf8')) as Record<
+      string,
+      Record<string, string>
+    >
+    if (
+      !['dependencies', 'devDependencies', 'peerDependencies'].some(
+        (section) => packageManifest[section]?.[kitPackage]
+      )
+    )
+      continue
+    const lock =
+      path === 'package.json' ? 'pnpm-lock.yaml' : path.replace(/package\.json$/, 'pnpm-lock.yaml')
+    if (!trackedPaths.has(lock)) throw new Error(`${path}: missing tracked ${lock}`)
   }
 }

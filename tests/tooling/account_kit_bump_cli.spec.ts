@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,6 +41,13 @@ async function fixture(version: '0.3.3' | '0.3.4') {
   const files = {
     'package.json': manifest,
     'pnpm-lock.yaml': lock,
+    'examples/consumer/package.json':
+      JSON.stringify({ dependencies: { '@kevinjohn/adonisjs-account-kit': kit.url } }, null, 2) +
+      '\n',
+    'examples/consumer/pnpm-lock.yaml': lock.replace(
+      'snapshots:',
+      `  '@kevinjohn/adonisjs-access-control@0.1.8':\n    peerDependencies:\n      '@kevinjohn/adonisjs-account-kit': ${version}\nsnapshots:`
+    ),
     'README.md': `Account Kit ${version} (exact).\n`,
     'CHANGELOG.md': `Historical Account Kit ${version} at ${kit.url}\n`,
     'docs/maintainers/requirement-ledger.md': `**Matrix status:** Kit ${version}\n\nHistory Kit 0.3.3\n`,
@@ -99,6 +106,12 @@ test('same-target command rejects each stale owned field without writing', async
       'resolved version',
     ],
     ['README.md', target.version, source.version, 'live Account Kit version'],
+    [
+      'examples/consumer/pnpm-lock.yaml',
+      `      '@kevinjohn/adonisjs-account-kit': ${target.version}`,
+      `      '@kevinjohn/adonisjs-account-kit': ${source.version}`,
+      'Access Control peer',
+    ],
     [
       'docs/maintainers/requirement-ledger.md',
       `Kit ${target.version}`,
@@ -229,7 +242,7 @@ test('restart verifies a completed final rename before clearing the plan', async
     const fault = join(setup.root, 'after_rename.cjs')
     await writeFile(
       fault,
-      `const fs = require('node:fs/promises'); const mod = require('node:module'); const original = fs.rename; fs.rename = async (...args) => { await original(...args); if (String(args[0]).includes('pnpm-lock.yaml.account-kit-')) process.exit(74) }; mod.syncBuiltinESMExports();`
+      `const fs = require('node:fs/promises'); const mod = require('node:module'); const original = fs.rename; fs.rename = async (...args) => { await original(...args); if (String(args[0]).includes('/pnpm-lock.yaml.account-kit-') && !String(args[0]).includes('/examples/')) process.exit(74) }; mod.syncBuiltinESMExports();`
     )
     let failure: { code?: number; stdout?: string } | undefined
     try {
@@ -314,6 +327,90 @@ test('resume refuses a hand edit to a later planned file and preserves an unplan
     await writeFile(join(setup.root, 'pnpm-lock.yaml'), setup.files['pnpm-lock.yaml'])
     await setup.invoke([], { KIT_OFFLINE: '1' })
     assert.equal(await readFile(join(setup.root, 'CHANGELOG.md'), 'utf8'), 'Unplanned edit\n')
+  } finally {
+    await discard(setup)
+  }
+})
+
+test('same-target command requires a tracked lockfile for a Kit consumer manifest', async ({
+  assert,
+}) => {
+  const setup = await fixture('0.3.4')
+  try {
+    await run('git', ['rm', '--cached', '--', 'examples/consumer/pnpm-lock.yaml'], {
+      cwd: setup.root,
+    })
+    let failure: { stderr?: string; stdout?: string } | undefined
+    try {
+      await setup.invoke()
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(
+      failure?.stderr ?? '',
+      /examples\/consumer\/package.json: missing tracked examples\/consumer\/pnpm-lock.yaml/
+    )
+    assert.notInclude(failure?.stdout ?? '', 'Already on Account Kit')
+    assert.equal(
+      await readFile(join(setup.root, 'examples/consumer/pnpm-lock.yaml'), 'utf8'),
+      setup.files['examples/consumer/pnpm-lock.yaml']
+    )
+  } finally {
+    await discard(setup)
+  }
+})
+
+test('fresh planning stops before writes when a tracked file is missing', async ({ assert }) => {
+  const setup = await fixture('0.3.3')
+  try {
+    await rm(join(setup.root, 'README.md'))
+    let failure: { stderr?: string; stdout?: string } | undefined
+    try {
+      await setup.invoke()
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(failure?.stderr ?? '', /ENOENT.*README.md/)
+    assert.notInclude(failure?.stdout ?? '', 'Account Kit 0.3.3 -> 0.3.4')
+    assert.equal(
+      await readFile(join(setup.root, 'package.json'), 'utf8'),
+      setup.files['package.json']
+    )
+    await assert.rejects(
+      () => readFile(join(setup.root, 'tmp/account-kit-bump-plan.json')),
+      /ENOENT/
+    )
+  } finally {
+    await discard(setup)
+  }
+})
+
+test('ordinary staged write failure removes its own scratch file and preserves the plan', async ({
+  assert,
+}) => {
+  const setup = await fixture('0.3.3')
+  try {
+    const fault = join(setup.root, 'write_failure.cjs')
+    await writeFile(
+      fault,
+      `const fs = require('node:fs/promises'); const mod = require('node:module'); const original = fs.open; fs.open = async (...args) => { const handle = await original(...args); if (String(args[0]).includes('package.json.account-kit-')) { const write = handle.writeFile.bind(handle); handle.writeFile = async (value) => { await write(String(value).slice(0, 9)); throw new Error('staged write failed') } } return handle }; mod.syncBuiltinESMExports();`
+    )
+    let failure: { stderr?: string } | undefined
+    try {
+      await setup.invoke(['--require', fault])
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(failure?.stderr ?? '', /staged write failed/)
+    assert.equal(
+      await readFile(join(setup.root, 'package.json'), 'utf8'),
+      setup.files['package.json']
+    )
+    const entries = await readdir(setup.root)
+    assert.isEmpty(entries.filter((name) => name.startsWith('package.json.account-kit-')))
+    assert.ok(await readFile(join(setup.root, 'tmp/account-kit-bump-plan.json'), 'utf8'))
+    await setup.invoke([], { KIT_OFFLINE: '1' })
+    assert.include(await readFile(join(setup.root, 'package.json'), 'utf8'), fact('0.3.4').url)
   } finally {
     await discard(setup)
   }

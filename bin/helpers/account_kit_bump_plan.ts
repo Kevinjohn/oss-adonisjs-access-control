@@ -91,20 +91,39 @@ export async function applyBumpPlan(
     if (!metadata.isFile() || metadata.nlink !== 1)
       throw new Error(`Planned path changed type: ${entry.path}`)
     const temporary = `${destination}.account-kit-${randomUUID()}.tmp`
-    const handle = await open(temporary, 'wx', metadata.mode & 0o777)
+    let failure: unknown
     try {
-      await handle.writeFile(entry.after)
-      await handle.chmod(metadata.mode & 0o777)
-    } finally {
-      await handle.close()
-    }
-    try {
+      const handle = await open(temporary, 'wx', metadata.mode & 0o777)
+      try {
+        await handle.writeFile(entry.after)
+        await handle.chmod(metadata.mode & 0o777)
+      } catch (error) {
+        failure = error
+      }
+      try {
+        await handle.close()
+      } catch (error) {
+        failure =
+          failure === undefined
+            ? error
+            : new AggregateError([failure, error], `Staging and close failed: ${entry.path}`)
+      }
+      if (failure !== undefined) throw failure
       if (sha256(await readFile(destination)) !== entry.beforeSha256)
         throw new Error(`Planned file changed during bump: ${entry.path}`)
       await rename(temporary, destination)
-    } finally {
-      await rm(temporary, { force: true })
+    } catch (error) {
+      failure = error
     }
+    try {
+      await rm(temporary, { force: true })
+    } catch (cleanupError) {
+      failure =
+        failure === undefined
+          ? cleanupError
+          : new AggregateError([failure, cleanupError], `Staging and cleanup failed: ${entry.path}`)
+    }
+    if (failure !== undefined) throw failure
   }
   return pending.map((entry) => entry.path)
 }

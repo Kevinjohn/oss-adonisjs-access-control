@@ -26,6 +26,12 @@ const to: KitRelease = {
   revision: 'd'.repeat(40),
 }
 
+async function writeLock(root: string): Promise<void> {
+  await writeFile(
+    join(root, 'pnpm-lock.yaml'),
+    `importers:\n  .:\n    devDependencies:\n      '@kevinjohn/adonisjs-account-kit':\n        specifier: ${from.url}\n        version: ${from.url}(context)\npackages:\n  '@kevinjohn/adonisjs-account-kit@${from.url}':\n    resolution: {integrity: ${from.integrity}, tarball: ${from.url}}\n    version: ${from.version}\n`
+  )
+}
 test('bump command finishes a journaled partial write after manifest reached target', async ({
   assert,
 }) => {
@@ -45,14 +51,15 @@ test('bump command finishes a journaled partial write after manifest reached tar
       )
     )
     await writeFile(join(root, 'README.md'), `Account Kit ${from.version}\n`)
-    await run('git', ['add', 'package.json', 'README.md'], { cwd: root })
-    const plan = await makeBumpPlan(root, ['package.json', 'README.md'], from, to)
+    await writeLock(root)
+    await run('git', ['add', 'package.json', 'README.md', 'pnpm-lock.yaml'], { cwd: root })
+    const plan = await makeBumpPlan(root, ['package.json', 'README.md', 'pnpm-lock.yaml'], from, to)
     await saveBumpPlan(root, plan)
     await writeFile(join(root, 'package.json'), plan.files[0].after)
     const result = await run(process.execPath, ['--import', loader, script, to.version], {
       cwd: root,
     })
-    assert.include(result.stdout, 'Rewrote 1 files.')
+    assert.include(result.stdout, 'Rewrote 2 files.')
     assert.include(await readFile(join(root, 'README.md'), 'utf8'), to.version)
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -76,8 +83,9 @@ test('bump command preserves a failed leftover scan', async ({ assert }) => {
         2
       )
     )
-    await run('git', ['add', 'package.json'], { cwd: root })
-    const plan = await makeBumpPlan(root, ['package.json'], from, to)
+    await writeLock(root)
+    await run('git', ['add', 'package.json', 'pnpm-lock.yaml'], { cwd: root })
+    const plan = await makeBumpPlan(root, ['package.json', 'pnpm-lock.yaml'], from, to)
     await saveBumpPlan(root, plan)
     const shim = join(root, 'shim')
     await mkdir(shim)
