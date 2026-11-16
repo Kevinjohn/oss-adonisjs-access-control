@@ -15,7 +15,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
-import { collectExit, outputOf, waitForFile } from '../helpers/child_process.js'
+import { collectExit, outputOf, waitForFile, waitForPidFile } from '../helpers/child_process.js'
 
 const script = fileURLToPath(new URL('../../bin/pg.sh', import.meta.url))
 
@@ -56,17 +56,31 @@ function run(f: Awaited<ReturnType<typeof fixture>>, env = f.env): ChildProcess 
   return spawn('bash', [path.join(f.root, 'bin/pg.sh'), 'stop'], {
     cwd: f.root,
     env,
+    detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 }
 
+async function stopOwnedGroup(child: ChildProcess, output: Awaited<ReturnType<typeof outputOf>>) {
+  const pid = child.pid
+  if (!Number.isSafeInteger(pid) || pid === undefined || pid <= 1 || pid > 2_147_483_647)
+    throw new Error('fixture child has no valid process-group ID')
+  try {
+    process.kill(-pid, 'SIGKILL')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error
+  }
+  await output.closed
+}
+
 async function owned(child: ChildProcess, cleanup: (callback: () => Promise<void>) => void) {
   const output = await outputOf(child)
-  cleanup(async () => {
-    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
-    await output.closed
-  })
+  cleanup(() => stopOwnedGroup(child, output))
   return output
+}
+
+function publishedHelperPid(marker: string, timeoutMs = 5000): Promise<number> {
+  return waitForPidFile(marker, timeoutMs)
 }
 
 test('publishes a complete owner and recovers empty legacy locks', async ({ cleanup }) => {
@@ -170,7 +184,7 @@ const fs = require('node:fs')
 const original = fs.renameSync
 fs.renameSync = (source, destination) => {
   if (destination.endsWith('pg16.lock') && process.argv[2] === 'acquire') {
-    fs.writeFileSync(${JSON.stringify(marker)}, String(process.pid))
+    fs.writeFileSync(${JSON.stringify(marker)}, String(process.pid) + '\\n')
     while (fs.existsSync(${JSON.stringify(gate)})) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20)
   }
   return original(source, destination)
@@ -179,7 +193,7 @@ fs.renameSync = (source, destination) => {
   )
   const child = run(f, { ...f.env, NODE_OPTIONS: `--require=${hook}` })
   const output = await owned(child, cleanup)
-  const helperPid = Number(await waitForFile(marker))
+  await publishedHelperPid(marker)
   const beforeEntries = await readdir(path.join(f.root, 'tmp'))
   const temporary = beforeEntries.filter((name) => name.startsWith('pg16.lock.candidate-'))
   assert.equal(temporary.length, 1)
@@ -188,15 +202,47 @@ fs.renameSync = (source, destination) => {
     `${child.pid}\n`
   )
   assert.equal(beforeEntries.includes('pg16.lock'), false)
-  child.kill('SIGKILL')
-  process.kill(helperPid, 'SIGKILL')
+  await stopOwnedGroup(child, output)
   await rm(gate)
-  await collectExit(child, output)
   const next = run(f)
   const nextOutput = await owned(next, cleanup)
   const result = await collectExit(next, nextOutput)
   assert.equal(result.code, 0, result.text)
   assert.equal(await readFile(f.statusLog, 'utf8'), 'status\n')
+}).timeout(10_000)
+
+test('invalid helper readiness cannot become a signal target', async ({ cleanup }) => {
+  const f = await fixture(cleanup)
+  const marker = path.join(f.root, 'rename.ready')
+  const gate = path.join(f.root, 'rename.gate')
+  const hook = path.join(f.root, 'partial-rename-hook.cjs')
+  await writeFile(gate, '')
+  await writeFile(
+    hook,
+    `
+const fs = require('node:fs')
+const original = fs.renameSync
+fs.renameSync = (source, destination) => {
+  if (destination.endsWith('pg16.lock') && process.argv[2] === 'acquire') {
+    fs.writeFileSync(${JSON.stringify(marker)}, '0\\n')
+    while (fs.existsSync(${JSON.stringify(gate)})) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20)
+  }
+  return original(source, destination)
+}
+`
+  )
+  const child = run(f, { ...f.env, NODE_OPTIONS: `--require=${hook}` })
+  const output = await owned(child, cleanup)
+  await waitForFile(marker)
+  await assert.rejects(
+    publishedHelperPid(marker, 100),
+    /Timed out waiting for a complete process ID/
+  )
+  await stopOwnedGroup(child, output)
+  await rm(gate)
+  const entries = await readdir(path.join(f.root, 'tmp'))
+  assert.equal(entries.includes('pg16.lock'), false)
+  assert.equal(await readFile(f.statusLog, 'utf8'), '')
 }).timeout(10_000)
 
 test('invalid owner records are preserved without process probes', async ({ cleanup }) => {
