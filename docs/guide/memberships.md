@@ -11,7 +11,8 @@ const page = await accessControl.memberships.listForScope({ actor: { id: user.id
 
 A membership is `{ scopeId, userId, role, status, createdAt, updatedAt }`. Keys are normalised to
 the configured key types on the way in: a numeric string becomes a number for `integer` keys, a
-UUID is lower-cased, and anything else is `E_ACCESS_CONTROL_INVALID_INPUT`. For string keys,
+UUID is lower-cased, and a `string` key keeps its exact spelling when it has 1 to 254
+characters. Other inputs are `E_ACCESS_CONTROL_INVALID_INPUT`. For string keys,
 reads use the stored parent spelling when the database matches an alias; if no parent matches,
 the supplied spelling is used. This follows the parent table's collation without changing
 historical rows.

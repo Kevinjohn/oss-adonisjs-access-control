@@ -81,7 +81,7 @@ export interface AuthorizeInput {
 export interface CreateFirstMemberInput {
   scopeId: ScopeKey
   userId: UserKey
-  /** Required without an owner role; must not be given with one. */
+  /** Required without an owner role; when an owner role is configured, omit it or give that role. */
   role?: string
   trx?: Trx
 }
