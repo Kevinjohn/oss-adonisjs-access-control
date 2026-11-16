@@ -390,4 +390,44 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     assert.equal(result.exitCode, 2)
     assert.isTrue(result.logs.some((line) => line.includes('the doctor could not run')))
   })
+
+  test('schema findings take precedence over a malformed scope in the command', async ({
+    assert,
+  }) => {
+    const fixture = await bootTestApp()
+    try {
+      const original = await fixture.app.container.make(AccessControl)
+      const commandFor = async (table: string) => {
+        const configured = defineAccessControl({ ...original.config, membershipsTable: table })
+        fixture.app.container.bindValue(AccessControl, configured as AccessControl)
+        const kernel = new Kernel(fixture.app)
+        kernel.addLoader(new ListLoader([AccessControlDoctor]))
+        kernel.ui.switchMode('raw')
+        const command = await kernel.exec('access-control:doctor', ['--scope=bad', '--json'])
+        const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map(
+          (log) => log.message
+        )
+        return { exitCode: command.exitCode, logs }
+      }
+      const absent = await commandFor('missing_memberships')
+      assert.equal(absent.exitCode, 1, absent.logs.join('\n'))
+      assert.equal(
+        JSON.parse(absent.logs.find((line) => line.startsWith('{'))!).checks[0].name,
+        'memberships_table'
+      )
+      const sparse = `${fixture.names.users}_sparse`
+      await createParentTable(fixture.db, sparse, 'integer')
+      const columns = await commandFor(sparse)
+      assert.equal(columns.exitCode, 1, columns.logs.join('\n'))
+      assert.include(
+        JSON.parse(columns.logs.find((line) => line.startsWith('{'))!).checks[0].sampleIds,
+        'scope_id'
+      )
+      const validSchema = await commandFor(fixture.names.memberships)
+      assert.equal(validSchema.exitCode, 2)
+      assert.isTrue(validSchema.logs.some((line) => line.includes('the doctor could not run')))
+    } finally {
+      await fixture.close()
+    }
+  })
 })

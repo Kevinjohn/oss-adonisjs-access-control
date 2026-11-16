@@ -26,6 +26,8 @@ one scope. `--json` prints `{ "checks": [{ "name", "ok", "count", "sampleIds" }]
 
 Exit code 0 when every check is clean, 1 when a check finds rows, 2 when a check could not run
 (for example a malformed `--scope`). The command writes nothing and takes no locks.
+Schema checks run first: a missing memberships table or required column is reported with exit 1
+even when `--scope` is malformed. With a complete schema, a malformed scope exits 2.
 
 ### Run it in CI
 
