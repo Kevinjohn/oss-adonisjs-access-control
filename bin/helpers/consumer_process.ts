@@ -16,6 +16,8 @@ type ActiveCommand = {
   spawnError?: Error
   output: string
   failCleanup?: () => void
+  groupOwned: boolean
+  identity?: { name: string; pid: number }
 }
 
 export class ConsumerCommandError extends Error {
@@ -24,7 +26,8 @@ export class ConsumerCommandError extends Error {
     readonly output: string,
     readonly primaryError: unknown,
     readonly cleanupErrors: unknown[],
-    readonly logPath: string
+    readonly logPath: string,
+    readonly unconfirmedProducer?: { name: string; pid: number }
   ) {
     const details = [primaryError, ...cleanupErrors]
       .filter((error) => error !== undefined)
@@ -151,7 +154,7 @@ export class ConsumerProcessRunner {
       return
     }
 
-    if (!this.active) return
+    if (!this.active?.groupOwned) return
     try {
       signalOwnedGroup(this.active.child, 'SIGKILL')
     } catch (error) {
@@ -161,12 +164,13 @@ export class ConsumerProcessRunner {
 
   private terminate(active: ActiveCommand): void {
     if (active.cleanupPromise) return
-    if (!active.child.pid) {
+    if (!active.child.pid || !active.groupOwned) {
       active.cleanupPromise = Promise.resolve()
       return
     }
     active.cleanupPromise = terminateOwnedGroup(active.child, () => {
-      if (this.unconfirmed?.pid === active.child.pid) this.unconfirmed = undefined
+      active.groupOwned = false
+      if (this.unconfirmed === active.identity) this.unconfirmed = undefined
     })
     void active.cleanupPromise.catch(() => active.failCleanup?.())
   }
@@ -199,9 +203,11 @@ export class ConsumerProcessRunner {
       timedOut: false,
       cleanupAllowed: allowAfterInterruption,
       output: '',
+      groupOwned: Boolean(child.pid),
+      identity: child.pid ? { name, pid: child.pid } : undefined,
     }
     this.active = active
-    if (child.pid) this.unconfirmed = { name, pid: child.pid }
+    if (active.identity && !this.unconfirmed) this.unconfirmed = active.identity
     child.stdout?.on('data', (chunk) => {
       active.output += chunk
     })
@@ -254,9 +260,11 @@ export class ConsumerProcessRunner {
       code === 0 &&
       !active.timedOut &&
       !this.firstSignal &&
-      this.unconfirmed?.pid === active.child.pid
+      this.unconfirmed === active.identity
     )
       this.unconfirmed = undefined
+    if (process.platform === 'win32' && code === 0 && !active.timedOut && !this.firstSignal)
+      active.groupOwned = false
 
     let primaryError: unknown
     if (active.spawnError) primaryError = active.spawnError
@@ -269,7 +277,14 @@ export class ConsumerProcessRunner {
 
     const logPath = join(this.logDirectory, `${active.name}.log`)
     const commandError = () =>
-      new ConsumerCommandError(active.name, active.output, primaryError, cleanupErrors, logPath)
+      new ConsumerCommandError(
+        active.name,
+        active.output,
+        primaryError,
+        cleanupErrors,
+        logPath,
+        active.groupOwned ? active.identity : undefined
+      )
     try {
       await writeFile(
         logPath,

@@ -12,6 +12,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { ConsumerProcessRunner } from './consumer_process.js'
+import { ConsumerCommandError } from './consumer_process.js'
 
 /** Owns one immutable input for the complete consumer run. Default build/pack is exclusive per checkout. */
 export async function consumerArtifact(
@@ -46,15 +47,34 @@ export async function consumerArtifact(
         }
         throw error
       }
+      ownsLock = true
+      let creationFailure: unknown
       try {
         writeFileSync(fd, owner)
       } catch (error) {
-        rmSync(lock)
-        throw error
+        creationFailure = error
       } finally {
-        closeSync(fd)
+        try {
+          closeSync(fd)
+        } catch (error) {
+          creationFailure =
+            creationFailure === undefined
+              ? error
+              : new AggregateError([creationFailure, error], 'Consumer lock creation failed')
+        }
       }
-      ownsLock = true
+      if (creationFailure !== undefined) {
+        try {
+          rmSync(lock)
+          ownsLock = false
+        } catch (cleanupError) {
+          creationFailure = new AggregateError(
+            [creationFailure, cleanupError],
+            'Consumer lock creation and cleanup failed'
+          )
+        }
+        throw creationFailure
+      }
       await runner.run(root, ['build'], 'archive_build', process.env)
       source = join(privateDir, `packed_${randomUUID()}.tgz`)
       await runner.run(root, ['pack', '--out', source], 'archive_pack', process.env)
@@ -64,7 +84,8 @@ export async function consumerArtifact(
     releaseLock()
     return { path, cleanup: () => rmSync(privateDir, { recursive: true, force: true }) }
   } catch (error) {
-    const producer = runner.unconfirmedProducer
+    const producer =
+      error instanceof ConsumerCommandError ? error.unconfirmedProducer : runner.unconfirmedProducer
     if (ownsLock && producer) {
       // A still-running producer may continue writing shared build output or its private archive.
       throw new AggregateError(
