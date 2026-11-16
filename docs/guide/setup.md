@@ -60,7 +60,7 @@ manually alongside the application's existing entries:
   to the object passed to `router.named()`.
 
 Then complete the Bouncer and Account Kit steps below and verify the scoped route as shown in
-[getting started](getting-started.md#_5-protect-a-route).
+[getting started](getting-started.md).
 
 ## The two manual steps
 
