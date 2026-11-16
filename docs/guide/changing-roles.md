@@ -67,8 +67,8 @@ Move its members to another role first with the same migration shape, then remov
 
 ## Turn the owner role on later
 
-1. Run the doctor with the new configuration in a dry run: `scope_without_owner` lists every scope
-   that needs an owner.
+1. Run the doctor with the new configuration in a dry run: `scope_without_owner` reports the
+   total count and samples up to 20 scope ids that need an owner.
 2. Assign one owner per scope with an application migration, choosing by your own rule (for
    example the earliest active member with the highest role).
 3. Set `ownerRole` and deploy.
