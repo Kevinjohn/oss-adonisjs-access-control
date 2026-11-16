@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- Document configure source-transform prerequisites and manual provider, command and middleware
+  registration when the framework skips those edits.
+
 - State that configure processes must run sequentially for each application.
 
 - Clarify that changing table names or key types in an existing installation needs explicit

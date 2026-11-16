@@ -42,6 +42,23 @@ The key types must match the primary keys of the users and scope tables: `intege
 characters. For string keys, the parent table's stored spelling is used when a read or write
 finds a matching parent under its collation. Choose a stable spelling for each key.
 
+## Source registration prerequisites
+
+Configure's provider, command and middleware edits use the framework's assembler transformer.
+Run configure in a development installation with `@adonisjs/assembler` available and check its
+warnings. If the framework skips a source edit, the printed next steps do not mean registration
+succeeded. Repair the development installation and rerun configure, or register these entries
+manually alongside the application's existing entries:
+
+- In `adonisrc.ts`, add `() => import('@kevinjohn/adonisjs-access-control/access_control_provider')`
+  to `providers`, after Lucid and Account Kit.
+- In `adonisrc.ts`, add `() => import('@kevinjohn/adonisjs-access-control/commands')` to `commands`.
+- In `start/kernel.ts`, add `scope: () => import('@kevinjohn/adonisjs-access-control/middleware')`
+  to the object passed to `router.named()`.
+
+Then complete the Bouncer and Account Kit steps below and verify the scoped route as shown in
+[getting started](getting-started.md#_5-protect-a-route).
+
 ## The two manual steps
 
 Bouncer abilities are generated from your permission keys and merged into the request's Bouncer
