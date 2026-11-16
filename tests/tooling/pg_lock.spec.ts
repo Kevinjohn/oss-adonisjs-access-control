@@ -115,6 +115,7 @@ test('a live numeric owner is busy and status does not alter the lock', async ({
   const status = spawn('bash', [path.join(f.root, 'bin/pg.sh'), 'status'], {
     cwd: f.root,
     env: f.env,
+    detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   const statusOutput = await owned(status, cleanup)
