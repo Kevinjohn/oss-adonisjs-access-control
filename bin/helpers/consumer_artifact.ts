@@ -118,24 +118,19 @@ export async function consumerArtifact(
 }
 
 function readLockOwner(lock: string): string | undefined {
-  let observed: BigIntStats
-  try {
-    observed = lstatSync(lock, { bigint: true })
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
-    throw error
-  }
-  if (!observed.isFile() || observed.nlink !== 1n) return undefined
-
   let fd: number
   try {
     fd = openSync(
       lock,
-      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0)
+      constants.O_RDONLY |
+        (constants.O_NOFOLLOW ?? 0) |
+        (constants.O_NONBLOCK ?? 0) |
+        (constants.O_NOCTTY ?? 0)
     )
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code
-    if (code === 'ENOENT' || code === 'ELOOP' || code === 'ENXIO') return undefined
+    if (code === 'ENOENT' || code === 'ELOOP' || code === 'ENXIO' || code === 'EISDIR')
+      return undefined
     throw error
   }
 
@@ -149,7 +144,6 @@ function readLockOwner(lock: string): string | undefined {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
     }
-    const sameFile = opened.dev === observed.dev && opened.ino === observed.ino
     const nameStillMatches =
       current !== undefined && current.dev === opened.dev && current.ino === opened.ino
     if (
@@ -158,7 +152,6 @@ function readLockOwner(lock: string): string | undefined {
       !current ||
       !current.isFile() ||
       current.nlink !== 1n ||
-      !sameFile ||
       !nameStillMatches
     ) {
       contents = undefined
