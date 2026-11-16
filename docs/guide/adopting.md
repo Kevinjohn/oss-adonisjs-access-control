@@ -63,6 +63,12 @@ export default class extends BaseSchema {
 }
 ```
 
+The example's `down()` deletes every row in the destination table. Roll it back only before the
+application starts writing new memberships there, or after backing up and reconciling those
+changes into a retained store. Rolling back the preceding table-creation migration drops the
+destination table as well. Once traffic has switched, plan a separate application-owned recovery
+procedure for membership changes made after the copy.
+
 The `sqlTimestamp` call uses the same database-specific representation as membership writes and
 cursor comparisons. If earlier imports already stored numeric SQLite millisecond timestamps, plan
 an application-owned migration before switching: back up the rows, identify their stored

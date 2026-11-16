@@ -5,6 +5,7 @@
 ### Changed
 
 - Requires Account Kit 0.4.0 (exact).
+- Adoption guidance identifies when its data-deleting rollback is safe after cutover.
 
 ### Fixed
 
