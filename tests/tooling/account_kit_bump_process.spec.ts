@@ -38,21 +38,22 @@ test('bump command finishes a journaled partial write after manifest reached tar
         {
           version: '0.1.8',
           peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version },
+          devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url },
         },
         null,
         2
       )
     )
-    await writeFile(join(root, 'notes.md'), `Account Kit ${from.version}\n`)
-    await run('git', ['add', 'package.json', 'notes.md'], { cwd: root })
-    const plan = await makeBumpPlan(root, ['package.json', 'notes.md'], from, to)
+    await writeFile(join(root, 'README.md'), `Account Kit ${from.version}\n`)
+    await run('git', ['add', 'package.json', 'README.md'], { cwd: root })
+    const plan = await makeBumpPlan(root, ['package.json', 'README.md'], from, to)
     await saveBumpPlan(root, plan)
     await writeFile(join(root, 'package.json'), plan.files[0].after)
     const result = await run(process.execPath, ['--import', loader, script, to.version], {
       cwd: root,
     })
     assert.include(result.stdout, 'Rewrote 1 files.')
-    assert.include(await readFile(join(root, 'notes.md'), 'utf8'), to.version)
+    assert.include(await readFile(join(root, 'README.md'), 'utf8'), to.version)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -66,7 +67,11 @@ test('bump command preserves a failed leftover scan', async ({ assert }) => {
     await writeFile(
       join(root, 'package.json'),
       JSON.stringify(
-        { version: '0.1.8', peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version } },
+        {
+          version: '0.1.8',
+          peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version },
+          devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url },
+        },
         null,
         2
       )
@@ -81,16 +86,24 @@ test('bump command preserves a failed leftover scan', async ({ assert }) => {
       '#!/bin/sh\nif [ "$1" = grep ]; then exit 128; fi\nexec /usr/bin/git "$@"\n'
     )
     await chmod(join(shim, 'git'), 0o755)
-    await assert.rejects(
-      () =>
-        run(process.execPath, ['--import', loader, script, to.version], {
-          cwd: root,
-          env: { ...process.env, PATH: `${shim}:${process.env.PATH}` },
-        }),
-      /Command failed/
-    )
+    let failure: { stderr?: string; stdout?: string } | undefined
+    try {
+      await run(process.execPath, ['--import', loader, script, to.version], {
+        cwd: root,
+        env: { ...process.env, PATH: `${shim}:${process.env.PATH}` },
+      })
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(failure?.stderr ?? '', /git grep/)
+    assert.notInclude(failure?.stdout ?? '', 'Add the changelog entry')
     assert.include(await readFile(join(root, 'package.json'), 'utf8'), to.version)
     assert.ok(await readFile(join(root, 'tmp/account-kit-bump-plan.json'), 'utf8'))
+    const retry = await run(process.execPath, ['--import', loader, script, to.version], {
+      cwd: root,
+    })
+    assert.include(retry.stdout, 'Account Kit 0.3.3 -> 0.3.4')
+    await assert.rejects(() => readFile(join(root, 'tmp/account-kit-bump-plan.json')), /ENOENT/)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
