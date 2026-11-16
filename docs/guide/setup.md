@@ -37,7 +37,8 @@ Flags:
 
 The key types must match the primary keys of the users and scope tables: `integer` for
 `increments()` columns, `uuid` for `uuid()` columns and `string` for string keys up to 254
-characters.
+characters. For string keys, the parent table's stored spelling is used when a read or write
+finds a matching parent under its collation. Choose a stable spelling for each key.
 
 ## The two manual steps
 

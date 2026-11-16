@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Membership reads resolve string key aliases through their parent rows, matching write behavior.
 - Cleanup event role types admit historical stored strings; newly assigned role events keep their
   configured role type.
 - Resolved configuration types mark copied roles, table settings and permission entries readonly,

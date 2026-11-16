@@ -295,19 +295,32 @@ export class MembershipService<Role extends string = string> {
    * compares keys case-insensitively would otherwise lock, store and compare the caller's
    * spelling. Other key types are canonical after normalisation; a missing row keeps the input.
    */
-  async #stored(trx: Trx, table: string, keyType: KeyType, key: ScopeKey | UserKey) {
-    if (keyType !== 'string') return key
-    const row = (await trx.from(table).select('id').where('id', key).first()) as
+  async #storedParent(
+    client: QueryClientContract,
+    table: string,
+    key: string
+  ): Promise<string | undefined> {
+    const row = (await client.from(table).select('id').where('id', key).first()) as
       { id: unknown } | null | undefined
-    return row ? String(row.id) : key
+    return row ? String(row.id) : undefined
   }
 
-  #storedUser(trx: Trx, userId: UserKey): Promise<UserKey> {
-    return this.#stored(trx, this.#usersTable, this.#access.config.users.keyType, userId)
+  async #stored(
+    client: QueryClientContract,
+    table: string,
+    keyType: KeyType,
+    key: ScopeKey | UserKey
+  ) {
+    if (keyType !== 'string') return key
+    return (await this.#storedParent(client, table, String(key))) ?? key
   }
 
-  #storedScope(trx: Trx, scopeId: ScopeKey): Promise<ScopeKey> {
-    return this.#stored(trx, this.#scopeTable, this.#access.config.scope.keyType, scopeId)
+  #storedUser(client: QueryClientContract, userId: UserKey): Promise<UserKey> {
+    return this.#stored(client, this.#usersTable, this.#access.config.users.keyType, userId)
+  }
+
+  #storedScope(client: QueryClientContract, scopeId: ScopeKey): Promise<ScopeKey> {
+    return this.#stored(client, this.#scopeTable, this.#access.config.scope.keyType, scopeId)
   }
 
   /** The stored spellings of a scope and some users, read before any lock is taken. */
@@ -341,12 +354,21 @@ export class MembershipService<Role extends string = string> {
 
   /** The membership, or null. A plain read without locks. */
   async find(scopeId: ScopeKey, userId: UserKey, trx?: Trx): Promise<Membership | null> {
-    return this.#read(this.#client(trx), this.#scopeKey(scopeId), this.#userKey(userId))
+    const normalizedScope = this.#scopeKey(scopeId)
+    const normalizedUser = this.#userKey(userId)
+    const client = this.#client(trx)
+    return this.#read(
+      client,
+      await this.#storedScope(client, normalizedScope),
+      await this.#storedUser(client, normalizedUser)
+    )
   }
 
   /** Every membership of the user, ordered by `created_at, id`. A plain read without locks. */
   async listForUser(userId: UserKey, trx?: Trx): Promise<Membership[]> {
-    return this.#readAll(this.#client(trx), this.#userKey(userId))
+    const normalizedUser = this.#userKey(userId)
+    const client = this.#client(trx)
+    return this.#readAll(client, await this.#storedUser(client, normalizedUser))
   }
 
   /**
@@ -356,11 +378,7 @@ export class MembershipService<Role extends string = string> {
    */
   async authorize(input: AuthorizeInput): Promise<Membership> {
     const trx = this.#requireTrx(input.trx, 'authorize')
-    const membership = await this.#read(
-      trx,
-      this.#scopeKey(input.scopeId),
-      this.#userKey(input.userId)
-    )
+    const membership = await this.find(input.scopeId, input.userId, trx)
     if (
       !membership ||
       membership.status !== 'active' ||
@@ -372,13 +390,15 @@ export class MembershipService<Role extends string = string> {
 
   /** One page of a scope's members for an actor with `members:list`. Does not lock. */
   async listForScope(input: ListForScopeInput): Promise<MembershipPage> {
-    const scopeId = this.#scopeKey(input.scopeId)
-    const actorId = this.#userKey(input.actor.id, 'actor.id')
+    const normalizedScope = this.#scopeKey(input.scopeId)
+    const normalizedActor = this.#userKey(input.actor.id, 'actor.id')
     const limit = input.limit ?? 25
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
       throw error('E_ACCESS_CONTROL_INVALID_INPUT', 'limit must be an integer from 1 to 100')
     const cursor = input.cursor === undefined ? null : decodeCursor(input.cursor)
     const client = this.#client(input.trx)
+    const scopeId = await this.#storedScope(client, normalizedScope)
+    const actorId = await this.#storedUser(client, normalizedActor)
     const actor = await this.#read(client, scopeId, actorId)
     if (!actor || actor.status !== 'active' || !this.#access.can(actor.role, 'members:list'))
       throw error('E_ACCESS_CONTROL_FORBIDDEN')
