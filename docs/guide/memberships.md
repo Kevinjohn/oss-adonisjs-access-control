@@ -75,6 +75,14 @@ directly.
 | `removeAllForScope`           | Removes every membership of a scope inside your scope-deletion transaction, just before you delete the scope row. A member set that changed since the first read is `CONFLICT`; retry the transaction.                                        |
 | `exportFor`                   | The user's memberships with ISO timestamps, for the kit's data export.                                                                                                                                                                        |
 
+In an owner-enabled scope, call `createFirstMember` before trusted `grant` calls. `grant` may
+create a non-owner membership in an empty scope; it does not bootstrap an owner. Once any row
+exists, `createFirstMember` refuses with `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY`. Keep bootstrap and
+initial grants in the same transaction when they form one operation. If grants already exist,
+repair ownership with an application-owned data migration, or remove the existing memberships
+through a trusted cleanup and bootstrap again only when discarding them is intended. Back up and
+account for membership events and other application data before recovery.
+
 ## Events
 
 `onMembershipChanged(event, trx)` in the configuration runs inside the write transaction after the

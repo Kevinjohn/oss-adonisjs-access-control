@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- Document owner bootstrap before trusted grants and explicit recovery choices for an already
+  populated ownerless scope.
+
 - Membership documentation separates unauthorised raw reads, manager operations and authenticated
   self-service, including the session-derived identity required when leaving.
 
