@@ -116,9 +116,24 @@ key synchronously, so it fits only when the id is already known, for example cac
 
 Invitations in such an application usually carry no scope. The package's Account Kit callbacks
 refuse and ignore unscoped invitations, so write `authorize` and `onInvitationAccepted` yourself:
-resolve the installation scope through the callback's `trx`, check the actor with
-`accessControl.can(role, 'invitations:manage')`, and call `memberships.acceptInvitation` with that
-scope. Capacity Lens does this in
+resolve the installation scope through the callback's `trx` and keep the checks the shipped
+callbacks provide:
+
+- For inviting and managing an invitation, load the actor's membership in that scope, require
+  `status === 'active'`, require `invitations:manage`, and require a known non-owner invited role
+  ranked no higher than the actor's role.
+- For listing invitations, require the same active membership and permission. There is no
+  invited role to check for this operation.
+- If Account Kit admission is enabled, require the actor to be admitted in each authorisation
+  callback. Read through the callback's transaction when supplied, without taking row locks.
+- On acceptance, resolve the fixed scope and call `memberships.acceptInvitation` with the
+  invitation's role, the accepting user's ID and the kit's `trx`. Acceptance honours the stored
+  grant; it does not re-authorise the inviter. Preserve any additional application eligibility
+  checks and keep related writes inside that transaction.
+
+`accessControl.can(role, 'invitations:manage')` alone checks only the configured role matrix;
+it does not establish active membership, admission or the invited-versus-actor rank. Capacity Lens
+has an application-specific adapter in
 [`policy.ts`](https://github.com/Kevinjohn/capacitylens/blob/68b353794/apps/backend/app/services/account_kit/policy.ts).
 
 ## Share one permission declaration with the browser

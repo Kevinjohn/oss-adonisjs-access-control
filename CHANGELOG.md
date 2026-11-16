@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- List the membership, rank and admission checks that single-scope invitation adapters must
+  preserve, alongside acceptance transaction requirements.
+
 - Explain replica-backed permission-read consistency and the host choices for primary-backed
   middleware or transactional authorization.
 
