@@ -1,8 +1,9 @@
 import { test } from '@japa/runner'
-import {
+import fs, {
   chmodSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -11,6 +12,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -82,13 +84,95 @@ test.group('consumer archive snapshot', () => {
       rmSync(root, { recursive: true, force: true })
     }
   })
+
+  test('reports contention without following a linked or non-file lock', async ({ assert }) => {
+    const root = mkdtempSync(join(tmpdir(), 'consumer_unsafe_lock_test_'))
+    const lock = join(root, 'tmp', 'consumer-build.lock')
+    const target = join(root, 'private-owner')
+    mkdirSync(join(root, 'tmp'))
+    writeFileSync(target, 'unrelated private contents')
+    try {
+      const run = () =>
+        consumerArtifact(root, undefined, {
+          unconfirmedProducer: undefined,
+          run: async () => assert.fail('contending build ran'),
+        })
+      symlinkSync(target, lock)
+      await assert.rejects(run, /owner unavailable/)
+      assert.isTrue(existsSync(lock))
+      assert.isTrue(lstatSync(lock).isSymbolicLink())
+      assert.equal(readFileSync(target, 'utf8'), 'unrelated private contents')
+
+      rmSync(lock)
+      mkdirSync(lock)
+      await assert.rejects(run, /owner unavailable/)
+      assert.isTrue(existsSync(lock))
+
+      if (process.platform === 'linux') {
+        rmSync(lock, { recursive: true })
+        execFileSync('mkfifo', [lock])
+        await assert.rejects(run, /owner unavailable/)
+        assert.isTrue(existsSync(lock))
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('reports contention when the owner lock disappears after EEXIST', async ({ assert }) => {
+    const root = mkdtempSync(join(tmpdir(), 'consumer_vanished_lock_test_'))
+    const lock = join(root, 'tmp', 'consumer-build.lock')
+    mkdirSync(join(root, 'tmp'))
+    writeFileSync(lock, 'current owner record')
+
+    const originalOpenSync = fs.openSync
+    let lockClaims = 0
+    let producerInvocations = 0
+    let removedAfterConflict = false
+    fs.openSync = ((path, flags, mode) => {
+      if (path === lock && flags === 'wx') lockClaims++
+      try {
+        return originalOpenSync(path, flags, mode)
+      } catch (error) {
+        if (path === lock && flags === 'wx' && (error as NodeJS.ErrnoException).code === 'EEXIST') {
+          rmSync(lock)
+          removedAfterConflict = true
+        }
+        throw error
+      }
+    }) as typeof fs.openSync
+    syncBuiltinESMExports()
+
+    try {
+      await assert.rejects(
+        () =>
+          consumerArtifact(root, undefined, {
+            unconfirmedProducer: undefined,
+            run: async () => {
+              producerInvocations++
+              return ''
+            },
+          }),
+        /Default consumer build lock exists.*owner unavailable/
+      )
+      assert.isTrue(removedAfterConflict)
+      assert.equal(lockClaims, 1)
+      assert.equal(producerInvocations, 0)
+      assert.isFalse(existsSync(lock))
+    } finally {
+      fs.openSync = originalOpenSync
+      syncBuiltinESMExports()
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
 })
 
 test('default build keeps its claim until a TERM-resistant writer is stopped', async ({
   assert,
 }) => {
   if (process.platform === 'win32') return
-  const root = mkdtempSync(join(tmpdir(), 'consumer_group_test_'))
+  const tempParent = mkdtempSync(join(tmpdir(), 'consumer path $; test_'))
+  const root = mkdtempSync(join(tempParent, 'consumer_group_test_'))
   const shim = join(root, 'shim')
   const ready = join(root, 'writer_ready')
   const term = join(root, 'writer_term')
@@ -101,12 +185,12 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
   const writer = join(root, 'writer.cjs')
   writeFileSync(
     writer,
-    `const fs = require('node:fs'); process.on('SIGTERM', () => { fs.writeFileSync(${JSON.stringify(term)}, 'TERM'); }); fs.writeFileSync(${JSON.stringify(ready + '.tmp')}, String(process.pid)); fs.renameSync(${JSON.stringify(ready + '.tmp')}, ${JSON.stringify(ready)}); setInterval(() => { if (fs.existsSync(${JSON.stringify(stop)})) process.exit(0); }, 20);`
+    "const fs = require('node:fs'); const path = require('node:path'); const term = path.join(__dirname, 'writer_term'); const ready = path.join(__dirname, 'writer_ready'); const stop = path.join(__dirname, 'writer_stop'); process.on('SIGTERM', () => { fs.writeFileSync(term, 'TERM'); }); fs.writeFileSync(ready + '.tmp', String(process.pid)); fs.renameSync(ready + '.tmp', ready); setInterval(() => { if (fs.existsSync(stop)) process.exit(0); }, 20);"
   )
   const pnpm = join(shim, 'pnpm')
   writeFileSync(
     pnpm,
-    `#!/bin/sh\nif [ "$1" = build ]; then\n  printf '%s' "$$" > ${JSON.stringify(groupLeader + '.tmp')}\n  mv ${JSON.stringify(groupLeader + '.tmp')} ${JSON.stringify(groupLeader)}\n  ${JSON.stringify(process.execPath)} ${JSON.stringify(writer)} >/dev/null 2>&1 &\n  trap 'exit 143' TERM\n  wait $!\n  exit 0\nfi\nif [ "$1" = pack ]; then printf archive > "$3"; exit 0; fi\nexit 9\n`
+    '#!/bin/sh\nif [ "$1" = build ]; then\n  printf \'%s\' "$$" > "$CONSUMER_FIXTURE_ROOT/group_leader.tmp"\n  mv "$CONSUMER_FIXTURE_ROOT/group_leader.tmp" "$CONSUMER_FIXTURE_ROOT/group_leader"\n  "$CONSUMER_NODE_EXECUTABLE" "$CONSUMER_FIXTURE_ROOT/writer.cjs" >/dev/null 2>&1 &\n  trap \'exit 143\' TERM\n  wait $!\n  exit 0\nfi\nif [ "$1" = pack ]; then printf archive > "$3"; exit 0; fi\nexit 9\n'
   )
   chmodSync(pnpm, 0o755)
   const loader = fileURLToPath(import.meta.resolve('@poppinss/ts-exec'))
@@ -120,7 +204,13 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
     process.execPath,
     ['--import', loader, cli, '--profile=floor', '--database=sqlite', '--scaffold-only'],
     {
-      env: { ...process.env, PATH: `${shim}:${process.env.PATH}`, TMPDIR: privateTmp },
+      env: {
+        ...process.env,
+        PATH: `${shim}:${process.env.PATH}`,
+        TMPDIR: privateTmp,
+        CONSUMER_FIXTURE_ROOT: root,
+        CONSUMER_NODE_EXECUTABLE: process.execPath,
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     }
   )
@@ -196,8 +286,10 @@ test('default build keeps its claim until a TERM-resistant writer is stopped', a
     if (!writerAlive && existsSync(ready))
       writerAlive = observeWriter(fixturePid(readFileSync(ready, 'utf8')))
     const writerStopped = writerAlive ? await waitUntilStopped(writerAlive, 5000) : false
-    if (writerStopped) rmSync(root, { recursive: true, force: true })
-    else assert.fail('Fixture writer remained executable; retained its private directory')
+    if (writerStopped) {
+      rmSync(root, { recursive: true, force: true })
+      rmSync(tempParent, { recursive: true, force: true })
+    } else assert.fail('Fixture writer remained executable; retained its private directory')
   }
 }).timeout(25_000)
 
@@ -338,7 +430,22 @@ test('the real CLI releases a reaped interrupted producer and permits a retry', 
   const pnpm = join(shim, 'pnpm')
   writeFileSync(
     pnpm,
-    `#!/bin/sh\nif [ "$1" = build ]; then\n  if [ -f ${JSON.stringify(retryMode)} ]; then\n    touch ${JSON.stringify(retryStarted)}\n    exit 47\n  fi\n  trap 'exit 143' TERM\n  printf '%s' "$$" > ${JSON.stringify(ready + '.tmp')}\n  mv ${JSON.stringify(ready + '.tmp')} ${JSON.stringify(ready)}\n  while :; do\n    if [ -f ${JSON.stringify(stop)} ]; then exit 0; fi\n    sleep 1\n  done\nfi\nexit 9\n`
+    `#!/bin/sh
+if [ "$1" = build ]; then
+  if [ -f "$CONSUMER_FIXTURE_ROOT/retry_mode" ]; then
+    touch "$CONSUMER_FIXTURE_ROOT/retry_started"
+    exit 47
+  fi
+  trap 'exit 143' TERM
+  printf '%s' "$$" > "$CONSUMER_FIXTURE_ROOT/ready.tmp"
+  mv "$CONSUMER_FIXTURE_ROOT/ready.tmp" "$CONSUMER_FIXTURE_ROOT/ready"
+  while :; do
+    if [ -f "$CONSUMER_FIXTURE_ROOT/stop" ]; then exit 0; fi
+    sleep 1
+  done
+fi
+exit 9
+`
   )
   chmodSync(pnpm, 0o755)
   const loader = fileURLToPath(import.meta.resolve('@poppinss/ts-exec'))
@@ -354,7 +461,13 @@ test('the real CLI releases a reaped interrupted producer and permits a retry', 
         '--scaffold-only',
       ],
       {
-        env: { ...process.env, PATH: `${shim}:${process.env.PATH}`, TMPDIR: privateTmp },
+        env: {
+          ...process.env,
+          PATH: `${shim}:${process.env.PATH}`,
+          TMPDIR: privateTmp,
+          CONSUMER_FIXTURE_ROOT: root,
+          CONSUMER_NODE_EXECUTABLE: process.execPath,
+        },
         stdio: ['ignore', 'pipe', 'pipe'],
       }
     )
@@ -497,7 +610,18 @@ test('the real CLI retains its original claim when group proof is unavailable', 
   const pnpm = join(shim, 'pnpm')
   writeFileSync(
     pnpm,
-    `#!/bin/sh\nif [ "$1" = build ]; then\n  trap 'exit 143' TERM\n  printf '%s' "$$" > ${JSON.stringify(ready + '.tmp')}\n  mv ${JSON.stringify(ready + '.tmp')} ${JSON.stringify(ready)}\n  while :; do\n    if [ -f ${JSON.stringify(stop)} ]; then exit 0; fi\n    sleep 1\n  done\nfi\nexit 9\n`
+    `#!/bin/sh
+if [ "$1" = build ]; then
+  trap 'exit 143' TERM
+  printf '%s' "$$" > "$CONSUMER_FIXTURE_ROOT/ready.tmp"
+  mv "$CONSUMER_FIXTURE_ROOT/ready.tmp" "$CONSUMER_FIXTURE_ROOT/ready"
+  while :; do
+    if [ -f "$CONSUMER_FIXTURE_ROOT/stop" ]; then exit 0; fi
+    sleep 1
+  done
+fi
+exit 9
+`
   )
   chmodSync(pnpm, 0o755)
   const fault = join(root, 'probe_fault.mjs')
@@ -519,7 +643,13 @@ test('the real CLI retains its original claim when group proof is unavailable', 
       '--scaffold-only',
     ],
     {
-      env: { ...process.env, PATH: `${shim}:${process.env.PATH}`, TMPDIR: privateTmp },
+      env: {
+        ...process.env,
+        PATH: `${shim}:${process.env.PATH}`,
+        TMPDIR: privateTmp,
+        CONSUMER_FIXTURE_ROOT: root,
+        CONSUMER_NODE_EXECUTABLE: process.execPath,
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     }
   )
