@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Changed-file step timeouts settle after bounded process cleanup, including signaling failures.
 - Changed-file docs checks detect content rewritten in an already modified worktree.
 - Changed-file reminders include dependency manifests for consumer checks and schema diagnostics for database checks.
 - First-member and string-key input guidance now reflects the supported rules.

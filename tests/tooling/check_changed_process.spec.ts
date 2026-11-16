@@ -225,3 +225,39 @@ require('node:module').syncBuiltinESMExports()
   assert.match(result.text, /LOCAL_HANDLE_RELEASED/)
   assert.equal(await readFile(f.log, 'utf8'), '')
 }).timeout(10_000)
+
+test('timeout settles a never-closing child after signaling fails', async ({ cleanup }) => {
+  const f = await fixture()
+  cleanup(() => rm(f.directory, { recursive: true, force: true }))
+  const hook = path.join(f.directory, 'failed-timeout.cjs')
+  await writeFile(
+    hook,
+    `
+const cp = require('node:child_process')
+const { EventEmitter } = require('node:events')
+const { PassThrough } = require('node:stream')
+cp.spawn = () => {
+ const child = new EventEmitter(); child.pid = 99999999; child.exitCode = child.signalCode = null
+ child.stdout = new PassThrough(); child.stderr = new PassThrough()
+ const liveHandle = setInterval(() => {}, 1000)
+ child.unref = () => { clearInterval(liveHandle); console.log('LOCAL_HANDLE_RELEASED') }
+ setImmediate(() => child.stdout.write('timeout partial output'))
+ return child
+}
+process.kill = (pid, signal) => { if (signal !== 0) { const error = new Error('denied'); error.code = 'EPERM'; throw error } return true }
+let clock = 0; Date.now = () => (clock += 6000)
+const originalTimeout = global.setTimeout
+global.setTimeout = (callback, delay, ...args) => originalTimeout(callback, delay === 900000 ? 0 : delay, ...args)
+require('node:module').syncBuiltinESMExports()
+`
+  )
+  f.env.NODE_OPTIONS = `${f.env.NODE_OPTIONS ?? ''} --require=${hook}`
+  const child = launch(f)
+  const output = await outputOf(child)
+  const result = await collectExit(child, output)
+  assert.equal(result.code, 1, result.text)
+  assert.match(result.text, /fail format \(exit killed\)/)
+  assert.match(result.text, /cleanup failed:.*denied/s)
+  assert.match(result.text, /LOCAL_HANDLE_RELEASED/)
+  assert.equal(await readFile(f.log, 'utf8'), '')
+}).timeout(10_000)

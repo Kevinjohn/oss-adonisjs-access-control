@@ -15,7 +15,7 @@ let active: ChildProcess | undefined
 let interruptedBy: NodeJS.Signals | undefined
 let interruptionCleanup: Promise<void> | undefined
 const signalErrors: unknown[] = []
-let abandonActive: ((error: unknown) => void) | undefined
+let abandonActive: ((error?: unknown) => void) | undefined
 
 function describeError(error: unknown): string {
   if (error instanceof AggregateError) {
@@ -177,16 +177,17 @@ function run(
     let output = ''
     let spawnError: Error | undefined
     let timedOut = false
+    let timeoutCleanup: Promise<void> | undefined
     child.stdout.on('data', (chunk) => (output += chunk))
     child.stderr.on('data', (chunk) => (output += chunk))
     const timer = setTimeout(() => {
       timedOut = true
       output += `\n[check:changed] stopped after ${stepLimitMs / 60000} minutes\n`
-      try {
-        signalOwnedProcess(child, 'SIGKILL')
-      } catch (error) {
-        output += `[check:changed] timeout cleanup failed: ${describeError(error)}\n`
-      }
+      timeoutCleanup = terminateOwnedProcess(child)
+      void timeoutCleanup.then(
+        () => abandonActive?.(),
+        (error) => abandonActive?.(error)
+      )
     }, stepLimitMs)
     child.once('error', (error) => {
       spawnError = error
@@ -210,6 +211,13 @@ function run(
       if (interruptedBy && interruptionCleanup) {
         try {
           await interruptionCleanup
+        } catch (error) {
+          cleanupError = error
+        }
+      }
+      if (timedOut && timeoutCleanup) {
+        try {
+          await timeoutCleanup
         } catch (error) {
           cleanupError = error
         }
