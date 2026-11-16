@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Membership writes capture mutable role, status and invitation event input before asynchronous work, keeping persisted rows and events aligned.
+
 - String invitation scopes require the stored parent spelling before authorization or acceptance, preserving batch lock order and rollback on an alias.
 
 - First-member and string-key input guidance now reflects the supported rules.
