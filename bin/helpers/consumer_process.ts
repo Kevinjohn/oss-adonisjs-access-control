@@ -16,6 +16,8 @@ type ActiveCommand = {
   spawnError?: Error
   output: string
   failCleanup?: () => void
+  groupOwned: boolean
+  identity?: { name: string; pid: number }
 }
 
 export class ConsumerCommandError extends Error {
@@ -24,7 +26,8 @@ export class ConsumerCommandError extends Error {
     readonly output: string,
     readonly primaryError: unknown,
     readonly cleanupErrors: unknown[],
-    readonly logPath: string
+    readonly logPath: string,
+    readonly unconfirmedProducer?: { name: string; pid: number }
   ) {
     const details = [primaryError, ...cleanupErrors]
       .filter((error) => error !== undefined)
@@ -90,7 +93,7 @@ function waitForOwnedGroup(child: ChildProcess, timeoutMs: number): Promise<bool
   })
 }
 
-async function terminateOwnedGroup(child: ChildProcess): Promise<void> {
+async function terminateOwnedGroup(child: ChildProcess, onConfirmed: () => void): Promise<void> {
   const failures: unknown[] = []
   try {
     signalOwnedGroup(child, 'SIGTERM')
@@ -118,6 +121,7 @@ async function terminateOwnedGroup(child: ChildProcess): Promise<void> {
     if (!stopped)
       failures.push(new Error('The owned consumer process group did not exit after SIGKILL.'))
   }
+  if (stopped && process.platform !== 'win32') onConfirmed()
   if (failures.length) {
     throw new AggregateError(failures, 'Could not clean up the owned consumer process group.')
   }
@@ -128,11 +132,16 @@ export class ConsumerProcessRunner {
   private active?: ActiveCommand
   private firstSignal?: NodeJS.Signals
   private signalErrors: unknown[] = []
+  private unconfirmed?: { name: string; pid: number }
 
   constructor(
     private readonly logDirectory: string,
     private readonly timeoutMs = consumerCommandTimeoutMs
   ) {}
+
+  get unconfirmedProducer(): { name: string; pid: number } | undefined {
+    return this.unconfirmed
+  }
 
   get interruptedBy(): NodeJS.Signals | undefined {
     return this.firstSignal
@@ -145,7 +154,7 @@ export class ConsumerProcessRunner {
       return
     }
 
-    if (!this.active) return
+    if (!this.active?.groupOwned) return
     try {
       signalOwnedGroup(this.active.child, 'SIGKILL')
     } catch (error) {
@@ -155,11 +164,14 @@ export class ConsumerProcessRunner {
 
   private terminate(active: ActiveCommand): void {
     if (active.cleanupPromise) return
-    if (!active.child.pid) {
+    if (!active.child.pid || !active.groupOwned) {
       active.cleanupPromise = Promise.resolve()
       return
     }
-    active.cleanupPromise = terminateOwnedGroup(active.child)
+    active.cleanupPromise = terminateOwnedGroup(active.child, () => {
+      active.groupOwned = false
+      if (this.unconfirmed === active.identity) this.unconfirmed = undefined
+    })
     void active.cleanupPromise.catch(() => active.failCleanup?.())
   }
 
@@ -191,8 +203,11 @@ export class ConsumerProcessRunner {
       timedOut: false,
       cleanupAllowed: allowAfterInterruption,
       output: '',
+      groupOwned: Boolean(child.pid),
+      identity: child.pid ? { name, pid: child.pid } : undefined,
     }
     this.active = active
+    if (active.identity && !this.unconfirmed) this.unconfirmed = active.identity
     child.stdout?.on('data', (chunk) => {
       active.output += chunk
     })
@@ -240,6 +255,16 @@ export class ConsumerProcessRunner {
       }
     }
     cleanupErrors.push(...this.signalErrors.splice(0))
+    if (
+      process.platform === 'win32' &&
+      code === 0 &&
+      !active.timedOut &&
+      !this.firstSignal &&
+      this.unconfirmed === active.identity
+    )
+      this.unconfirmed = undefined
+    if (process.platform === 'win32' && code === 0 && !active.timedOut && !this.firstSignal)
+      active.groupOwned = false
 
     let primaryError: unknown
     if (active.spawnError) primaryError = active.spawnError
@@ -252,7 +277,14 @@ export class ConsumerProcessRunner {
 
     const logPath = join(this.logDirectory, `${active.name}.log`)
     const commandError = () =>
-      new ConsumerCommandError(active.name, active.output, primaryError, cleanupErrors, logPath)
+      new ConsumerCommandError(
+        active.name,
+        active.output,
+        primaryError,
+        cleanupErrors,
+        logPath,
+        active.groupOwned ? active.identity : undefined
+      )
     try {
       await writeFile(
         logPath,

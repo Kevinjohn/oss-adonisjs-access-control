@@ -1,28 +1,114 @@
-import { execFileSync } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import {
+  closeSync,
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import type { ConsumerProcessRunner } from './consumer_process.js'
+import { ConsumerCommandError } from './consumer_process.js'
 
-export const fixtureArtifact = 'tmp/consumer-package.tgz'
-
-export type PnpmCommand = (root: string, args: string[]) => void
-
-const runPnpm: PnpmCommand = (root, args) => {
-  execFileSync('pnpm', args, { cwd: root, stdio: 'inherit' })
-}
-
-/**
- * Returns the tarball the consumer harness installs. Without `--package` the package is rebuilt
- * and repacked first, and a failed build or pack stops the run, so an older tarball is never
- * tested in place of the current source. An explicit `--package` path is used as given.
- */
-export function consumerArtifact(
+/** Owns one immutable input for the complete consumer run. Default build/pack is exclusive per checkout. */
+export async function consumerArtifact(
   root: string,
   explicitPackage: string | undefined,
-  pnpm: PnpmCommand = runPnpm
-): string {
-  if (explicitPackage !== undefined) return resolve(root, explicitPackage)
-  mkdirSync(join(root, 'tmp'), { recursive: true })
-  pnpm(root, ['build'])
-  pnpm(root, ['pack', '--out', fixtureArtifact])
-  return resolve(root, fixtureArtifact)
+  runner: Pick<ConsumerProcessRunner, 'run' | 'unconfirmedProducer'>
+): Promise<{ path: string; cleanup: () => void }> {
+  const privateDir = mkdtempSync(join(tmpdir(), 'access_control_archive_'))
+  const lock = join(root, 'tmp', 'consumer-build.lock')
+  const owner = JSON.stringify({ pid: process.pid, token: randomUUID() })
+  let ownsLock = false
+  const releaseLock = () => {
+    if (!ownsLock) return
+    if (readFileSync(lock, 'utf8') !== owner)
+      throw new Error(`Consumer build lock ownership changed: ${lock}`)
+    rmSync(lock)
+    ownsLock = false
+  }
+  try {
+    let source: string
+    if (explicitPackage === undefined) {
+      mkdirSync(join(root, 'tmp'), { recursive: true })
+      let fd: number
+      try {
+        fd = openSync(lock, 'wx')
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+          const existing = readFileSync(lock, 'utf8')
+          throw new Error(
+            `Default consumer build lock exists at ${lock}: ${existing || 'owner not recorded'}. Inspect the owner before removing a stale lock.`
+          )
+        }
+        throw error
+      }
+      ownsLock = true
+      let creationFailure: unknown
+      try {
+        writeFileSync(fd, owner)
+      } catch (error) {
+        creationFailure = error
+      } finally {
+        try {
+          closeSync(fd)
+        } catch (error) {
+          creationFailure =
+            creationFailure === undefined
+              ? error
+              : new AggregateError([creationFailure, error], 'Consumer lock creation failed')
+        }
+      }
+      if (creationFailure !== undefined) {
+        try {
+          rmSync(lock)
+          ownsLock = false
+        } catch (cleanupError) {
+          creationFailure = new AggregateError(
+            [creationFailure, cleanupError],
+            'Consumer lock creation and cleanup failed'
+          )
+        }
+        throw creationFailure
+      }
+      await runner.run(root, ['build'], 'archive_build', process.env)
+      source = join(privateDir, `packed_${randomUUID()}.tgz`)
+      await runner.run(root, ['pack', '--out', source], 'archive_pack', process.env)
+    } else source = resolve(root, explicitPackage)
+    const path = join(privateDir, 'package.tgz')
+    copyFileSync(source, path)
+    releaseLock()
+    return { path, cleanup: () => rmSync(privateDir, { recursive: true, force: true }) }
+  } catch (error) {
+    const producer =
+      error instanceof ConsumerCommandError ? error.unconfirmedProducer : runner.unconfirmedProducer
+    if (ownsLock && producer) {
+      // A still-running producer may continue writing shared build output or its private archive.
+      throw new AggregateError(
+        [
+          error,
+          new Error(
+            `Consumer producer ${producer.name} (process group ${producer.pid}) could not be confirmed stopped. Retained ${lock} with owner ${owner} and ${privateDir}. Inspect the producer, establish quiescence, then re-check lock ownership before removing it.`
+          ),
+        ],
+        'Consumer archive preparation stopped without producer quiescence'
+      )
+    }
+    let failure: unknown = error
+    try {
+      releaseLock()
+    } catch (cleanupError) {
+      failure = new AggregateError([failure, cleanupError], 'Consumer build lock cleanup failed')
+    }
+    try {
+      rmSync(privateDir, { recursive: true, force: true })
+    } catch (cleanupError) {
+      failure = new AggregateError([failure, cleanupError], 'Consumer archive cleanup failed')
+    }
+    throw failure
+  }
 }

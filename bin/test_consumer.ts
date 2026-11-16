@@ -21,21 +21,19 @@ const database = args.get('database') ?? 'all'
 if (!['all', 'floor', 'latest'].includes(profile) || !['all', 'sqlite', 'pg'].includes(database))
   throw new Error('Use --profile=floor|latest|all --database=sqlite|pg|all')
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Node 24')
-const artifact = consumerArtifact(root, args.get('package'))
-const digest = createHash('sha256')
-  .update(await readFile(artifact))
-  .digest('hex')
-const directory = join(
-  root,
-  'tmp',
-  'consumers',
-  `${digest.slice(0, 12)}_${randomUUID().slice(0, 8)}`
-)
+const directory = join(root, 'tmp', 'consumers', `run_${randomUUID()}`)
 await mkdir(directory, { recursive: true })
 const processRunner = new ConsumerProcessRunner(directory)
-for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(signal, () => processRunner.interrupt(signal))
+const onInt = () => {
+  processRunner.interrupt('SIGINT')
+  process.exitCode = processRunner.interruptedBy === 'SIGINT' ? 130 : 143
 }
+const onTerm = () => {
+  processRunner.interrupt('SIGTERM')
+  process.exitCode = processRunner.interruptedBy === 'SIGINT' ? 130 : 143
+}
+process.on('SIGINT', onInt)
+process.on('SIGTERM', onTerm)
 const floor = {
   '@adonisjs/core': '7.0.0',
   '@adonisjs/auth': '10.0.0',
@@ -44,14 +42,31 @@ const floor = {
   'luxon': '3.4.4',
   'typescript': '5.9.3',
 }
-const packedManifest = JSON.parse(
-  execFileSync('tar', ['-xOf', artifact, 'package/package.json'], { encoding: 'utf8' })
-)
-const ranges: Record<string, string> = packedManifest.peerDependencies
-for (const [name, version] of Object.entries(floor)) {
-  const declaredFloor = ranges[name]?.match(/\d+\.\d+\.\d+/)?.[0]
-  if (declaredFloor !== version)
-    throw new Error(`Floor selection mismatch for ${name}: ${version} vs declared ${declaredFloor}`)
+let snapshot: Awaited<ReturnType<typeof consumerArtifact>> | undefined
+let artifact = ''
+let digest = ''
+let ranges: Record<string, string> = {}
+let failure: unknown
+try {
+  snapshot = await consumerArtifact(root, args.get('package'), processRunner)
+  artifact = snapshot.path
+  digest = createHash('sha256')
+    .update(await readFile(artifact))
+    .digest('hex')
+  const packedManifest = JSON.parse(
+    execFileSync('tar', ['-xOf', artifact, 'package/package.json'], { encoding: 'utf8' })
+  )
+  ranges = packedManifest.peerDependencies
+  for (const [name, version] of Object.entries(floor)) {
+    const declaredFloor = ranges[name]?.match(/\d+\.\d+\.\d+/)?.[0]
+    if (declaredFloor !== version)
+      throw new Error(
+        `Floor selection mismatch for ${name}: ${version} vs declared ${declaredFloor}`
+      )
+  }
+  if (processRunner.interruptedBy) throw new Error(`Interrupted by ${processRunner.interruptedBy}`)
+} catch (error) {
+  failure = error
 }
 const results: Array<Record<string, unknown>> = []
 let ownsPostgres = false
@@ -132,192 +147,211 @@ async function schema(cwd: string, name: string, action: 'create' | 'drop') {
 }
 
 try {
-  for (const selected of profile === 'all' ? ['floor', 'latest'] : [profile]) {
-    const versions: Record<string, string> = { ...floor }
-    if (selected === 'latest')
-      for (const name of Object.keys(floor)) {
-        const listed: unknown = JSON.parse(
-          await run(
-            root,
-            ['view', `${name}@${ranges[name]}`, 'version', '--json'],
-            `latest_${name.replaceAll('/', '_')}`
+  if (failure === undefined) {
+    for (const selected of profile === 'all' ? ['floor', 'latest'] : [profile]) {
+      const versions: Record<string, string> = { ...floor }
+      if (selected === 'latest')
+        for (const name of Object.keys(floor)) {
+          const listed: unknown = JSON.parse(
+            await run(
+              root,
+              ['view', `${name}@${ranges[name]}`, 'version', '--json'],
+              `latest_${name.replaceAll('/', '_')}`
+            )
           )
-        )
-        versions[name] = selectRegistryVersion(name, listed)
+          versions[name] = selectRegistryVersion(name, listed)
+        }
+      const app = await mkdtemp(join(tmpdir(), `access_control_consumer_${selected}_`))
+      console.log(`[consumer] isolated ${selected} app: ${app}`)
+      await cp(join(root, 'examples/consumer'), app, {
+        recursive: true,
+        filter: (source) =>
+          !relative(join(root, 'examples/consumer'), source)
+            .split('/')
+            .some((part) => ['node_modules', 'build', 'tmp', '.git', '.adonisjs'].includes(part)),
+      })
+      await mkdir(join(app, 'tmp'), { recursive: true })
+      const manifest = JSON.parse(await readFile(join(app, 'package.json'), 'utf8'))
+      for (const [name, version] of Object.entries(versions)) {
+        const section = name === 'typescript' ? 'devDependencies' : 'dependencies'
+        manifest[section][name] = version
       }
-    const app = await mkdtemp(join(tmpdir(), `access_control_consumer_${selected}_`))
-    console.log(`[consumer] isolated ${selected} app: ${app}`)
-    await cp(join(root, 'examples/consumer'), app, {
-      recursive: true,
-      filter: (source) =>
-        !relative(join(root, 'examples/consumer'), source)
-          .split('/')
-          .some((part) => ['node_modules', 'build', 'tmp', '.git', '.adonisjs'].includes(part)),
-    })
-    await mkdir(join(app, 'tmp'), { recursive: true })
-    const manifest = JSON.parse(await readFile(join(app, 'package.json'), 'utf8'))
-    for (const [name, version] of Object.entries(versions)) {
-      const section = name === 'typescript' ? 'devDependencies' : 'dependencies'
-      manifest[section][name] = version
-    }
-    manifest.dependencies['@kevinjohn/adonisjs-access-control'] = 'file:./package.tgz'
-    await writeFile(
-      join(app, 'pnpm-workspace.yaml'),
-      JSON.stringify({ overrides: versions, allowBuilds: manifest.allowScripts }, null, 2) + '\n'
-    )
-    await cp(artifact, join(app, 'package.tgz'))
-    await writeFile(join(app, 'package.json'), JSON.stringify(manifest, null, 2) + '\n')
-    const installation = await run(app, ['install', '--no-frozen-lockfile'], `${selected}_install`)
-    if (/unmet peer|issues with peer dependencies|ERR_PNPM_PEER_DEP/i.test(installation))
-      throw new Error('Consumer installation reports incompatible peer requirements')
-    const storeEntries = await readdir(join(app, 'node_modules/.pnpm'))
-    const semverEntry = storeEntries.find((entry) => entry.startsWith('semver@'))
-    if (!semverEntry)
-      throw new Error('Peer validation requires the installed tooling semver module')
-    const requireTool = createRequire(join(app, 'package.json'))
-    const semver = requireTool(
-      join(app, 'node_modules/.pnpm', semverEntry, 'node_modules/semver')
-    ) as { satisfies(version: string, range: string): boolean }
-    const tooling: Record<string, string> = {}
-    const dependencies: Record<string, string> = {}
-    const installedPackages: Record<
-      string,
-      { version: string; peerDependencies?: Record<string, string> }
-    > = {}
-    for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })) {
-      installedPackages[name] = JSON.parse(
-        await readFile(join(app, 'node_modules', name, 'package.json'), 'utf8')
-      )
-      if (name in manifest.devDependencies) tooling[name] = installedPackages[name].version
-      else dependencies[name] = installedPackages[name].version
-    }
-    let peerChecks = 0
-    for (const [name, info] of Object.entries(installedPackages))
-      for (const [peer, range] of Object.entries(info.peerDependencies ?? {})) {
-        const installed = installedPackages[peer]
-        if (!installed) continue
-        peerChecks++
-        if (!semver.satisfies(installed.version, range))
-          throw new Error(
-            `${name}@${info.version} requires peer ${peer}@${range}, installed ${installed.version}`
-          )
-      }
-
-    const resolved: Record<string, string> = {}
-    for (const [name, version] of Object.entries(versions)) {
-      const installed = JSON.parse(
-        await readFile(join(app, 'node_modules', name, 'package.json'), 'utf8')
-      )
-      resolved[name] = installed.version
-      if (installed.version !== version)
-        throw new Error(`${selected}: ${name} resolved ${installed.version}, expected ${version}`)
-    }
-    await run(
-      app,
-      ['exec', 'node', '--input-type=module', '--eval', rootProbe],
-      `${selected}_root_exports`
-    )
-    await run(
-      app,
-      ['exec', 'node', '--input-type=module', '--eval', providerProbe],
-      `${selected}_provider_exports`
-    )
-    if (args.has('scaffold-only')) {
+      manifest.dependencies['@kevinjohn/adonisjs-access-control'] = 'file:./package.tgz'
       await writeFile(
-        join(directory, `${selected}_scaffold.json`),
-        JSON.stringify(
-          { packageSha256: digest, profile: selected, versions: resolved, tooling, peerChecks },
-          null,
-          2
-        ) + '\n'
+        join(app, 'pnpm-workspace.yaml'),
+        JSON.stringify({ overrides: versions, allowBuilds: manifest.allowScripts }, null, 2) + '\n'
       )
-      console.log(`[consumer] PASS ${selected} packed scaffold`)
-      await rm(app, { recursive: true, force: true })
-      continue
-    }
-    await run(app, ['lint'], `${selected}_lint`)
-    await run(app, ['build'], `${selected}_build`)
-    for (const engine of database === 'all' ? ['sqlite', 'pg'] : [database]) {
-      const schemaName = `consumer_${selected}_${randomUUID().replaceAll('-', '')}`
-      if (engine === 'pg' && !ownsPostgres && process.env.CONSUMER_PG_EXTERNAL !== '1') {
-        try {
-          const output = await run(root, ['pg:start'], 'postgres_start')
-          ownsPostgres = !output.includes('already running')
-        } catch (error) {
-          if (
-            error instanceof ConsumerCommandError &&
-            error.commandName === 'postgres_start' &&
-            /server started/i.test(error.output) &&
-            !/already running/i.test(error.output)
-          ) {
-            ownsPostgres = true
-          }
-          throw error
-        }
+      await cp(artifact, join(app, 'package.tgz'))
+      await writeFile(join(app, 'package.json'), JSON.stringify(manifest, null, 2) + '\n')
+      const installation = await run(
+        app,
+        ['install', '--no-frozen-lockfile'],
+        `${selected}_install`
+      )
+      if (/unmet peer|issues with peer dependencies|ERR_PNPM_PEER_DEP/i.test(installation))
+        throw new Error('Consumer installation reports incompatible peer requirements')
+      const storeEntries = await readdir(join(app, 'node_modules/.pnpm'))
+      const semverEntry = storeEntries.find((entry) => entry.startsWith('semver@'))
+      if (!semverEntry)
+        throw new Error('Peer validation requires the installed tooling semver module')
+      const requireTool = createRequire(join(app, 'package.json'))
+      const semver = requireTool(
+        join(app, 'node_modules/.pnpm', semverEntry, 'node_modules/semver')
+      ) as { satisfies(version: string, range: string): boolean }
+      const tooling: Record<string, string> = {}
+      const dependencies: Record<string, string> = {}
+      const installedPackages: Record<
+        string,
+        { version: string; peerDependencies?: Record<string, string> }
+      > = {}
+      for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })) {
+        installedPackages[name] = JSON.parse(
+          await readFile(join(app, 'node_modules', name, 'package.json'), 'utf8')
+        )
+        if (name in manifest.devDependencies) tooling[name] = installedPackages[name].version
+        else dependencies[name] = installedPackages[name].version
       }
-      const env =
-        engine === 'pg' ? { ...pgEnv, DB_SCHEMA: schemaName } : { ...baseEnv, DB_CLIENT: 'sqlite' }
-      let engineFailure: unknown
-      try {
-        if (engine === 'pg') await schema(app, schemaName, 'create')
-        await run(app, ['typecheck'], `${selected}_${engine}_typecheck`, env)
-        const functional = await run(app, ['test'], `${selected}_${engine}_functional`, env)
-        const match = functional.match(/(\d+)\s+passed/)
-        if (!match) throw new Error('Missing consumer test pass count')
-        results.push({
-          profile: selected,
-          database: engine,
-          peerRanges: ranges,
-          versions: resolved,
-          tooling,
-          dependencies,
-          peerChecks,
-          functional: Number(match[1]),
-          fixtureLint: 'passed',
-          fixtureBuild: 'passed',
-          packageSha256: digest,
-        })
-        await writeResults()
-        console.log(`[consumer] PASS ${selected}/${engine}`)
-      } catch (error) {
-        engineFailure = error
-      } finally {
-        if (engine === 'pg') {
+      let peerChecks = 0
+      for (const [name, info] of Object.entries(installedPackages))
+        for (const [peer, range] of Object.entries(info.peerDependencies ?? {})) {
+          const installed = installedPackages[peer]
+          if (!installed) continue
+          peerChecks++
+          if (!semver.satisfies(installed.version, range))
+            throw new Error(
+              `${name}@${info.version} requires peer ${peer}@${range}, installed ${installed.version}`
+            )
+        }
+
+      const resolved: Record<string, string> = {}
+      for (const [name, version] of Object.entries(versions)) {
+        const installed = JSON.parse(
+          await readFile(join(app, 'node_modules', name, 'package.json'), 'utf8')
+        )
+        resolved[name] = installed.version
+        if (installed.version !== version)
+          throw new Error(`${selected}: ${name} resolved ${installed.version}, expected ${version}`)
+      }
+      await run(
+        app,
+        ['exec', 'node', '--input-type=module', '--eval', rootProbe],
+        `${selected}_root_exports`
+      )
+      await run(
+        app,
+        ['exec', 'node', '--input-type=module', '--eval', providerProbe],
+        `${selected}_provider_exports`
+      )
+      if (args.has('scaffold-only')) {
+        await writeFile(
+          join(directory, `${selected}_scaffold.json`),
+          JSON.stringify(
+            { packageSha256: digest, profile: selected, versions: resolved, tooling, peerChecks },
+            null,
+            2
+          ) + '\n'
+        )
+        console.log(`[consumer] PASS ${selected} packed scaffold`)
+        await rm(app, { recursive: true, force: true })
+        continue
+      }
+      await run(app, ['lint'], `${selected}_lint`)
+      await run(app, ['build'], `${selected}_build`)
+      for (const engine of database === 'all' ? ['sqlite', 'pg'] : [database]) {
+        const schemaName = `consumer_${selected}_${randomUUID().replaceAll('-', '')}`
+        if (engine === 'pg' && !ownsPostgres && process.env.CONSUMER_PG_EXTERNAL !== '1') {
           try {
-            await schema(app, schemaName, 'drop')
+            const output = await run(root, ['pg:start'], 'postgres_start')
+            ownsPostgres = !output.includes('already running')
           } catch (error) {
-            engineFailure = combineFailures(engineFailure, error)
+            if (
+              error instanceof ConsumerCommandError &&
+              error.commandName === 'postgres_start' &&
+              /server started/i.test(error.output) &&
+              !/already running/i.test(error.output)
+            ) {
+              ownsPostgres = true
+            }
+            throw error
           }
         }
+        const env =
+          engine === 'pg'
+            ? { ...pgEnv, DB_SCHEMA: schemaName }
+            : { ...baseEnv, DB_CLIENT: 'sqlite' }
+        let engineFailure: unknown
+        try {
+          if (engine === 'pg') await schema(app, schemaName, 'create')
+          await run(app, ['typecheck'], `${selected}_${engine}_typecheck`, env)
+          const functional = await run(app, ['test'], `${selected}_${engine}_functional`, env)
+          const match = functional.match(/(\d+)\s+passed/)
+          if (!match) throw new Error('Missing consumer test pass count')
+          results.push({
+            profile: selected,
+            database: engine,
+            peerRanges: ranges,
+            versions: resolved,
+            tooling,
+            dependencies,
+            peerChecks,
+            functional: Number(match[1]),
+            fixtureLint: 'passed',
+            fixtureBuild: 'passed',
+            packageSha256: digest,
+          })
+          await writeResults()
+          console.log(`[consumer] PASS ${selected}/${engine}`)
+        } catch (error) {
+          engineFailure = error
+        } finally {
+          if (engine === 'pg') {
+            try {
+              await schema(app, schemaName, 'drop')
+            } catch (error) {
+              engineFailure = combineFailures(engineFailure, error)
+            }
+          }
+        }
+        if (engineFailure !== undefined) throw engineFailure
       }
-      if (engineFailure !== undefined) throw engineFailure
+      // The resolved graph outlives the app: its lockfile, the lockfile digest and the full list.
+      const lockfile = `${selected}_consumer-pnpm-lock.yaml`
+      const dependencyGraph = `${selected}_consumer-dependency-graph.json`
+      await cp(join(app, 'pnpm-lock.yaml'), join(directory, lockfile))
+      const lockfileSha256 = createHash('sha256')
+        .update(await readFile(join(directory, lockfile)))
+        .digest('hex')
+      const graph: unknown = JSON.parse(
+        await run(app, ['list', '--depth', 'Infinity', '--json'], `${selected}_dependency_graph`)
+      )
+      await writeFile(join(directory, dependencyGraph), JSON.stringify(graph, null, 2) + '\n')
+      for (const entry of results)
+        if (entry.profile === selected) Object.assign(entry, { lockfileSha256, dependencyGraph })
+      await writeResults()
+      // A passing app is removed; a failing one stays for inspection next to its logs.
+      await rm(app, { recursive: true, force: true })
     }
-    // The resolved graph outlives the app: its lockfile, the lockfile digest and the full list.
-    const lockfile = `${selected}_consumer-pnpm-lock.yaml`
-    const dependencyGraph = `${selected}_consumer-dependency-graph.json`
-    await cp(join(app, 'pnpm-lock.yaml'), join(directory, lockfile))
-    const lockfileSha256 = createHash('sha256')
-      .update(await readFile(join(directory, lockfile)))
-      .digest('hex')
-    const graph: unknown = JSON.parse(
-      await run(app, ['list', '--depth', 'Infinity', '--json'], `${selected}_dependency_graph`)
-    )
-    await writeFile(join(directory, dependencyGraph), JSON.stringify(graph, null, 2) + '\n')
-    for (const entry of results)
-      if (entry.profile === selected) Object.assign(entry, { lockfileSha256, dependencyGraph })
-    await writeResults()
-    // A passing app is removed; a failing one stays for inspection next to its logs.
-    await rm(app, { recursive: true, force: true })
   }
 } catch (error) {
-  let failure: unknown = error
-  if (ownsPostgres) {
-    try {
-      await run(root, ['pg:stop'], 'postgres_stop', baseEnv, true)
-    } catch (cleanupError) {
-      failure = combineFailures(failure, cleanupError)
-    }
+  failure = error
+}
+if (ownsPostgres) {
+  try {
+    await run(root, ['pg:stop'], 'postgres_stop', baseEnv, true)
+  } catch (cleanupError) {
+    failure = combineFailures(failure, cleanupError)
   }
+}
+if (snapshot) {
+  try {
+    snapshot.cleanup()
+  } catch (cleanupError) {
+    failure = combineFailures(failure, cleanupError)
+  }
+}
+if (processRunner.interruptedBy && failure === undefined)
+  failure = new Error(`Interrupted by ${processRunner.interruptedBy}`)
+if (failure !== undefined) {
   console.error(`[consumer] FAILED: ${describeFailure(failure)}`)
   process.exitCode =
     processRunner.interruptedBy === 'SIGINT'
@@ -325,28 +359,10 @@ try {
       : processRunner.interruptedBy === 'SIGTERM'
         ? 143
         : 1
-}
-if (process.exitCode === undefined) {
-  if (ownsPostgres) {
-    try {
-      await run(root, ['pg:stop'], 'postgres_stop', baseEnv, true)
-    } catch (error) {
-      console.error(`[consumer] cleanup failed: ${describeFailure(error)}`)
-      process.exitCode =
-        processRunner.interruptedBy === 'SIGINT'
-          ? 130
-          : processRunner.interruptedBy === 'SIGTERM'
-            ? 143
-            : 1
-    }
-  }
-}
-if (process.exitCode === undefined) {
+} else {
   console.log(
     `[consumer] Complete: ${args.has('scaffold-only') ? directory : join(directory, 'results.json')}`
   )
-  if (processRunner.interruptedBy === 'SIGINT') process.exitCode = 130
-  else if (processRunner.interruptedBy === 'SIGTERM') process.exitCode = 143
 }
 
 async function writeResults(): Promise<void> {
@@ -354,7 +370,7 @@ async function writeResults(): Promise<void> {
     join(directory, 'results.json'),
     JSON.stringify(
       {
-        artifact: basename(artifact),
+        artifact: args.get('package') ? basename(args.get('package')!) : 'package.tgz',
         packageSha256: digest,
         nodeVersion: process.version,
         results,
