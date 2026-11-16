@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
@@ -18,8 +19,21 @@ test('released changelog headings use the form bin/release_check.sh requires', a
   )
 })
 
+async function optionalFile(path: string): Promise<Buffer | undefined> {
+  try {
+    return await readFile(path)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw error
+  }
+}
+
 /** Run the release gate in a throwaway package with the given changelog; it builds and packs. */
-async function releaseCheck(changelog: string, manifest: Record<string, unknown> = {}) {
+async function releaseCheck(
+  changelog: string,
+  manifest: Record<string, unknown> = {},
+  checksumCommand?: string
+) {
   const directory = await mkdtemp(join(tmpdir(), 'access_control_release_check_'))
   try {
     await writeFile(
@@ -27,6 +41,7 @@ async function releaseCheck(changelog: string, manifest: Record<string, unknown>
       JSON.stringify({
         name: 'release-fixture',
         version: '9.9.9',
+        packageManager: 'pnpm@11.23.0',
         scripts: { build: 'true' },
         ...manifest,
       })
@@ -38,15 +53,28 @@ async function releaseCheck(changelog: string, manifest: Record<string, unknown>
       GITHUB_REPOSITORY: 'owner/repo',
       GITHUB_OUTPUT: outputs,
     }
+    if (checksumCommand !== undefined) {
+      const bin = join(directory, 'bin')
+      await mkdir(bin)
+      await writeFile(join(bin, 'shasum'), `#!/usr/bin/env bash\n${checksumCommand}\n`, {
+        mode: 0o755,
+      })
+      environment.PATH = `${bin}:${environment.PATH}`
+    }
     delete environment.GITHUB_ENV
     const result = spawnSync('bash', [join(repoRoot, 'bin/release_check.sh')], {
       cwd: directory,
       encoding: 'utf8',
       env: environment,
     })
-    const notes = await readFile(join(directory, 'tmp/release/notes.md'), 'utf8').catch(() => '')
-    const output = await readFile(outputs, 'utf8').catch(() => '')
-    return { ...result, notes, output }
+    const notesFile = await optionalFile(join(directory, 'tmp/release/notes.md'))
+    const outputFile = await optionalFile(outputs)
+    const notes = notesFile?.toString() ?? ''
+    const output = outputFile?.toString() ?? ''
+    const archive = await optionalFile(join(directory, 'tmp/release/release-fixture-9.9.9.tgz'))
+    const archiveDigest =
+      archive === undefined ? undefined : createHash('sha256').update(archive).digest('hex')
+    return { ...result, notes, output, archiveDigest }
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
@@ -128,3 +156,30 @@ test('release gate accepts only the release tarball of the declared Account Kit 
   })
   assert.equal(release.status, 0, release.stderr)
 }).timeout(60_000)
+
+test('checksum failures never publish notes or successful ready outputs', async ({ assert }) => {
+  for (const command of [
+    "printf 'checksum read failed\\n' >&2; exit 7",
+    'exit 0',
+    "printf 'invalid-digest  archive.tgz\\n'",
+    `printf '${'a'.repeat(63)}  archive.tgz\\n'`,
+    `printf '${'g'.repeat(64)}  archive.tgz\\n'`,
+    `printf '${'a'.repeat(64)}  archive.tgz\\n'; exit 7`,
+  ]) {
+    const result = await releaseCheck('# Changelog\n\n## 9.9.9 - 2026-01-01\n\n- A\n', {}, command)
+    assert.notEqual(result.status, 0, command)
+    assert.match(result.stderr, /SHA-256/, command)
+    assert.equal(result.notes, '', command)
+    assert.equal(result.output, '', command)
+    assert.notInclude(result.stdout, 'ready:', command)
+  }
+}).timeout(60_000)
+
+test('successful release notes carry the real archive digest', async ({ assert }) => {
+  const result = await releaseCheck('# Changelog\n\n## 9.9.9 - 2026-01-01\n\n- A\n')
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.archiveDigest!, /^[a-f0-9]{64}$/)
+  assert.include(result.notes, `SHA-256: \`${result.archiveDigest}\``)
+  assert.include(result.stdout, 'ready: v9.9.9')
+  assert.equal(result.output, 'version=9.9.9\ntarball=release-fixture-9.9.9.tgz\n')
+}).timeout(15_000)

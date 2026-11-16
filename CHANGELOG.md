@@ -9,6 +9,9 @@
 
 ### Fixed
 
+- Release checks refuse failed or malformed archive checksums before writing release notes or
+  successful outputs.
+
 - List the membership, rank and admission checks that single-scope invitation adapters must
   preserve, alongside acceptance transaction requirements.
 

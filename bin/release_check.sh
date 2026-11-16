@@ -27,10 +27,21 @@ pnpm build
 rm -rf tmp/release && mkdir -p tmp/release
 pnpm pack --pack-destination tmp/release >/dev/null
 TARBALL=$(ls tmp/release/*.tgz)
+# Check the checksum command before publishing notes or ready outputs. A failed command
+# substitution inside printf would otherwise leave printf itself successful.
+if CHECKSUM_OUTPUT=$(shasum -a 256 "$TARBALL"); then :; else
+  echo 'Cannot calculate the release archive SHA-256' >&2
+  exit 1
+fi
+SHA256=${CHECKSUM_OUTPUT%% *}
+[[ "$SHA256" =~ ^[[:xdigit:]]{64}$ ]] || {
+  echo 'Release archive SHA-256 must contain exactly 64 hexadecimal characters' >&2
+  exit 1
+}
 REPO=${GITHUB_REPOSITORY:-$(git remote get-url origin | sed -E 's#.*github.com[:/]##; s#\.git$##')}
 awk -v h="## $VERSION - " 'index($0, h) == 1 {p=1; next} /^## / {p=0} p' CHANGELOG.md > tmp/release/notes.md
 printf '\n## Install\n\n```sh\npnpm add https://github.com/%s/releases/download/v%s/%s\n```\n\nSHA-256: `%s`\n' \
-  "$REPO" "$VERSION" "$(basename "$TARBALL")" "$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)" >> tmp/release/notes.md
+  "$REPO" "$VERSION" "$(basename "$TARBALL")" "$SHA256" >> tmp/release/notes.md
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   { echo "version=$VERSION"; echo "tarball=$(basename "$TARBALL")"; } >> "$GITHUB_OUTPUT"; fi
 echo "ready: v$VERSION $TARBALL"
