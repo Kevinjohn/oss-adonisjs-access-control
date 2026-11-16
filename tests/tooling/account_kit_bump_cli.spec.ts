@@ -6,6 +6,7 @@ import {
   link,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   readdir,
   rm,
@@ -256,7 +257,13 @@ test('final staged check rejects a same-byte replacement and preserves later fil
   const setup = await fixture('0.3.3')
   try {
     const packagePath = join(setup.root, 'package.json')
-    const original = await fileStat(packagePath, { bigint: true })
+    const beforeHandle = await open(packagePath, 'r')
+    let original: Awaited<ReturnType<typeof beforeHandle.stat>>
+    try {
+      original = await beforeHandle.stat({ bigint: true })
+    } finally {
+      await beforeHandle.close()
+    }
     await writeFile(join(setup.root, 'package.replacement'), setup.files['package.json'])
     const fault = join(setup.root, 'same_bytes_replacement.cjs')
     await writeFile(
@@ -272,9 +279,15 @@ test('final staged check rejects a same-byte replacement and preserves later fil
     assert.isDefined(failure)
     assert.match(failure?.stderr ?? '', /Planned file changed during bump: package\.json/)
     assert.notInclude(failure?.stdout ?? '', 'Add the changelog entry')
-    const replaced = await fileStat(packagePath, { bigint: true })
-    assert.notEqual(replaced.ino, original.ino)
-    assert.equal(await readFile(packagePath, 'utf8'), setup.files['package.json'])
+    const afterHandle = await open(packagePath, 'r')
+    try {
+      const replaced = await afterHandle.stat({ bigint: true })
+      const replacedContents = await afterHandle.readFile('utf8')
+      assert.notEqual(replaced.ino, original.ino)
+      assert.equal(replacedContents, setup.files['package.json'])
+    } finally {
+      await afterHandle.close()
+    }
     assert.equal(
       await readFile(join(setup.root, 'pnpm-lock.yaml'), 'utf8'),
       setup.files['pnpm-lock.yaml']
