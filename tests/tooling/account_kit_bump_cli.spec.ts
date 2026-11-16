@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -380,6 +380,37 @@ test('fresh planning stops before writes when a tracked file is missing', async 
       () => readFile(join(setup.root, 'tmp/account-kit-bump-plan.json')),
       /ENOENT/
     )
+  } finally {
+    await discard(setup)
+  }
+})
+
+test('ordinary staged write failure removes its own scratch file and preserves the plan', async ({
+  assert,
+}) => {
+  const setup = await fixture('0.3.3')
+  try {
+    const fault = join(setup.root, 'write_failure.cjs')
+    await writeFile(
+      fault,
+      `const fs = require('node:fs/promises'); const mod = require('node:module'); const original = fs.open; fs.open = async (...args) => { const handle = await original(...args); if (String(args[0]).includes('package.json.account-kit-')) { const write = handle.writeFile.bind(handle); handle.writeFile = async (value) => { await write(String(value).slice(0, 9)); throw new Error('staged write failed') } } return handle }; mod.syncBuiltinESMExports();`
+    )
+    let failure: { stderr?: string } | undefined
+    try {
+      await setup.invoke(['--require', fault])
+    } catch (error) {
+      failure = error as typeof failure
+    }
+    assert.match(failure?.stderr ?? '', /staged write failed/)
+    assert.equal(
+      await readFile(join(setup.root, 'package.json'), 'utf8'),
+      setup.files['package.json']
+    )
+    const entries = await readdir(setup.root)
+    assert.isEmpty(entries.filter((name) => name.startsWith('package.json.account-kit-')))
+    assert.ok(await readFile(join(setup.root, 'tmp/account-kit-bump-plan.json'), 'utf8'))
+    await setup.invoke([], { KIT_OFFLINE: '1' })
+    assert.include(await readFile(join(setup.root, 'package.json'), 'utf8'), fact('0.3.4').url)
   } finally {
     await discard(setup)
   }
