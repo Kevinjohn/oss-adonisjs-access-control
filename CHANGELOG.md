@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- State the existing-user precondition and database failure behavior of trusted first-member
+  bootstrap.
+
 - Document owner bootstrap before trusted grants and explicit recovery choices for an already
   populated ownerless scope.
 

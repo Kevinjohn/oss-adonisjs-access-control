@@ -75,6 +75,11 @@ directly.
 | `removeAllForScope`           | Removes every membership of a scope inside your scope-deletion transaction, just before you delete the scope row. A member set that changed since the first read is `CONFLICT`; retry the transaction.                                        |
 | `exportFor`                   | The user's memberships with ISO timestamps, for the kit's data export.                                                                                                                                                                        |
 
+`createFirstMember` expects an existing user row. Create or load that user first and pass its
+verified ID; this trusted bootstrap method does not promise the `USER_NOT_FOUND` mapping of
+`add` and `grant`. A nonexistent user can fail at the database foreign key, and unexpected
+database errors must propagate so the enclosing transaction rolls back.
+
 In an owner-enabled scope, call `createFirstMember` before trusted `grant` calls. `grant` may
 create a non-owner membership in an empty scope; it does not bootstrap an owner. Once any row
 exists, `createFirstMember` refuses with `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY`. Keep bootstrap and
