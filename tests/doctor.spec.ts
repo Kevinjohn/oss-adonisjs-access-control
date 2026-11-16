@@ -168,6 +168,64 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       .delete()
   })
 
+  test('nullable schema drift reports null roles and statuses within the requested scope', async ({
+    assert,
+  }) => {
+    const tableName = `${booted.names.memberships}_nullable`
+    await booted.db.connection().schema.createTable(tableName, (table) => {
+      table.increments('id')
+      table.integer('scope_id')
+      table.integer('user_id')
+      table.string('role', 32).nullable()
+      table.string('status', 16).nullable()
+      table.timestamp('created_at')
+      table.timestamp('updated_at')
+    })
+    try {
+      const [scope, otherScope] = await Promise.all([createScope(), createScope()])
+      const [owner, u1, u2, u3] = await Promise.all([
+        createUser(),
+        createUser(),
+        createUser(),
+        createUser(),
+      ])
+      const now = sqlTimestamp(booted.db)
+      const insert = async (
+        scopeId: number,
+        userId: number,
+        role: string | null,
+        status: string | null
+      ) =>
+        idOf(
+          await booted.db.table(tableName).returning('id').insert({
+            scope_id: scopeId,
+            user_id: userId,
+            role,
+            status,
+            created_at: now,
+            updated_at: now,
+          })
+        )
+      await insert(scope, owner, 'owner', 'active')
+      const noRole = await insert(scope, u1, null, 'active')
+      const noStatus = await insert(scope, u2, 'editor', null)
+      const neither = await insert(scope, u3, null, null)
+      await insert(otherScope, owner, null, null)
+      const drifted = defineAccessControl({ ...access.config, membershipsTable: tableName })
+      const report = await runDoctor({ access: drifted as AccessControl, db: booted.db, scope })
+      assert.deepEqual(failing(report), {
+        unknown_role: [String(noRole), String(neither)],
+        unknown_status: [String(noStatus), String(neither)],
+      })
+      assert.deepEqual(
+        report.checks.filter((entry) => !entry.ok).map((entry) => entry.count),
+        [2, 2]
+      )
+    } finally {
+      await booted.db.connection().schema.dropTable(tableName)
+    }
+  })
+
   test('sample ids stop at 20 while the count is exact', async ({ assert }) => {
     const scope = await createScope()
     const ids: number[] = []
