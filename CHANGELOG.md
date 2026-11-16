@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- State that configure processes must run sequentially for each application.
+
 - Clarify that changing table names or key types in an existing installation needs explicit
   application-owned configuration and schema migration, rather than a configure rerun.
 

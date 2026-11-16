@@ -23,7 +23,9 @@ node ace migration:run
 | 6    | Prints the Bouncer initializer and Account Kit config changes for you to apply.              |
 
 Existing files are skipped with a message, never rewritten. Re-running after a package upgrade
-publishes only migrations that are new to the application.
+publishes only migrations that are new to the application. Run one configure process at a time
+for an application. Sequential reruns are supported; concurrent configure processes are not
+coordinated and can race while publishing migrations or editing application source.
 
 Flags:
 
