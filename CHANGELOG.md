@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Cleanup event role types admit historical stored strings; newly assigned role events keep their
+  configured role type.
 - Resolved configuration types mark copied roles, table settings and permission entries readonly,
   matching the frozen runtime values while caller input stays writable.
 - Pure rule successes return independent results, so one caller cannot change another caller's

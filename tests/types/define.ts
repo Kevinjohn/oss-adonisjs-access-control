@@ -1,6 +1,6 @@
 // Type-level checks for defineAccessControl inference; compiled by `pnpm typecheck`, never run.
 import { defineAccessControl } from '../../index.js'
-import type { PermissionKeyOf, RoleOf } from '../../src/types.js'
+import type { MembershipEvent, PermissionKeyOf, RoleOf } from '../../src/types.js'
 
 const config = defineAccessControl({
   roles: ['viewer', 'editor', 'admin', 'owner'],
@@ -16,6 +16,20 @@ const config = defineAccessControl({
 
 type Role = RoleOf<typeof config>
 type Key = PermissionKeyOf<typeof config>
+
+function inspectEvent(event: MembershipEvent<Role>): void {
+  if (event.type === 'membership.removed' || event.type === 'membership.left') {
+    const storedRole: string = event.role
+    // @ts-expect-error cleanup can expose a historical role
+    const configuredRole: Role = event.role
+    void [storedRole, configuredRole]
+  }
+  if (event.type === 'membership.added') {
+    const configuredRole: Role = event.role
+    void configuredRole
+  }
+}
+void inspectEvent
 
 const role: Role = 'editor'
 const key: Key = 'project:write'

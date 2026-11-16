@@ -73,6 +73,10 @@ For an active membership with a historical role, `clientPayload` still returns t
 as a string. Its `permissions` and `assignableRoles` arrays are empty. Consumers should handle a
 role outside the current configured tuple while the data migration is pending.
 
+Cleanup hooks can also receive historical role strings in `membership.left` and
+`membership.removed` events. Treat those event roles as raw stored values. Events for newly
+validated role assignments remain typed to the configured role tuple.
+
 ## Types
 
 `RoleOf<typeof config>` and `PermissionKeyOf<typeof config>` from

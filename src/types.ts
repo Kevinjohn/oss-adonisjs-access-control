@@ -87,10 +87,10 @@ export type MembershipEvent<Role extends string> =
       scopeId: ScopeKey
       userId: UserKey
       actorId: UserKey | null
-      role: Role
+      role: string
       reason: 'removed' | 'scope_deleted' | 'account_deleted'
     }
-  | { type: 'membership.left'; scopeId: ScopeKey; userId: UserKey; role: Role }
+  | { type: 'membership.left'; scopeId: ScopeKey; userId: UserKey; role: string }
   | { type: 'membership.granted'; scopeId: ScopeKey; userId: UserKey; role: Role }
   | {
       type: 'membership.ownership_transferred'
