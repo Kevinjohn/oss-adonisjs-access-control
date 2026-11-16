@@ -152,6 +152,17 @@ function changedFiles(base: string): ChangedFile[] {
   return changes
 }
 
+function worktreeSnapshot(): string {
+  const status = git(['status', '--porcelain', '-z'])
+  const trackedContent = git(['diff', '--binary', 'HEAD'])
+  const untracked = git(['ls-files', '--others', '--exclude-standard', '-z'])
+    .split('\0')
+    .filter(Boolean)
+    .map((path) => `${path}\0${git(['hash-object', '--', path]).trim()}`)
+    .join('\0')
+  return `${status}\0${trackedContent}\0${untracked}`
+}
+
 /** Run one step in its own process group so an interrupt can stop descendants too. */
 function run(
   step: ChangedCheckStep
@@ -237,7 +248,7 @@ for (const step of planChangedChecks(changes, { static: flags.includes('--static
     console.log(`skip ${step.label} (${step.skip})`)
     continue
   }
-  const before = step.requiresCleanTree ? git(['status', '--porcelain']) : ''
+  const before = step.requiresCleanTree ? worktreeSnapshot() : ''
   const { status, output } = await run(step)
   const tests = step.countsTests ? executedTests(output) : undefined
   const problem =
@@ -247,7 +258,7 @@ for (const step of planChangedChecks(changes, { static: flags.includes('--static
         ? `interrupted by ${interruptedBy}`
         : step.requiresTests && tests === 0
           ? 'no tests executed'
-          : step.requiresCleanTree && git(['status', '--porcelain']) !== before
+          : step.requiresCleanTree && worktreeSnapshot() !== before
             ? 'left the worktree dirty'
             : undefined
   if (problem) {

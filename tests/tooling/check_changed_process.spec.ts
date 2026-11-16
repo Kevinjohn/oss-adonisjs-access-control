@@ -15,6 +15,7 @@ const plannerPath = path.join(repoRoot, 'bin/check_changed_plan.ts')
 type FixtureOptions = {
   command?: 'normal' | 'hang' | 'missing'
   hook?: 'record-term' | 'fail-reap'
+  rewriteDocs?: boolean
 }
 
 type Fixture = {
@@ -67,7 +68,7 @@ async function fixture(options: FixtureOptions = {}): Promise<Fixture> {
     const commandPath = path.join(bin, 'pnpm')
     await writeFile(
       commandPath,
-      `#!${process.execPath}\nimport { spawn } from 'node:child_process'\nimport { readFile, writeFile } from 'node:fs/promises'\nconst args = process.argv.slice(2)\nawait writeFile(${JSON.stringify(log)}, (await readFile(${JSON.stringify(log)}, 'utf8')) + args.join(' ') + '\\n')\nif (process.env.CHECK_CHANGED_HANG === '1') {\n  spawn(process.execPath, ['worker.js'], { cwd: process.cwd(), stdio: 'ignore' })\n  for (let attempt = 0; attempt < 250; attempt++) {\n    if (await readFile(${JSON.stringify(ready)}, 'utf8').catch(() => '')) break\n    await new Promise((resolve) => setTimeout(resolve, 20))\n  }\n  setInterval(() => {}, 1000)\n}\n`,
+      `#!${process.execPath}\nimport { spawn } from 'node:child_process'\nimport { readFile, writeFile } from 'node:fs/promises'\nconst args = process.argv.slice(2)\nawait writeFile(${JSON.stringify(log)}, (await readFile(${JSON.stringify(log)}, 'utf8')) + args.join(' ') + '\\n')\nif (${options.rewriteDocs ? 'true' : 'false'} && args[0] === 'docs:build') await writeFile('README.md', 'rewritten by docs\\n')\nif (process.env.CHECK_CHANGED_HANG === '1') {\n  spawn(process.execPath, ['worker.js'], { cwd: process.cwd(), stdio: 'ignore' })\n  for (let attempt = 0; attempt < 250; attempt++) {\n    if (await readFile(${JSON.stringify(ready)}, 'utf8').catch(() => '')) break\n    await new Promise((resolve) => setTimeout(resolve, 20))\n  }\n  setInterval(() => {}, 1000)\n}\n`,
       { mode: 0o755 }
     )
   }
@@ -124,6 +125,20 @@ test('runs selected static checks normally and observes a missing command spawn 
   assert.match(missingResult.text, /spawn failed: spawn pnpm ENOENT/)
   assert.doesNotMatch(missingResult.text, /UnhandledPromiseRejection|unhandledRejection/)
 }).timeout(30_000)
+
+test('docs build fails after rewriting an already modified tracked file', async ({ cleanup }) => {
+  const f = await fixture({ rewriteDocs: true })
+  cleanup(() => rm(f.directory, { recursive: true, force: true }))
+  await writeFile(path.join(f.root, 'README.md'), 'local draft\n')
+  await mkdir(path.join(f.root, 'docs/guide'), { recursive: true })
+  await writeFile(path.join(f.root, 'docs/guide/setup.md'), 'docs input\n')
+  const child = launch(f)
+  const output = await outputOf(child)
+  const result = await collectExit(child, output)
+  assert.equal(result.code, 1, result.text)
+  assert.match(result.text, /fail docs build \(left the worktree dirty\)/)
+  assert.equal(await readFile(path.join(f.root, 'README.md'), 'utf8'), 'rewritten by docs\n')
+}).timeout(20_000)
 
 test('TERM-resistant descendants receive KILL, are reaped, and block later selected checks', async ({
   cleanup,
