@@ -5,6 +5,7 @@
 ### Changed
 
 - Requires Account Kit 0.4.0 (exact).
+- Adoption guidance identifies when its data-deleting rollback is safe after cutover.
 
 ### Fixed
 
@@ -33,6 +34,7 @@
 - Membership documentation separates unauthorised raw reads, manager operations and authenticated
   self-service, including the session-derived identity required when leaving.
 
+- Adoption copy guidance writes Account Kit timestamps so imported members remain visible across cursor pages.
 - First-member and string-key input guidance now reflects the supported rules.
 - Membership reads resolve string key aliases through their parent rows, matching write behavior.
 - Cleanup event role types admit historical stored strings; newly assigned role events keep their
