@@ -18,12 +18,14 @@ import {
   kitReleaseUrl,
   kitRepository,
 } from './helpers/account_kit_bump.js'
+import { projectKitFile } from './helpers/account_kit_bump_fields.js'
 import {
   applyBumpPlan,
   makeBumpPlan,
   planPath,
   saveBumpPlan,
   type BumpPlan,
+  verifyBumpCheckout,
 } from './helpers/account_kit_bump_plan.js'
 
 const run = promisify(execFile)
@@ -83,41 +85,25 @@ try {
 }
 if (plan && plan.to.version !== target)
   throw new Error(`An Account Kit bump to ${plan.to.version} is pending; finish it first.`)
+const trackedOutput = await git(['ls-files', '-z'], root)
+const tracked = trackedOutput.split('\0').filter(Boolean)
+const resumed = Boolean(plan)
 if (!plan) {
   if (current === target) {
-    // A root manifest alone cannot establish completion: inspect all tracked references.
-    const trackedOutput = await git(['ls-files', '-z'], root)
-    const tracked = trackedOutput.split('\0').filter(Boolean)
-    const stale: string[] = []
-    for (const path of tracked) {
-      if (path === 'CHANGELOG.md' || path === 'docs/maintainers/requirement-ledger.md') continue
-      const bytes = await readFile(join(root, path))
-      if (bytes.includes(0)) continue
-      const text = bytes.toString('utf8')
-      const versions = [
-        ...text.matchAll(
-          /(?:oss-adonisjs-account-kit\/releases\/download\/v|kevinjohn-adonisjs-account-kit-)(\d+\.\d+\.\d+)/g
-        ),
-      ]
-      if (versions.some((match) => match[1] !== target)) stale.push(path)
-    }
-    if (stale.length) throw new Error(`Account Kit references need review: ${stale.join(', ')}`)
+    const to = await fetchRelease(target)
+    await verifyBumpCheckout(root, tracked, { from: to, to, files: [] })
     console.log(`Already on Account Kit ${target}.`)
     process.exit(0)
   }
   const [from, to] = await Promise.all([fetchRelease(current), fetchRelease(target)])
-  const trackedOutput = await git(['ls-files', '-z'], root)
-  const tracked = trackedOutput.split('\0').filter(Boolean)
   plan = await makeBumpPlan(root, tracked, from, to)
+  await verifyProjectedPlan(root, tracked, plan)
   await saveBumpPlan(root, plan)
 }
+if (resumed) await verifyProjectedPlan(root, tracked, plan)
 const { from, to } = plan
-const changed = await applyBumpPlan(root, plan)
-console.log(`Account Kit ${from.version} -> ${to.version}`)
-console.log(`  SHA-256  ${to.sha256}`)
-console.log(`  commit   ${to.revision}`)
-console.log(`Rewrote ${changed.length} files.`)
-
+const changed = await applyBumpPlan(root, plan, new Set(tracked))
+await verifyBumpCheckout(root, tracked, plan)
 const oldVersion = `(^|[^0-9.])${from.version.replaceAll('.', '\\.')}([^0-9]|$)`
 const leftovers = await git(
   [
@@ -135,9 +121,30 @@ const leftovers = await git(
   if (error.code === 1) return ''
   throw error
 })
+console.log(`Account Kit ${from.version} -> ${to.version}`)
+console.log(`  SHA-256  ${to.sha256}`)
+console.log(`  commit   ${to.revision}`)
+console.log(`Rewrote ${changed.length} files.`)
+
 if (leftovers) {
   console.log(`\nStill naming ${from.version} (update by hand where it is not history):`)
   console.log(leftovers.trimEnd())
 }
 await rm(join(root, planPath))
 console.log('\nAdd the changelog entry and any pin history notes, then run pnpm check.')
+
+async function verifyProjectedPlan(
+  projectRoot: string,
+  paths: string[],
+  candidate: BumpPlan
+): Promise<void> {
+  // Validate the projected contents without writing any tracked path.
+  const projected = new Map(candidate.files.map((entry) => [entry.path, entry.after]))
+  for (const path of paths) {
+    if (path.split('/').pop() === 'CHANGELOG.md') continue
+    const bytes = await readFile(join(projectRoot, path))
+    if (bytes.includes(0)) continue
+    const content = projected.get(path) ?? bytes.toString('utf8')
+    projectKitFile(path, content, candidate.to, candidate.to)
+  }
+}
