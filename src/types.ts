@@ -144,13 +144,15 @@ export interface AccessControlConfig<
 export type ResolvedAccessControlConfig<
   R extends readonly [string, ...string[]] = readonly [string, ...string[]],
   P extends PermissionMap<R[number]> = PermissionMap<R[number]>,
-> = Omit<AccessControlConfig<R, P>, 'roles' | 'users' | 'scope' | 'permissions'> & {
-  readonly roles: Readonly<R>
-  readonly users: Readonly<AccessControlConfig<R, P>['users']>
-  readonly scope: Readonly<AccessControlConfig<R, P>['scope']>
-  readonly permissions: { readonly [Resource in keyof P]: Readonly<P[Resource]> }
-  readonly membershipsTable: string
-}
+> = Readonly<
+  Omit<AccessControlConfig<R, P>, 'roles' | 'users' | 'scope' | 'permissions'> & {
+    readonly roles: Readonly<R>
+    readonly users: Readonly<AccessControlConfig<R, P>['users']>
+    readonly scope: Readonly<AccessControlConfig<R, P>['scope']>
+    readonly permissions: { readonly [Resource in keyof P]: Readonly<P[Resource]> }
+    readonly membershipsTable: string
+  }
+>
 
 /** `'resource:action'` keys of a permission map. */
 export type PermissionKeysOfMap<P> = {

@@ -35,23 +35,43 @@ const dottedKey: Key = 'project.write'
 
 const mutableInput = {
   roles: ['viewer', 'owner'] as [string, string],
+  ownerRole: 'owner',
   users: { table: 'users', keyType: 'integer' as const },
   scope: { table: 'teams', keyType: 'integer' as const },
+  membershipsTable: 'team_memberships',
   permissions: { members: { list: 'viewer', manage: 'viewer' }, invitations: { manage: 'viewer' } },
+  onMembershipChanged: async () => {},
 }
 const resolved = defineAccessControl(mutableInput).config
 mutableInput.roles[0] = 'viewer'
+mutableInput.ownerRole = 'viewer'
 mutableInput.users.table = 'people'
 mutableInput.scope.table = 'groups'
+mutableInput.membershipsTable = 'memberships'
 mutableInput.permissions.members.list = 'owner'
+mutableInput.onMembershipChanged = async () => {}
 // @ts-expect-error resolved roles are frozen even when input tuple is mutable
 resolved.roles[0] = 'viewer'
+// @ts-expect-error resolved roles cannot be replaced
+resolved.roles = ['owner']
+// @ts-expect-error resolved owner role cannot be replaced
+resolved.ownerRole = 'owner'
 // @ts-expect-error resolved users settings are frozen
 resolved.users.table = 'people'
+// @ts-expect-error resolved users settings cannot be replaced
+resolved.users = { table: 'people', keyType: 'integer' }
 // @ts-expect-error resolved scope settings are frozen
 resolved.scope.table = 'groups'
+// @ts-expect-error resolved scope settings cannot be replaced
+resolved.scope = { table: 'groups', keyType: 'integer' }
+// @ts-expect-error resolved memberships table cannot be replaced
+resolved.membershipsTable = 'memberships'
 // @ts-expect-error resolved permission entries are frozen
 resolved.permissions.members.list = 'owner'
+// @ts-expect-error resolved permissions cannot be replaced
+resolved.permissions = mutableInput.permissions
+// @ts-expect-error resolved membership hook cannot be replaced
+resolved.onMembershipChanged = async () => {}
 
 defineAccessControl({
   roles: ['viewer', 'owner'],
