@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Configure rejects memberships table names longer than 45 characters before writing files, keeping generated index names within PostgreSQL and MySQL limits.
+
 - List the membership, rank and admission checks that single-scope invitation adapters must
   preserve, alongside acceptance transaction requirements.
 
