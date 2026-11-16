@@ -9,7 +9,7 @@
  */
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import {
@@ -17,8 +17,14 @@ import {
   kitPackage,
   kitReleaseUrl,
   kitRepository,
-  rewriteFor,
 } from './helpers/account_kit_bump.js'
+import {
+  applyBumpPlan,
+  makeBumpPlan,
+  planPath,
+  saveBumpPlan,
+  type BumpPlan,
+} from './helpers/account_kit_bump_plan.js'
 
 const run = promisify(execFile)
 
@@ -62,39 +68,51 @@ const topLevel = await git(['rev-parse', '--show-toplevel'])
 const root = topLevel.trim()
 const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const current: unknown = manifest.peerDependencies?.[kitPackage]
-if (typeof current !== 'string' || !/^\d+\.\d+\.\d+$/.test(current)) {
-  console.error(`package.json does not pin ${kitPackage} to an exact version.`)
-  process.exit(1)
-}
-if (current === target) {
-  console.log(`Already on Account Kit ${target}.`)
-  process.exit(0)
-}
-if (manifest.version === current || manifest.version === target) {
-  console.error(
+if (typeof current !== 'string' || !/^\d+\.\d+\.\d+$/.test(current))
+  throw new Error(`package.json does not pin ${kitPackage} to an exact version.`)
+if (manifest.version === current || manifest.version === target)
+  throw new Error(
     `This package's own version ${manifest.version} matches an Account Kit version; rewrite by hand.`
   )
-  process.exit(1)
+
+let plan: BumpPlan | undefined
+try {
+  plan = JSON.parse(await readFile(join(root, planPath), 'utf8')) as BumpPlan
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
 }
-
-const [from, to] = await Promise.all([fetchRelease(current), fetchRelease(target)])
-
-const changed: string[] = []
-const tracked = await git(['ls-files', '-z'], root)
-for (const path of tracked.split('\0').filter(Boolean)) {
-  const rewrite = rewriteFor(path)
-  if (!rewrite) continue
-  const file = join(root, path)
-  const bytes = await readFile(file).catch(() => undefined)
-  if (!bytes || bytes.includes(0)) continue
-  const text = bytes.toString('utf8')
-  const next = rewrite(text, from, to)
-  if (next !== text) {
-    await writeFile(file, next)
-    changed.push(path)
+if (plan && plan.to.version !== target)
+  throw new Error(`An Account Kit bump to ${plan.to.version} is pending; finish it first.`)
+if (!plan) {
+  if (current === target) {
+    // A root manifest alone cannot establish completion: inspect all tracked references.
+    const trackedOutput = await git(['ls-files', '-z'], root)
+    const tracked = trackedOutput.split('\0').filter(Boolean)
+    const stale: string[] = []
+    for (const path of tracked) {
+      if (path === 'CHANGELOG.md' || path === 'docs/maintainers/requirement-ledger.md') continue
+      const bytes = await readFile(join(root, path))
+      if (bytes.includes(0)) continue
+      const text = bytes.toString('utf8')
+      const versions = [
+        ...text.matchAll(
+          /(?:oss-adonisjs-account-kit\/releases\/download\/v|kevinjohn-adonisjs-account-kit-)(\d+\.\d+\.\d+)/g
+        ),
+      ]
+      if (versions.some((match) => match[1] !== target)) stale.push(path)
+    }
+    if (stale.length) throw new Error(`Account Kit references need review: ${stale.join(', ')}`)
+    console.log(`Already on Account Kit ${target}.`)
+    process.exit(0)
   }
+  const [from, to] = await Promise.all([fetchRelease(current), fetchRelease(target)])
+  const trackedOutput = await git(['ls-files', '-z'], root)
+  const tracked = trackedOutput.split('\0').filter(Boolean)
+  plan = await makeBumpPlan(root, tracked, from, to)
+  await saveBumpPlan(root, plan)
 }
-
+const { from, to } = plan
+const changed = await applyBumpPlan(root, plan)
 console.log(`Account Kit ${from.version} -> ${to.version}`)
 console.log(`  SHA-256  ${to.sha256}`)
 console.log(`  commit   ${to.revision}`)
@@ -113,9 +131,13 @@ const leftovers = await git(
     ':(exclude,glob)**/pnpm-lock.yaml',
   ],
   root
-).catch(() => '')
+).catch((error: NodeJS.ErrnoException & { code?: number }) => {
+  if (error.code === 1) return ''
+  throw error
+})
 if (leftovers) {
   console.log(`\nStill naming ${from.version} (update by hand where it is not history):`)
   console.log(leftovers.trimEnd())
 }
+await rm(join(root, planPath))
 console.log('\nAdd the changelog entry and any pin history notes, then run pnpm check.')

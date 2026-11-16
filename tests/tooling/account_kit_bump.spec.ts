@@ -142,3 +142,46 @@ test.group('Account Kit bump', () => {
     assert.strictEqual(rewriteFor('docs/guide/setup.md'), rewriteText)
   })
 })
+
+test.group('Account Kit bump plan', () => {
+  test('resumes a partial rewrite while the root manifest is already at target', async ({
+    assert,
+  }) => {
+    const { mkdtemp, readFile, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { applyBumpPlan, makeBumpPlan } =
+      await import('../../bin/helpers/account_kit_bump_plan.js')
+    const root = await mkdtemp(join(tmpdir(), 'kit_bump_test_'))
+    const paths = ['package.json', 'docs.md']
+    try {
+      await writeFile(join(root, paths[0]), `"@kevinjohn/adonisjs-account-kit": "${from.version}"`)
+      await writeFile(join(root, paths[1]), `Account Kit ${from.version}`)
+      const plan = await makeBumpPlan(root, paths, from, to)
+      await writeFile(join(root, paths[0]), plan.files[0].after)
+      assert.deepEqual(await applyBumpPlan(root, plan), ['docs.md'])
+      assert.include(await readFile(join(root, paths[1]), 'utf8'), to.version)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test('refuses unrelated edits to a planned file before further writes', async ({ assert }) => {
+    const { mkdtemp, readFile, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { applyBumpPlan, makeBumpPlan } =
+      await import('../../bin/helpers/account_kit_bump_plan.js')
+    const root = await mkdtemp(join(tmpdir(), 'kit_bump_test_'))
+    try {
+      await writeFile(join(root, 'a.md'), `Account Kit ${from.version}`)
+      await writeFile(join(root, 'b.md'), `Account Kit ${from.version}`)
+      const plan = await makeBumpPlan(root, ['a.md', 'b.md'], from, to)
+      await writeFile(join(root, 'b.md'), 'user edit')
+      await assert.rejects(() => applyBumpPlan(root, plan), /changed unexpectedly/)
+      assert.include(await readFile(join(root, 'a.md'), 'utf8'), from.version)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+})

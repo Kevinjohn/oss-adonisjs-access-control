@@ -21,7 +21,9 @@ const database = args.get('database') ?? 'all'
 if (!['all', 'floor', 'latest'].includes(profile) || !['all', 'sqlite', 'pg'].includes(database))
   throw new Error('Use --profile=floor|latest|all --database=sqlite|pg|all')
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Node 24')
-const artifact = consumerArtifact(root, args.get('package'))
+const snapshot = consumerArtifact(root, args.get('package'))
+const artifact = snapshot.path
+process.once('exit', snapshot.cleanup)
 const digest = createHash('sha256')
   .update(await readFile(artifact))
   .digest('hex')
@@ -354,7 +356,7 @@ async function writeResults(): Promise<void> {
     join(directory, 'results.json'),
     JSON.stringify(
       {
-        artifact: basename(artifact),
+        artifact: args.get('package') ? basename(args.get('package')!) : 'package.tgz',
         packageSha256: digest,
         nodeVersion: process.version,
         results,
