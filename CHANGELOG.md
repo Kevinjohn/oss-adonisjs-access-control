@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- Explain replica-backed permission-read consistency and the host choices for primary-backed
+  middleware or transactional authorization.
+
 - Document configure source-transform prerequisites and manual provider, command and middleware
   registration when the framework skips those edits.
 
