@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Changed-file reminders include dependency manifests for consumer checks and schema diagnostics for database checks.
 - First-member and string-key input guidance now reflects the supported rules.
 - Membership reads resolve string key aliases through their parent rows, matching write behavior.
 - Cleanup event role types admit historical stored strings; newly assigned role events keep their

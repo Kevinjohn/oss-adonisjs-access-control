@@ -125,6 +125,8 @@ test('database code notes the PostgreSQL and MySQL suites', ({ assert }) => {
   for (const path of [
     'src/memberships.ts',
     'src/locks.ts',
+    'src/migration_schema.ts',
+    'src/doctor.ts',
     'stubs/migrations/access_control_create_memberships.stub',
     'tests/helpers/schema.ts',
   ])
@@ -144,6 +146,8 @@ test('consumer inputs note the packed consumer', ({ assert }) => {
     'bin/test_consumer.ts',
     'bin/helpers/consumer_process.ts',
     'configure.ts',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
   ])
     assert.deepInclude(planChangedChecks(changed(path)), note, path)
   assert.notDeepInclude(planChangedChecks(changed('docs/guide/setup.md')), note)
