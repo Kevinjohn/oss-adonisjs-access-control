@@ -17,7 +17,7 @@ Roles and permission keys are declared in `config/access_control.ts`.
 ## Install
 
 ```sh
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.1.8/kevinjohn-adonisjs-access-control-0.1.8.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.2.0/kevinjohn-adonisjs-access-control-0.2.0.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 node ace migration:run
 node ace access-control:doctor
