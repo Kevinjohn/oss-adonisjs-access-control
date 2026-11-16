@@ -76,7 +76,11 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
   const exact = (column: string) =>
     db.connection().dialect.name === 'mysql' ? `binary ${column}` : column
   const notIn = (column: string, values: string[]) =>
-    rows().whereRaw(`${exact(column)} not in (${values.map(() => '?').join(', ')})`, values)
+    rows().where((query) =>
+      query
+        .whereNull(column)
+        .orWhereRaw(`${exact(column)} not in (${values.map(() => '?').join(', ')})`, values)
+    )
 
   const unknownRole = notIn('m.role', [...roles])
   checks.push(check('unknown_role', await sampleIds(unknownRole), await countOf(unknownRole)))

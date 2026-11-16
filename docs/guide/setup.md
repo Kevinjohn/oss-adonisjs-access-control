@@ -41,6 +41,9 @@ The key types must match the primary keys of the users and scope tables: `intege
 `increments()` columns, `uuid` for `uuid()` columns and `string` for string keys up to 254
 characters. For string keys, the parent table's stored spelling is used when a read or write
 finds a matching parent under its collation. Choose a stable spelling for each key.
+The memberships table name must be at most 45 ASCII characters so the released migration's
+generated index names fit PostgreSQL's 63-byte identifier limit. Configure rejects longer names
+before writing application files.
 
 ## Source registration prerequisites
 
