@@ -1,13 +1,6 @@
 import { test } from '@japa/runner'
-import {
-  type KitRelease,
-  kitReleaseUrl,
-  rewriteFor,
-  rewriteLedger,
-  rewriteLockfile,
-  rewriteManifest,
-  rewriteText,
-} from '../../bin/helpers/account_kit_bump.js'
+import { type KitRelease, kitReleaseUrl } from '../../bin/helpers/account_kit_bump.js'
+import { isKitBumpPath, projectKitFile } from '../../bin/helpers/account_kit_bump_fields.js'
 
 const from: KitRelease = {
   version: '0.3.3',
@@ -24,121 +17,120 @@ const to: KitRelease = {
   revision: 'd'.repeat(40),
 }
 
-test.group('Account Kit bump', () => {
-  test('rewrites the Account Kit entries of a lockfile and nothing else', ({ assert }) => {
-    const lockfile = [
-      'importers:',
-      '  .:',
-      '    devDependencies:',
-      "      '@kevinjohn/adonisjs-account-kit':",
-      `        specifier: ${from.url}`,
-      `        version: ${from.url}(abc)`,
-      'packages:',
-      "  '@kevinjohn/adonisjs-access-control@0.1.7':",
-      '    peerDependencies:',
-      "      '@kevinjohn/adonisjs-account-kit': 0.3.3",
-      `  '@kevinjohn/adonisjs-account-kit@${from.url}':`,
-      `    resolution: {integrity: ${from.integrity}, tarball: ${from.url}}`,
-      '    version: 0.3.3',
-      "  'youch-core@0.3.3':",
-      '    resolution: {integrity: sha512-KEEP==}',
-      '    version: 0.3.3',
-      '',
-    ].join('\n')
-
-    assert.equal(
-      rewriteLockfile(lockfile, from, to),
-      [
-        'importers:',
-        '  .:',
-        '    devDependencies:',
-        "      '@kevinjohn/adonisjs-account-kit':",
-        `        specifier: ${to.url}`,
-        `        version: ${to.url}(abc)`,
-        'packages:',
-        "  '@kevinjohn/adonisjs-access-control@0.1.7':",
-        '    peerDependencies:',
-        "      '@kevinjohn/adonisjs-account-kit': 0.3.4",
-        `  '@kevinjohn/adonisjs-account-kit@${to.url}':`,
-        `    resolution: {integrity: ${to.integrity}, tarball: ${to.url}}`,
-        '    version: 0.3.4',
-        "  'youch-core@0.3.3':",
-        '    resolution: {integrity: sha512-KEEP==}',
-        '    version: 0.3.3',
-        '',
-      ].join('\n')
+test.group('Account Kit owned fields', () => {
+  test('rewrites lockfile Kit resolution and peer while preserving unrelated values', ({
+    assert,
+  }) => {
+    const lock = `importers:\n  .:\n    devDependencies:\n      '@kevinjohn/adonisjs-account-kit':\n        specifier: ${from.url}\n        version: ${from.url}(context)\npackages:\n  '@kevinjohn/adonisjs-account-kit@${from.url}':\n    resolution: {integrity: ${from.integrity}, tarball: ${from.url}}\n    version: ${from.version}\n  '@kevinjohn/adonisjs-access-control@0.1.8':\n    peerDependencies:\n      '@kevinjohn/adonisjs-account-kit': ${from.version}\n  'youch-core@0.3.3':\n    resolution: {integrity: sha512-KEEP==}\nsnapshots:\n  '@kevinjohn/adonisjs-account-kit@${from.url}(context)':\n    dependencies: {}\n`
+    const rewritten = projectKitFile('examples/consumer/pnpm-lock.yaml', lock, from, to)
+    assert.notInclude(rewritten, from.url)
+    assert.include(rewritten, to.integrity)
+    assert.include(rewritten, `version: ${to.version}`)
+    assert.include(rewritten, `'@kevinjohn/adonisjs-account-kit': ${to.version}`)
+    assert.include(rewritten, "'youch-core@0.3.3':")
+    assert.throws(
+      () =>
+        projectKitFile(
+          'examples/consumer/pnpm-lock.yaml',
+          lock.replace(from.integrity, 'sha512-BAD=='),
+          from,
+          to
+        ),
+      /package integrity/
     )
   })
 
-  test('rewrites the exact peer and release URL of a manifest only', ({ assert }) => {
+  test('rewrites only exact Kit manifest entries', ({ assert }) => {
     const manifest = JSON.stringify(
       {
-        version: '0.2.8',
-        dependencies: { other: '0.3.3' },
-        devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url },
-        peerDependencies: { '@kevinjohn/adonisjs-account-kit': '0.3.3' },
+        version: '0.1.8',
+        devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url, 'other': '0.3.3' },
+        peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version },
       },
       null,
       2
     )
-
-    assert.deepEqual(JSON.parse(rewriteManifest(manifest, from, to)), {
-      version: '0.2.8',
-      dependencies: { other: '0.3.3' },
-      devDependencies: { '@kevinjohn/adonisjs-account-kit': to.url },
-      peerDependencies: { '@kevinjohn/adonisjs-account-kit': '0.3.4' },
-    })
+    const result = JSON.parse(projectKitFile('package.json', manifest, from, to))
+    assert.equal(result.devDependencies['@kevinjohn/adonisjs-account-kit'], to.url)
+    assert.equal(result.peerDependencies['@kevinjohn/adonisjs-account-kit'], to.version)
+    assert.equal(result.devDependencies.other, '0.3.3')
   })
 
-  test('rewrites checksums, commits and plain or escaped versions in other files', ({ assert }) => {
-    const source = [
-      `export const kitReleaseSha256 = '${from.sha256}'`,
-      `export const kitSourceRevision = '${from.revision}'`,
-      "export const kitReleaseVersion = '0.3.3'",
-      String.raw`assert.match(source, /releases\/download\/v0\.3\.3\//)`,
-      String.raw`new RegExp('0\\.3\\.3')`,
-      'Account Kit `0.3.3` at `v0.3.3`; youch 10.3.3 and 0.3.30 stay.',
-    ].join('\n')
-
+  test('preserves nested changelog and ledger history including an EOF matrix', ({ assert }) => {
+    assert.isFalse(isKitBumpPath('examples/foo/CHANGELOG.md'))
+    assert.equal(projectKitFile('examples/foo/CHANGELOG.md', from.url, from, to), from.url)
+    const ledger = `**Matrix status:** Kit ${from.version} and ${from.version}\nHistory ${from.version}`
     assert.equal(
-      rewriteText(source, from, to),
-      [
-        `export const kitReleaseSha256 = '${to.sha256}'`,
-        `export const kitSourceRevision = '${to.revision}'`,
-        "export const kitReleaseVersion = '0.3.4'",
-        String.raw`assert.match(source, /releases\/download\/v0\.3\.4\//)`,
-        String.raw`new RegExp('0\\.3\\.4')`,
-        'Account Kit `0.3.4` at `v0.3.4`; youch 10.3.3 and 0.3.30 stay.',
-      ].join('\n')
+      projectKitFile('docs/maintainers/requirement-ledger.md', ledger, from, to),
+      `**Matrix status:** Kit ${to.version} and ${to.version}\nHistory ${to.version}`
+    )
+    const history = `**Matrix status:** Kit ${from.version}\n\nHistory ${from.version}`
+    assert.equal(
+      projectKitFile('docs/maintainers/requirement-ledger.md', history, from, to),
+      `**Matrix status:** Kit ${to.version}\n\nHistory ${from.version}`
     )
   })
 
-  test('rewrites the ledger matrix status but keeps the pin history', ({ assert }) => {
-    const ledger = [
-      '**Matrix status:** The optional peer declares `@kevinjohn/adonisjs-account-kit` `0.3.3` only.',
-      'The `0.3.3` matrix runs in the update pull request.',
-      '',
-      'Account Kit `0.3.3` adds `admission.record`, SHA-256 `' + from.sha256 + '`.',
-      '',
-    ].join('\n')
+  test('keeps deliberately stale installed fixture and unrelated hashes', ({ assert }) => {
+    const source = `assert.equal(versions.expected, '${from.version}')\nassert.equal(versions.installed, '${from.version}')\n{ installed: '0.3.2', expected: '${from.version}' }\nconst hash = '${from.sha256}'`
+    const prefixed = `const versions = accountKitVersions()\n${source}`
+    const rewritten = projectKitFile('tests/doctor.spec.ts', prefixed, from, to)
+    assert.include(rewritten, "installed: '0.3.2'")
+    assert.include(rewritten, `const hash = '${from.sha256}'`)
+    assert.include(rewritten, `versions.expected, '${to.version}'`)
+  })
+})
 
-    assert.equal(
-      rewriteLedger(ledger, from, to),
-      [
-        '**Matrix status:** The optional peer declares `@kevinjohn/adonisjs-account-kit` `0.3.4` only.',
-        'The `0.3.4` matrix runs in the update pull request.',
-        '',
-        'Account Kit `0.3.3` adds `admission.record`, SHA-256 `' + from.sha256 + '`.',
-        '',
-      ].join('\n')
-    )
+test.group('Account Kit bump plan', () => {
+  test('resumes a partial rewrite while the root manifest is already at target', async ({
+    assert,
+  }) => {
+    const { mkdtemp, readFile, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { applyBumpPlan, makeBumpPlan } =
+      await import('../../bin/helpers/account_kit_bump_plan.js')
+    const root = await mkdtemp(join(tmpdir(), 'kit_bump_test_'))
+    const paths = ['package.json', 'README.md']
+    try {
+      await writeFile(
+        join(root, paths[0]),
+        JSON.stringify(
+          {
+            version: '0.1.8',
+            peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version },
+            devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url },
+          },
+          null,
+          2
+        )
+      )
+      await writeFile(join(root, paths[1]), `Account Kit ${from.version}`)
+      const plan = await makeBumpPlan(root, paths, from, to)
+      await writeFile(join(root, paths[0]), plan.files[0].after)
+      assert.deepEqual(await applyBumpPlan(root, plan), ['README.md'])
+      assert.include(await readFile(join(root, paths[1]), 'utf8'), to.version)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 
-  test('leaves changelogs alone and picks the rewrite by file', ({ assert }) => {
-    assert.isUndefined(rewriteFor('CHANGELOG.md'))
-    assert.strictEqual(rewriteFor('examples/api/pnpm-lock.yaml'), rewriteLockfile)
-    assert.strictEqual(rewriteFor('examples/api/package.json'), rewriteManifest)
-    assert.strictEqual(rewriteFor('docs/maintainers/requirement-ledger.md'), rewriteLedger)
-    assert.strictEqual(rewriteFor('docs/guide/setup.md'), rewriteText)
+  test('refuses unrelated edits to a planned file before further writes', async ({ assert }) => {
+    const { mkdtemp, readFile, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { applyBumpPlan, makeBumpPlan } =
+      await import('../../bin/helpers/account_kit_bump_plan.js')
+    const root = await mkdtemp(join(tmpdir(), 'kit_bump_test_'))
+    try {
+      await writeFile(join(root, 'README.md'), `Account Kit ${from.version}`)
+      await writeFile(join(root, 'README-AGENTS.md'), `Account Kit ${from.version}`)
+      const plan = await makeBumpPlan(root, ['README.md', 'README-AGENTS.md'], from, to)
+      await writeFile(join(root, 'README-AGENTS.md'), 'user edit')
+      await assert.rejects(() => applyBumpPlan(root, plan), /changed unexpectedly/)
+      assert.include(await readFile(join(root, 'README.md'), 'utf8'), from.version)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })

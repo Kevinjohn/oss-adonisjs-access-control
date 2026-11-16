@@ -9,7 +9,7 @@
  */
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import {
@@ -17,8 +17,16 @@ import {
   kitPackage,
   kitReleaseUrl,
   kitRepository,
-  rewriteFor,
 } from './helpers/account_kit_bump.js'
+import { projectKitFile } from './helpers/account_kit_bump_fields.js'
+import {
+  applyBumpPlan,
+  makeBumpPlan,
+  planPath,
+  saveBumpPlan,
+  type BumpPlan,
+  verifyBumpCheckout,
+} from './helpers/account_kit_bump_plan.js'
 
 const run = promisify(execFile)
 
@@ -62,44 +70,41 @@ const topLevel = await git(['rev-parse', '--show-toplevel'])
 const root = topLevel.trim()
 const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const current: unknown = manifest.peerDependencies?.[kitPackage]
-if (typeof current !== 'string' || !/^\d+\.\d+\.\d+$/.test(current)) {
-  console.error(`package.json does not pin ${kitPackage} to an exact version.`)
-  process.exit(1)
-}
-if (current === target) {
-  console.log(`Already on Account Kit ${target}.`)
-  process.exit(0)
-}
-if (manifest.version === current || manifest.version === target) {
-  console.error(
+if (typeof current !== 'string' || !/^\d+\.\d+\.\d+$/.test(current))
+  throw new Error(`package.json does not pin ${kitPackage} to an exact version.`)
+if (manifest.version === current || manifest.version === target)
+  throw new Error(
     `This package's own version ${manifest.version} matches an Account Kit version; rewrite by hand.`
   )
-  process.exit(1)
+
+let plan: BumpPlan | undefined
+try {
+  plan = JSON.parse(await readFile(join(root, planPath), 'utf8')) as BumpPlan
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
 }
-
-const [from, to] = await Promise.all([fetchRelease(current), fetchRelease(target)])
-
-const changed: string[] = []
-const tracked = await git(['ls-files', '-z'], root)
-for (const path of tracked.split('\0').filter(Boolean)) {
-  const rewrite = rewriteFor(path)
-  if (!rewrite) continue
-  const file = join(root, path)
-  const bytes = await readFile(file).catch(() => undefined)
-  if (!bytes || bytes.includes(0)) continue
-  const text = bytes.toString('utf8')
-  const next = rewrite(text, from, to)
-  if (next !== text) {
-    await writeFile(file, next)
-    changed.push(path)
+if (plan && plan.to.version !== target)
+  throw new Error(`An Account Kit bump to ${plan.to.version} is pending; finish it first.`)
+const trackedOutput = await git(['ls-files', '-z'], root)
+const tracked = trackedOutput.split('\0').filter(Boolean)
+await verifyManifestLockPairs(root, tracked)
+const resumed = Boolean(plan)
+if (!plan) {
+  if (current === target) {
+    const to = await fetchRelease(target)
+    await verifyBumpCheckout(root, tracked, { from: to, to, files: [] })
+    console.log(`Already on Account Kit ${target}.`)
+    process.exit(0)
   }
+  const [from, to] = await Promise.all([fetchRelease(current), fetchRelease(target)])
+  plan = await makeBumpPlan(root, tracked, from, to)
+  await verifyProjectedPlan(root, tracked, plan)
+  await saveBumpPlan(root, plan)
 }
-
-console.log(`Account Kit ${from.version} -> ${to.version}`)
-console.log(`  SHA-256  ${to.sha256}`)
-console.log(`  commit   ${to.revision}`)
-console.log(`Rewrote ${changed.length} files.`)
-
+if (resumed) await verifyProjectedPlan(root, tracked, plan)
+const { from, to } = plan
+const changed = await applyBumpPlan(root, plan, new Set(tracked))
+await verifyBumpCheckout(root, tracked, plan)
 const oldVersion = `(^|[^0-9.])${from.version.replaceAll('.', '\\.')}([^0-9]|$)`
 const leftovers = await git(
   [
@@ -113,9 +118,54 @@ const leftovers = await git(
     ':(exclude,glob)**/pnpm-lock.yaml',
   ],
   root
-).catch(() => '')
+).catch((error: NodeJS.ErrnoException & { code?: number }) => {
+  if (error.code === 1) return ''
+  throw error
+})
+console.log(`Account Kit ${from.version} -> ${to.version}`)
+console.log(`  SHA-256  ${to.sha256}`)
+console.log(`  commit   ${to.revision}`)
+console.log(`Rewrote ${changed.length} files.`)
+
 if (leftovers) {
   console.log(`\nStill naming ${from.version} (update by hand where it is not history):`)
   console.log(leftovers.trimEnd())
 }
+await rm(join(root, planPath))
 console.log('\nAdd the changelog entry and any pin history notes, then run pnpm check.')
+
+async function verifyProjectedPlan(
+  projectRoot: string,
+  paths: string[],
+  candidate: BumpPlan
+): Promise<void> {
+  // Validate the projected contents without writing any tracked path.
+  const projected = new Map(candidate.files.map((entry) => [entry.path, entry.after]))
+  for (const path of paths) {
+    if (path.split('/').pop() === 'CHANGELOG.md') continue
+    const bytes = await readFile(join(projectRoot, path))
+    if (bytes.includes(0)) continue
+    const content = projected.get(path) ?? bytes.toString('utf8')
+    projectKitFile(path, content, candidate.to, candidate.to)
+  }
+}
+
+async function verifyManifestLockPairs(projectRoot: string, paths: string[]): Promise<void> {
+  const trackedPaths = new Set(paths)
+  for (const path of paths) {
+    if (path.split('/').pop() !== 'package.json') continue
+    const packageManifest = JSON.parse(await readFile(join(projectRoot, path), 'utf8')) as Record<
+      string,
+      Record<string, string>
+    >
+    if (
+      !['dependencies', 'devDependencies', 'peerDependencies'].some(
+        (section) => packageManifest[section]?.[kitPackage]
+      )
+    )
+      continue
+    const lock =
+      path === 'package.json' ? 'pnpm-lock.yaml' : path.replace(/package\.json$/, 'pnpm-lock.yaml')
+    if (!trackedPaths.has(lock)) throw new Error(`${path}: missing tracked ${lock}`)
+  }
+}

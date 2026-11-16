@@ -14,6 +14,7 @@
 - Configure rejects memberships table names longer than 45 characters before writing files, keeping generated index names within PostgreSQL and MySQL limits.
 - The doctor reports null roles and statuses in drifted memberships tables.
 - Clarified that doctor schema findings take precedence over a malformed scope argument.
+- Resume interrupted Account Kit bumps from a checked rewrite plan and preserve scan failures.
 
 - List the membership, rank and admission checks that single-scope invitation adapters must
   preserve, alongside acceptance transaction requirements.
