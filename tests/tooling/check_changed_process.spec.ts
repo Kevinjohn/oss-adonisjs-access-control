@@ -272,18 +272,11 @@ require('node:module').syncBuiltinESMExports()
 test('PID readiness waits for a complete positive record', async ({ cleanup }) => {
   const f = await fixture()
   cleanup(() => rm(f.directory, { recursive: true, force: true }))
-  let settled = false
-  await writeFile(f.ready, '')
-  const ready = waitForPidFile(f.ready, 1000).then((pid) => {
-    settled = true
-    return pid
-  })
-  await writeFile(f.ready, '12')
-  await new Promise((resolve) => setImmediate(resolve))
-  assert.equal(settled, false)
-  await writeFile(f.ready, '0\n')
-  await new Promise((resolve) => setImmediate(resolve))
-  assert.equal(settled, false)
+  for (const invalid of ['', '12', '0\n']) {
+    await writeFile(f.ready, invalid)
+    await assert.rejects(waitForPidFile(f.ready, 60), /Timed out waiting for a complete process ID/)
+  }
   await writeFile(f.ready, '123\n')
-  assert.equal(await ready, 123)
+  assert.equal(await waitForPidFile(f.ready), 123)
+  await assert.rejects(waitForPidFile(f.directory, 1000), { code: 'EISDIR' })
 }).timeout(5000)

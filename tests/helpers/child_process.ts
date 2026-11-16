@@ -56,7 +56,10 @@ export async function waitForFile(filePath: string, timeoutMs = 5000): Promise<s
 export async function waitForPidFile(filePath: string, timeoutMs = 5000): Promise<number> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    const value = await readFile(filePath, 'utf8').catch(() => '')
+    const value = await readFile(filePath, 'utf8').catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return ''
+      throw error
+    })
     if (/^[1-9]\d*\n$/.test(value)) {
       const pid = Number(value.trim())
       if (Number.isSafeInteger(pid) && pid <= 2_147_483_647) return pid
