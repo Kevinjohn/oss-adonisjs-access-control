@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- Clarify that changing table names or key types in an existing installation needs explicit
+  application-owned configuration and schema migration, rather than a configure rerun.
+
 - Explain that the doctor requires a bootable application and resolvable installed peers.
 
 - State the existing-user precondition and database failure behavior of trusted first-member

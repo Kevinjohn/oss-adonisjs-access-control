@@ -64,9 +64,16 @@ the doctor again. Its version check is not a pre-boot dependency recovery comman
 ## Not supported after install
 
 Changing `membershipsTable`, `users.table`, `scope.table` or any key type once the migration has
-run is not supported. Treat it as a new install: configure with the new values, migrate, and copy
-the rows with your own migration. An application that already stores memberships in its own table
-follows the [adoption guide](adopting.md).
+run is not an automatic configure operation. In a separate fresh application, configure the new
+values and migrate before copying data with an application-owned migration.
+
+In an existing application, rerunning configure with different flags preserves the existing
+configuration and skips already-published migration suffixes; it does not convert the schema.
+Plan an application-owned migration and data copy, update the configuration explicitly, and
+verify foreign keys, key representations and all consumers before cutover. Back up the data
+and plan rollback before running it. Keep released package migration stubs unchanged. An
+application that already stores memberships in its own table follows the
+[adoption guide](adopting.md).
 
 ## Testing your application
 
