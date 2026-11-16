@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import {
+import fs, {
   chmodSync,
   cpSync,
   existsSync,
@@ -12,6 +12,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -114,6 +115,53 @@ test.group('consumer archive snapshot', () => {
         assert.isTrue(existsSync(lock))
       }
     } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('reports contention when the owner lock disappears after EEXIST', async ({ assert }) => {
+    const root = mkdtempSync(join(tmpdir(), 'consumer_vanished_lock_test_'))
+    const lock = join(root, 'tmp', 'consumer-build.lock')
+    mkdirSync(join(root, 'tmp'))
+    writeFileSync(lock, 'current owner record')
+
+    const originalOpenSync = fs.openSync
+    let lockClaims = 0
+    let producerInvocations = 0
+    let removedAfterConflict = false
+    fs.openSync = ((path, flags, mode) => {
+      if (path === lock && flags === 'wx') lockClaims++
+      try {
+        return originalOpenSync(path, flags, mode)
+      } catch (error) {
+        if (path === lock && flags === 'wx' && (error as NodeJS.ErrnoException).code === 'EEXIST') {
+          rmSync(lock)
+          removedAfterConflict = true
+        }
+        throw error
+      }
+    }) as typeof fs.openSync
+    syncBuiltinESMExports()
+
+    try {
+      await assert.rejects(
+        () =>
+          consumerArtifact(root, undefined, {
+            unconfirmedProducer: undefined,
+            run: async () => {
+              producerInvocations++
+              return ''
+            },
+          }),
+        /Default consumer build lock exists.*owner unavailable/
+      )
+      assert.isTrue(removedAfterConflict)
+      assert.equal(lockClaims, 1)
+      assert.equal(producerInvocations, 0)
+      assert.isFalse(existsSync(lock))
+    } finally {
+      fs.openSync = originalOpenSync
+      syncBuiltinESMExports()
       rmSync(root, { recursive: true, force: true })
     }
   })
