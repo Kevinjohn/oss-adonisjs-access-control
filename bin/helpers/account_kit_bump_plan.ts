@@ -47,17 +47,36 @@ export async function saveBumpPlan(root: string, plan: BumpPlan): Promise<void> 
   const path = join(root, planPath)
   await mkdir(join(root, 'tmp'), { recursive: true })
   const temporary = `${path}.${randomUUID()}.tmp`
-  const handle = await open(temporary, 'wx', 0o600)
+  let failure: unknown
   try {
-    await handle.writeFile(JSON.stringify(plan))
-  } finally {
-    await handle.close()
-  }
-  try {
+    const handle = await open(temporary, 'wx', 0o600)
+    try {
+      await handle.writeFile(JSON.stringify(plan))
+    } catch (error) {
+      failure = error
+    }
+    try {
+      await handle.close()
+    } catch (error) {
+      failure =
+        failure === undefined
+          ? error
+          : new AggregateError([failure, error], 'Plan write and close failed')
+    }
+    if (failure !== undefined) throw failure
     await link(temporary, path)
-  } finally {
-    await rm(temporary, { force: true })
+  } catch (error) {
+    failure = error
   }
+  try {
+    await rm(temporary, { force: true })
+  } catch (cleanupError) {
+    failure =
+      failure === undefined
+        ? cleanupError
+        : new AggregateError([failure, cleanupError], 'Plan write and cleanup failed')
+  }
+  if (failure !== undefined) throw failure
 }
 
 export async function applyBumpPlan(
@@ -93,10 +112,10 @@ export async function applyBumpPlan(
     const temporary = `${destination}.account-kit-${randomUUID()}.tmp`
     let failure: unknown
     try {
-      const handle = await open(temporary, 'wx', metadata.mode & 0o777)
+      const handle = await open(temporary, 'wx', metadata.mode & 0o7777)
       try {
         await handle.writeFile(entry.after)
-        await handle.chmod(metadata.mode & 0o777)
+        await handle.chmod(metadata.mode & 0o7777)
       } catch (error) {
         failure = error
       }
