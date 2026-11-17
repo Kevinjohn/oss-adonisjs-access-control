@@ -1,5 +1,7 @@
 # Recipes
 
+For combined applications, use the [four released starter apps](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.13.0/apps) and the [Masquerade with Access Control recipe](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/blob/v0.13.0/docs/cookbook/masquerade-with-access-control.md).
+
 Task-focused examples for common Access Control integrations. Recipes 6 to 11 come from adopting
 the package in [Capacity Lens](https://github.com/Kevinjohn/capacitylens), a single-company
 planning application; the links point at its code at revision `68b353794`.

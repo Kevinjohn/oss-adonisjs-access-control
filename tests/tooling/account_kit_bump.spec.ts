@@ -56,9 +56,19 @@ test.group('Account Kit owned fields', () => {
     assert.equal(result.devDependencies.other, '0.3.3')
   })
 
-  test('preserves nested changelog and ledger history including an EOF matrix', ({ assert }) => {
+  test('preserves history and excludes retired app readmes', ({ assert }) => {
     assert.isFalse(isKitBumpPath('examples/foo/CHANGELOG.md'))
     assert.equal(projectKitFile('examples/foo/CHANGELOG.md', from.url, from, to), from.url)
+    assert.isFalse(isKitBumpPath('examples/with_account_kit/api/README.md'))
+    assert.equal(
+      projectKitFile(
+        'examples/with_account_kit/api/README.md',
+        `Account Kit ${from.version}`,
+        from,
+        to
+      ),
+      `Account Kit ${from.version}`
+    )
     const ledger = `**Matrix status:** Kit ${from.version} and ${from.version}\nHistory ${from.version}`
     assert.equal(
       projectKitFile('docs/maintainers/requirement-ledger.md', ledger, from, to),
