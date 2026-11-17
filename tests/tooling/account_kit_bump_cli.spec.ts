@@ -63,13 +63,6 @@ async function fixture(version: '0.3.3' | '0.3.4') {
     'CHANGELOG.md': `Historical Account Kit ${version} at ${kit.url}\n`,
     'docs/maintainers/requirement-ledger.md': `**Matrix status:** Kit ${version}\n\nHistory Kit 0.3.3\n`,
     'examples/demo/CHANGELOG.md': `Historical ${kit.url}\n`,
-    'examples/with_account_kit/api/README.md':
-      `[API example](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/v${version}/examples/api)\nat ` +
-      '`v' +
-      version +
-      '`, with Access Control.\n`v' +
-      version +
-      '` GitHub release.\n',
     'tests/doctor.spec.ts': `const versions = accountKitVersions()\nassert.equal(versions.expected, '${version}')\nassert.equal(versions.installed, '${version}')\n{ installed: '0.3.2', expected: '${version}' }\n`,
     'src/kit_provenance.ts': `export const kitReleaseVersion = '${version}'\nexport const kitReleaseSha256 = '${kit.sha256}'\nexport const kitSourceRevision = '${kit.revision}'\n`,
   }

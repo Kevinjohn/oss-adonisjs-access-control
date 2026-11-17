@@ -3,8 +3,8 @@
 This page takes an AdonisJS 7 application from install to one scoped route that only team members
 with the right role can use. It uses a `teams` table with integer keys; the
 [setup guide](setup.md) lists the flags for other tables and key types. The
-[API example](https://github.com/Kevinjohn/oss-adonisjs-access-control/tree/main/examples/with_account_kit/api)
-runs the same steps end to end.
+[API example](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.13.0/apps/api)
+shows these roles and team routes in a bearer-token app.
 
 ## Before you start
 

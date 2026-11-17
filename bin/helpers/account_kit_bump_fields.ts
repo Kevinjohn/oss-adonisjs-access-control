@@ -16,10 +16,7 @@ export function projectKitFile(
   const isManifest = path.split('/').pop() === 'package.json'
   const isLock = path.split('/').pop() === 'pnpm-lock.yaml'
   const isLedger = path === 'docs/maintainers/requirement-ledger.md'
-  const isReadme =
-    path === 'README.md' ||
-    path === 'README-AGENTS.md' ||
-    /^examples\/with_account_kit\/[^/]+\/README\.md$/.test(path)
+  const isReadme = path === 'README.md' || path === 'README-AGENTS.md'
   const isGuide = path === 'docs/guide/setup.md' || path === 'docs/guide/getting-started.md'
   const isStory = path === 'user-stories/US-ACCESS-28-attach-without-provider.md'
   const isDoctor = path === 'tests/doctor.spec.ts'
@@ -130,24 +127,11 @@ export function projectKitFile(
     }
   }
   if (isReadme || isGuide || isStory) {
-    // Contextual mentions include the example tree link and its nearby release spelling.
     result = result.replace(/Account Kit\s+(?:0\.\d+\.\d+|\d+\.\d+\.\d+)/g, (match) =>
       match.replace(new RegExp(version), (value) =>
         allowed('live Account Kit version', value, from.version, to.version)
       )
     )
-    if (isReadme && path.startsWith('examples/')) {
-      result = result.replace(
-        /oss-adonisjs-account-kit\/tree\/v(\d+\.\d+\.\d+)/g,
-        (_whole, value: string) =>
-          `oss-adonisjs-account-kit/tree/v${allowed('example tree', value, from.version, to.version)}`
-      )
-      result = result.replace(
-        /(?:at `v|`v)(\d+\.\d+\.\d+)(?=`(?: GitHub release)?)/g,
-        (whole, value: string) =>
-          whole.replace(value, allowed('example release', value, from.version, to.version))
-      )
-    }
     if (isStory)
       result = result.replace(/exports \((\d+\.\d+\.\d+)\)/g, (whole, value: string) =>
         whole.replace(value, allowed('transaction export version', value, from.version, to.version))
@@ -199,7 +183,6 @@ export function isKitBumpPath(path: string): boolean {
     path === 'docs/maintainers/requirement-ledger.md' ||
     path === 'README.md' ||
     path === 'README-AGENTS.md' ||
-    /^examples\/with_account_kit\/[^/]+\/README\.md$/.test(path) ||
     path === 'docs/guide/setup.md' ||
     path === 'docs/guide/getting-started.md' ||
     path === 'user-stories/US-ACCESS-28-attach-without-provider.md' ||
