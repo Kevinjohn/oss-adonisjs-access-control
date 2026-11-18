@@ -114,6 +114,12 @@ declare module '@adonisjs/core/http' {
 }
 ```
 
+A custom authenticator must expose the exact stored user primary-key value in `ctx.auth.user.id`,
+including its spelling for string keys. The initializer passes that user to Bouncer. With a
+case-insensitive database collation, scope middleware can resolve an alias to the stored
+membership. Generated abilities compare the Bouncer subject with the membership's stored user ID
+using a case-sensitive comparison, so the same alias fails authorization there.
+
 Each ability resolves the membership when it runs, not when the Bouncer is built, so a membership
 set later in the request is seen. It returns false for no membership, a suspended membership, a
 membership that belongs to another user than the Bouncer's subject, or a stored role outside the
