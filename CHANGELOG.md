@@ -2,8 +2,14 @@
 
 ## Unreleased
 
+## 0.2.1 - 2026-11-19
+
 - Scoped doctor checks resolve equivalent string scope IDs to the stored spelling.
 - The Bouncer guide explains why custom authenticators must expose the stored user ID spelling.
+
+### Changed
+
+- Require Account Kit 0.4.1. Its SQLite checkout fix restores compatibility with Lucid 22.5.
 
 ## 0.2.0 - 2026-11-16
 
