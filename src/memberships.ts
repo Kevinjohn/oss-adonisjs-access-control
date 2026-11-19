@@ -3,7 +3,7 @@ import type { Database } from '@adonisjs/lucid/database'
 import type { QueryClientContract } from '@adonisjs/lucid/types/database'
 import type { AccessControl } from './define.js'
 import { AccessControlError } from './errors.js'
-import { normaliseKey } from './keys.js'
+import { requireValidKey } from './keys.js'
 import { readStoredParentId, resolveStoredParentId } from './stored_keys.js'
 import { lockScope, lockScopes, lockUsers, ascending, sameKeys } from './locks.js'
 import { decodeCursor, encodeCursor } from './pagination.js'
@@ -196,11 +196,11 @@ export class MembershipService<Role extends string = string> {
   }
 
   #scopeKey(value: unknown): ScopeKey {
-    return normaliseKey(this.#access.config.scope.keyType, value, 'scopeId')
+    return requireValidKey(this.#access.config.scope.keyType, value, 'scopeId')
   }
 
   #userKey(value: unknown, what = 'userId'): UserKey {
-    return normaliseKey(this.#access.config.users.keyType, value, what)
+    return requireValidKey(this.#access.config.users.keyType, value, what)
   }
 
   #run<T>(trx: Trx | undefined, callback: (trx: Trx) => Promise<T>): Promise<T> {
@@ -262,7 +262,10 @@ export class MembershipService<Role extends string = string> {
     await this.#access.config.onMembershipChanged?.(event, trx)
   }
 
-  async #insert(trx: Trx, scopeId: ScopeKey, userId: UserKey, role: string): Promise<Membership> {
+  async #insert(
+    trx: Trx,
+    { scopeId, userId, role }: { scopeId: ScopeKey; userId: UserKey; role: string }
+  ): Promise<Membership> {
     const now = this.#runner.sqlTimestamp(trx)
     await trx.table(this.#table).insert({
       scope_id: scopeId,
@@ -275,7 +278,14 @@ export class MembershipService<Role extends string = string> {
     return (await this.#read(trx, scopeId, userId))!
   }
 
-  async #update(trx: Trx, scopeId: ScopeKey, userId: UserKey, patch: Record<string, unknown>) {
+  async #update(
+    trx: Trx,
+    {
+      scopeId,
+      userId,
+      patch,
+    }: { scopeId: ScopeKey; userId: UserKey; patch: Record<string, unknown> }
+  ) {
     await trx
       .from(this.#table)
       .where({ scope_id: scopeId, user_id: userId })
@@ -289,12 +299,15 @@ export class MembershipService<Role extends string = string> {
 
   /** Locks the actor and target user rows ascending, then the scope row. */
   async #lock(trx: Trx, scopeId: ScopeKey, userIds: UserKey[]): Promise<void> {
-    await lockUsers(this.#runner, trx, this.#usersTable, userIds)
-    await lockScope(this.#runner, trx, this.#scopeTable, scopeId)
+    await lockUsers(this.#runner, trx, { usersTable: this.#usersTable, userIds })
+    await lockScope(this.#runner, trx, { scopeTable: this.#scopeTable, scopeId })
   }
 
   /** Serialized invitations must use exactly the spelling stored in a string scope parent. */
-  async #invitationScope(client: QueryClientContract, scopeId: ScopeKey): Promise<ScopeKey> {
+  async #requireStoredInvitationScopeId(
+    client: QueryClientContract,
+    scopeId: ScopeKey
+  ): Promise<ScopeKey> {
     if (this.#access.config.scope.keyType !== 'string') return scopeId
     const stored = await readStoredParentId(client, this.#scopeTable, String(scopeId))
     if (stored === undefined) throw error('E_ACCESS_CONTROL_SCOPE_NOT_FOUND')
@@ -303,7 +316,7 @@ export class MembershipService<Role extends string = string> {
     return stored
   }
 
-  #storedUser(client: QueryClientContract, userId: UserKey): Promise<UserKey> {
+  #resolveStoredUserId(client: QueryClientContract, userId: UserKey): Promise<UserKey> {
     return resolveStoredParentId(
       client,
       this.#usersTable,
@@ -312,7 +325,7 @@ export class MembershipService<Role extends string = string> {
     )
   }
 
-  #storedScope(client: QueryClientContract, scopeId: ScopeKey): Promise<ScopeKey> {
+  #resolveStoredScopeId(client: QueryClientContract, scopeId: ScopeKey): Promise<ScopeKey> {
     return resolveStoredParentId(
       client,
       this.#scopeTable,
@@ -328,8 +341,8 @@ export class MembershipService<Role extends string = string> {
     userIds: UserKey[]
   ): Promise<{ scopeId: ScopeKey; userIds: UserKey[] }> {
     const users: UserKey[] = []
-    for (const id of userIds) users.push(await this.#storedUser(trx, id))
-    return { scopeId: await this.#storedScope(trx, scopeId), userIds: users }
+    for (const id of userIds) users.push(await this.#resolveStoredUserId(trx, id))
+    return { scopeId: await this.#resolveStoredScopeId(trx, scopeId), userIds: users }
   }
 
   /**
@@ -357,13 +370,13 @@ export class MembershipService<Role extends string = string> {
     const client = this.#client(trx)
     return this.#read(
       client,
-      await this.#storedScope(client, normalizedScope),
-      await this.#storedUser(client, normalizedUser)
+      await this.#resolveStoredScopeId(client, normalizedScope),
+      await this.#resolveStoredUserId(client, normalizedUser)
     )
   }
 
   /** @internal The actor membership of a serialized invitation scope, only for its stored spelling. */
-  async findInvitationMembership(
+  async getInvitationMembership(
     scopeId: ScopeKey,
     userId: UserKey,
     trx?: Trx
@@ -371,15 +384,15 @@ export class MembershipService<Role extends string = string> {
     const normalizedScope = this.#scopeKey(scopeId)
     const normalizedUser = this.#userKey(userId)
     const client = this.#client(trx)
-    const exactScope = await this.#invitationScope(client, normalizedScope)
-    return this.#read(client, exactScope, await this.#storedUser(client, normalizedUser))
+    const exactScope = await this.#requireStoredInvitationScopeId(client, normalizedScope)
+    return this.#read(client, exactScope, await this.#resolveStoredUserId(client, normalizedUser))
   }
 
   /** Every membership of the user, ordered by `created_at, id`. A plain read without locks. */
   async listForUser(userId: UserKey, trx?: Trx): Promise<Membership[]> {
     const normalizedUser = this.#userKey(userId)
     const client = this.#client(trx)
-    return this.#readAll(client, await this.#storedUser(client, normalizedUser))
+    return this.#readAll(client, await this.#resolveStoredUserId(client, normalizedUser))
   }
 
   /**
@@ -408,8 +421,8 @@ export class MembershipService<Role extends string = string> {
       throw error('E_ACCESS_CONTROL_INVALID_INPUT', 'limit must be an integer from 1 to 100')
     const cursor = input.cursor === undefined ? null : decodeCursor(input.cursor)
     const client = this.#client(input.trx)
-    const scopeId = await this.#storedScope(client, normalizedScope)
-    const actorId = await this.#storedUser(client, normalizedActor)
+    const scopeId = await this.#resolveStoredScopeId(client, normalizedScope)
+    const actorId = await this.#resolveStoredUserId(client, normalizedActor)
     const actor = await this.#read(client, scopeId, actorId)
     if (!actor || actor.status !== 'active' || !this.#access.can(actor.role, 'members:list'))
       throw error('E_ACCESS_CONTROL_FORBIDDEN')
@@ -463,7 +476,7 @@ export class MembershipService<Role extends string = string> {
       const user = await trx.from(this.#usersTable).select('id').where('id', userId).first()
       if (!user) throw error('E_ACCESS_CONTROL_USER_NOT_FOUND')
       if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
-      const membership = await this.#insert(trx, scopeId, userId, role)
+      const membership = await this.#insert(trx, { scopeId, userId, role })
       await this.#emit(
         { type: 'membership.added', scopeId, userId, actorId, role: role as Role },
         trx
@@ -494,7 +507,7 @@ export class MembershipService<Role extends string = string> {
         })
       )
       if (target.role === role) return target
-      const membership = await this.#update(trx, scopeId, userId, { role })
+      const membership = await this.#update(trx, { scopeId, userId, patch: { role } })
       await this.#emit(
         {
           type: 'membership.role_changed',
@@ -533,7 +546,7 @@ export class MembershipService<Role extends string = string> {
         })
       )
       if (target.status === status) return target
-      const membership = await this.#update(trx, scopeId, userId, { status })
+      const membership = await this.#update(trx, { scopeId, userId, patch: { status } })
       await this.#emit(
         {
           type: 'membership.status_changed',
@@ -634,8 +647,8 @@ export class MembershipService<Role extends string = string> {
       const target = await this.#requireTarget(trx, scopeId, toUserId)
       if (target.status !== 'active')
         throw error('E_ACCESS_CONTROL_INVALID_INPUT', 'ownership can only go to an active member')
-      await this.#update(trx, scopeId, actorId, { role: demotedTo })
-      await this.#update(trx, scopeId, toUserId, { role: ownerRole })
+      await this.#update(trx, { scopeId, userId: actorId, patch: { role: demotedTo } })
+      await this.#update(trx, { scopeId, userId: toUserId, patch: { role: ownerRole } })
       await this.#emit(
         {
           type: 'membership.ownership_transferred',
@@ -674,7 +687,7 @@ export class MembershipService<Role extends string = string> {
       await this.#lock(trx, scopeId, [userId])
       const existing = await trx.from(this.#table).where('scope_id', scopeId).first()
       if (existing) throw error('E_ACCESS_CONTROL_SCOPE_NOT_EMPTY')
-      const membership = await this.#insert(trx, scopeId, userId, role)
+      const membership = await this.#insert(trx, { scopeId, userId, role })
       await this.#emit(
         { type: 'membership.first_member', scopeId, userId, role: role as Role },
         trx
@@ -695,11 +708,11 @@ export class MembershipService<Role extends string = string> {
       )
     const normalizedScopeId = this.#scopeKey(input.scopeId)
     const normalizedUserId = this.#userKey(input.userId)
-    const scopeId = await this.#invitationScope(trx, normalizedScopeId)
-    const userId = await this.#storedUser(trx, normalizedUserId)
+    const scopeId = await this.#requireStoredInvitationScopeId(trx, normalizedScopeId)
+    const userId = await this.#resolveStoredUserId(trx, normalizedUserId)
     await this.#lock(trx, scopeId, [userId])
     if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
-    const membership = await this.#insert(trx, scopeId, userId, role)
+    const membership = await this.#insert(trx, { scopeId, userId, role })
     await this.#emit(
       {
         type: 'membership.invitation_accepted',
@@ -727,7 +740,7 @@ export class MembershipService<Role extends string = string> {
     const user = await trx.from(this.#usersTable).select('id').where('id', userId).first()
     if (!user) throw error('E_ACCESS_CONTROL_USER_NOT_FOUND')
     if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
-    const membership = await this.#insert(trx, scopeId, userId, role)
+    const membership = await this.#insert(trx, { scopeId, userId, role })
     await this.#emit({ type: 'membership.granted', scopeId, userId, role: role as Role }, trx)
     return membership
   }
@@ -735,26 +748,37 @@ export class MembershipService<Role extends string = string> {
   /** Trusted: both users' role maps under the locks of 4.2, for the identity predicate. */
   async identityRoles(input: IdentityInput): Promise<IdentityRoles> {
     return this.#run(input.trx, async (trx) => {
-      const actorId = await this.#storedUser(trx, this.#userKey(input.actorId, 'actorId'))
-      const targetId = await this.#storedUser(trx, this.#userKey(input.targetId, 'targetId'))
-      await lockUsers(this.#runner, trx, this.#usersTable, [actorId, targetId])
+      const actorId = await this.#resolveStoredUserId(trx, this.#userKey(input.actorId, 'actorId'))
+      const targetId = await this.#resolveStoredUserId(
+        trx,
+        this.#userKey(input.targetId, 'targetId')
+      )
+      await lockUsers(this.#runner, trx, {
+        usersTable: this.#usersTable,
+        userIds: [actorId, targetId],
+      })
       const actorMemberships = await this.#readAll(trx, actorId)
       const targetMemberships =
         actorId === targetId ? actorMemberships : await this.#readAll(trx, targetId)
-      await lockScopes(
-        this.#runner,
-        trx,
-        this.#scopeTable,
-        [...actorMemberships, ...targetMemberships].map((m) => m.scopeId)
-      )
-      const byScope = (list: Membership[]) => {
-        const map = new Map<ScopeKey, string>()
-        for (const scopeId of ascending(list.map((m) => m.scopeId)))
-          map.set(scopeId, list.find((m) => m.scopeId === scopeId)!.role)
-        return map
+      await lockScopes(this.#runner, trx, {
+        scopeTable: this.#scopeTable,
+        scopeIds: [...actorMemberships, ...targetMemberships].map(
+          (membership) => membership.scopeId
+        ),
+      })
+      const byScope = (memberships: Membership[]) => {
+        const rolesByScopeId = new Map<ScopeKey, string>()
+        for (const scopeId of ascending(memberships.map((membership) => membership.scopeId)))
+          rolesByScopeId.set(
+            scopeId,
+            memberships.find((membership) => membership.scopeId === scopeId)!.role
+          )
+        return rolesByScopeId
       }
       return {
-        actorRoles: byScope(actorMemberships.filter((m) => m.status === 'active')),
+        actorRoles: byScope(
+          actorMemberships.filter((membership) => membership.status === 'active')
+        ),
         targetRoles: byScope(targetMemberships),
       }
     })
@@ -763,8 +787,11 @@ export class MembershipService<Role extends string = string> {
   /** Trusted: `identityRoles` then the identity predicate; false is `FORBIDDEN`. */
   async assertCanAdministerIdentity(input: IdentityInput): Promise<void> {
     await this.#run(input.trx, async (trx) => {
-      const actorId = await this.#storedUser(trx, this.#userKey(input.actorId, 'actorId'))
-      const targetId = await this.#storedUser(trx, this.#userKey(input.targetId, 'targetId'))
+      const actorId = await this.#resolveStoredUserId(trx, this.#userKey(input.actorId, 'actorId'))
+      const targetId = await this.#resolveStoredUserId(
+        trx,
+        this.#userKey(input.targetId, 'targetId')
+      )
       const { actorRoles, targetRoles } = await this.identityRoles({ actorId, targetId, trx })
       if (!this.#access.canAdministerIdentity(actorRoles, targetRoles, actorId === targetId))
         throw error('E_ACCESS_CONTROL_FORBIDDEN')
@@ -774,14 +801,12 @@ export class MembershipService<Role extends string = string> {
   /** Called by the kit's deleting hook: refuses an active owner, else removes every membership. */
   async prepareAccountDeletion(input: PrepareAccountDeletionInput): Promise<void> {
     const trx = this.#requireTrx(input.trx, 'prepareAccountDeletion')
-    const userId = await this.#storedUser(trx, this.#userKey(input.userId))
+    const userId = await this.#resolveStoredUserId(trx, this.#userKey(input.userId))
     const memberships = await this.#readAll(trx, userId)
-    await lockScopes(
-      this.#runner,
-      trx,
-      this.#scopeTable,
-      memberships.map((m) => m.scopeId)
-    )
+    await lockScopes(this.#runner, trx, {
+      scopeTable: this.#scopeTable,
+      scopeIds: memberships.map((membership) => membership.scopeId),
+    })
     const ownerRole = this.#access.ownerRole
     if (
       ownerRole !== undefined &&
@@ -806,19 +831,17 @@ export class MembershipService<Role extends string = string> {
   /** Called by the app before deleting a scope row: removes every membership of the scope. */
   async removeAllForScope(input: RemoveAllForScopeInput): Promise<void> {
     const trx = this.#requireTrx(input.trx, 'removeAllForScope')
-    const scopeId = await this.#storedScope(trx, this.#scopeKey(input.scopeId))
+    const scopeId = await this.#resolveStoredScopeId(trx, this.#scopeKey(input.scopeId))
     const actorId =
       input.actor === undefined
         ? null
-        : await this.#storedUser(trx, this.#userKey(input.actor.id, 'actor.id'))
+        : await this.#resolveStoredUserId(trx, this.#userKey(input.actor.id, 'actor.id'))
     const before = await this.#scopeRows(trx, scopeId)
-    await lockUsers(
-      this.#runner,
-      trx,
-      this.#usersTable,
-      before.map((m) => m.userId)
-    )
-    await lockScope(this.#runner, trx, this.#scopeTable, scopeId)
+    await lockUsers(this.#runner, trx, {
+      usersTable: this.#usersTable,
+      userIds: before.map((membership) => membership.userId),
+    })
+    await lockScope(this.#runner, trx, { scopeTable: this.#scopeTable, scopeId })
     const members = await this.#scopeRows(trx, scopeId)
     if (
       !sameKeys(

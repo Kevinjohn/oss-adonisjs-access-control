@@ -6,7 +6,7 @@ export interface RoleMatrix {
   roles: readonly string[]
   ownerRole: string | undefined
   /** Permission key (`resource:action`) to the lowest role allowed, in declaration order. */
-  minimumRole: ReadonlyMap<string, string>
+  minimumRoleByPermission: ReadonlyMap<string, string>
 }
 
 const deny = (
@@ -24,14 +24,14 @@ export function rank(matrix: RoleMatrix, role: string): number {
 /** Whether the role satisfies the key: both known and the role ranks at or above the minimum. */
 export function can(matrix: RoleMatrix, role: string, key: string): boolean {
   const roleRank = rank(matrix, role)
-  const minimum = matrix.minimumRole.get(key)
+  const minimum = matrix.minimumRoleByPermission.get(key)
   if (roleRank < 0 || minimum === undefined) return false
   return roleRank >= rank(matrix, minimum)
 }
 
 /** Every key the role satisfies, in declaration order. */
 export function permissionsFor(matrix: RoleMatrix, role: string): string[] {
-  return [...matrix.minimumRole.keys()].filter((key) => can(matrix, role, key))
+  return [...matrix.minimumRoleByPermission.keys()].filter((key) => can(matrix, role, key))
 }
 
 /** Roles the actor may assign: none without `members:manage`; else up to its rank, never the owner. */

@@ -15,7 +15,7 @@ function invalid(what: string, detail: string): AccessControlError {
  * `integer` keys become a safe positive integer, `uuid` keys a lower-case UUID string and
  * `string` keys a string of 1 to 254 characters; anything else is `INVALID_INPUT`.
  */
-export function normaliseKey(keyType: KeyType, value: unknown, what: string): number | string {
+export function requireValidKey(keyType: KeyType, value: unknown, what: string): number | string {
   if (keyType === 'integer') {
     const number =
       typeof value === 'number'
@@ -43,7 +43,7 @@ export function normaliseKey(keyType: KeyType, value: unknown, what: string): nu
  */
 export function isCanonicalKey(keyType: KeyType, value: string): boolean {
   try {
-    return String(normaliseKey(keyType, value, 'key')) === value
+    return String(requireValidKey(keyType, value, 'key')) === value
   } catch {
     return false
   }

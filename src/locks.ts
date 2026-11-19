@@ -4,9 +4,9 @@ import type { ScopeKey, TransactionRunner, Trx, UserKey } from './types.js'
 
 /** Unique keys in code-unit order of `String(key)`, so integer keys sort as strings. */
 export function ascending<K extends ScopeKey | UserKey>(keys: Iterable<K>): K[] {
-  const byString = new Map<string, K>()
-  for (const key of keys) byString.set(String(key), key)
-  return [...byString.entries()]
+  const keysByText = new Map<string, K>()
+  for (const key of keys) keysByText.set(String(key), key)
+  return [...keysByText.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([, key]) => key)
 }
@@ -22,21 +22,19 @@ export function sameKeys<K extends ScopeKey | UserKey>(a: Iterable<K>, b: Iterab
 export async function lockUsers(
   runner: TransactionRunner,
   trx: Trx,
-  table: string,
-  ids: Iterable<UserKey>
+  { usersTable, userIds }: { usersTable: string; userIds: Iterable<UserKey> }
 ): Promise<void> {
-  for (const id of ascending(ids)) await runner.lockRow(trx, table, id)
+  for (const userId of ascending(userIds)) await runner.lockRow(trx, usersTable, userId)
 }
 
 /** Locks one scope row and proves it exists; otherwise `SCOPE_NOT_FOUND`. */
 export async function lockScope(
   runner: TransactionRunner,
   trx: Trx,
-  table: string,
-  id: ScopeKey
+  { scopeTable, scopeId }: { scopeTable: string; scopeId: ScopeKey }
 ): Promise<void> {
-  await runner.lockRow(trx, table, id)
-  const row = await trx.from(table).select('id').where('id', id).first()
+  await runner.lockRow(trx, scopeTable, scopeId)
+  const row = await trx.from(scopeTable).select('id').where('id', scopeId).first()
   if (row === undefined || row === null)
     throw new AccessControlError('E_ACCESS_CONTROL_SCOPE_NOT_FOUND')
 }
@@ -45,8 +43,7 @@ export async function lockScope(
 export async function lockScopes(
   runner: TransactionRunner,
   trx: Trx,
-  table: string,
-  ids: Iterable<ScopeKey>
+  { scopeTable, scopeIds }: { scopeTable: string; scopeIds: Iterable<ScopeKey> }
 ): Promise<void> {
-  for (const id of ascending(ids)) await lockScope(runner, trx, table, id)
+  for (const scopeId of ascending(scopeIds)) await lockScope(runner, trx, { scopeTable, scopeId })
 }
