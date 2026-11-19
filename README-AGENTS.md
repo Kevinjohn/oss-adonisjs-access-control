@@ -10,14 +10,14 @@ Use these notes to assess Access Control and protect its guarantees. Human overv
 
 ## Requirements
 
-Core 7, Lucid 22.4.2+, Bouncer 4, Auth 10, Luxon 3 and Account Kit 0.4.0 (exact), the release
+Core 7, Lucid 22.4.2+, Bouncer 4, Auth 10, Luxon 3 and Account Kit 0.4.1 (exact), the release
 with the `./transaction` export, scoped invitations and `ctx.auth.user` after its middleware.
 Roles and permission keys are declared in `config/access_control.ts`.
 
 ## Install
 
 ```sh
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.2.0/kevinjohn-adonisjs-access-control-0.2.0.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.2.1/kevinjohn-adonisjs-access-control-0.2.1.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 node ace migration:run
 node ace access-control:doctor
