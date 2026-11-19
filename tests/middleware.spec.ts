@@ -211,3 +211,41 @@ test('scope middleware resolves a route alias through the stored string scope', 
     await f.cleanup()
   }
 })
+
+test('generated Bouncer abilities require the stored user ID after scope lookup', async ({
+  assert,
+}) => {
+  const f = await membershipFixture({ keyType: 'string', caseInsensitiveKeys: true })
+  try {
+    if (!f.caseInsensitiveKeys) return
+    const scope = await f.createScope()
+    const owner = await f.createUser()
+    const other = await f.createUser()
+    const alias = String(owner).toUpperCase()
+    assert.notEqual(alias, owner)
+    await f.memberships.createFirstMember({ scopeId: scope, userId: owner })
+
+    for (const [id, allowed] of [
+      [owner, true],
+      [alias, false],
+    ] as const) {
+      const user = { id }
+      const ctx = context(f, user, scope)
+      assert.deepEqual(await run(named, ctx), { next: true })
+      assert.deepInclude(ctx.membership, { userId: owner, status: 'active' })
+      const bouncer = new Bouncer(
+        () => user,
+        f.config.abilities(() => ctx.membership)
+      )
+      assert.equal(await bouncer.allows('project:write'), allowed)
+
+      const otherUserBouncer = new Bouncer(
+        () => ({ id: other }),
+        f.config.abilities(() => ctx.membership)
+      )
+      assert.isFalse(await otherUserBouncer.allows('project:write'))
+    }
+  } finally {
+    await f.cleanup()
+  }
+})
