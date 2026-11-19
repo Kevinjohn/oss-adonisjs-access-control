@@ -4,12 +4,12 @@ import type { QueryClientContract } from '@adonisjs/lucid/types/database'
 import type { AccessControl } from './define.js'
 import { AccessControlError } from './errors.js'
 import { normaliseKey } from './keys.js'
+import { readStoredParentId, resolveStoredParentId } from './stored_keys.js'
 import { lockScope, lockScopes, lockUsers, ascending, sameKeys } from './locks.js'
 import { decodeCursor, encodeCursor } from './pagination.js'
 import type {
   AccessControlErrorCode,
   Actor,
-  KeyType,
   Membership,
   MembershipEvent,
   MembershipPage,
@@ -293,35 +293,10 @@ export class MembershipService<Role extends string = string> {
     await lockScope(this.#runner, trx, this.#scopeTable, scopeId)
   }
 
-  /**
-   * The spelling the parent row stores for a `string` key, when a row matches: a database that
-   * compares keys case-insensitively would otherwise lock, store and compare the caller's
-   * spelling. Other key types are canonical after normalisation; a missing row keeps the input.
-   */
-  async #storedParent(
-    client: QueryClientContract,
-    table: string,
-    key: string
-  ): Promise<string | undefined> {
-    const row = (await client.from(table).select('id').where('id', key).first()) as
-      { id: unknown } | null | undefined
-    return row ? String(row.id) : undefined
-  }
-
-  async #stored(
-    client: QueryClientContract,
-    table: string,
-    keyType: KeyType,
-    key: ScopeKey | UserKey
-  ) {
-    if (keyType !== 'string') return key
-    return (await this.#storedParent(client, table, String(key))) ?? key
-  }
-
   /** Serialized invitations must use exactly the spelling stored in a string scope parent. */
   async #invitationScope(client: QueryClientContract, scopeId: ScopeKey): Promise<ScopeKey> {
     if (this.#access.config.scope.keyType !== 'string') return scopeId
-    const stored = await this.#storedParent(client, this.#scopeTable, String(scopeId))
+    const stored = await readStoredParentId(client, this.#scopeTable, String(scopeId))
     if (stored === undefined) throw error('E_ACCESS_CONTROL_SCOPE_NOT_FOUND')
     if (stored !== scopeId)
       throw error('E_ACCESS_CONTROL_INVALID_INPUT', 'invitation scope must use the stored spelling')
@@ -329,11 +304,21 @@ export class MembershipService<Role extends string = string> {
   }
 
   #storedUser(client: QueryClientContract, userId: UserKey): Promise<UserKey> {
-    return this.#stored(client, this.#usersTable, this.#access.config.users.keyType, userId)
+    return resolveStoredParentId(
+      client,
+      this.#usersTable,
+      this.#access.config.users.keyType,
+      userId
+    )
   }
 
   #storedScope(client: QueryClientContract, scopeId: ScopeKey): Promise<ScopeKey> {
-    return this.#stored(client, this.#scopeTable, this.#access.config.scope.keyType, scopeId)
+    return resolveStoredParentId(
+      client,
+      this.#scopeTable,
+      this.#access.config.scope.keyType,
+      scopeId
+    )
   }
 
   /** The stored spellings of a scope and some users, read before any lock is taken. */
