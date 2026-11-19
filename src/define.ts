@@ -2,7 +2,7 @@ import type { Database } from '@adonisjs/lucid/database'
 import { AccessControlError } from './errors.js'
 import { MembershipService } from './memberships.js'
 import { abilities, type AbilityMap, type MembershipResolver } from './abilities.js'
-import { clientPayload } from './payload.js'
+import { buildClientPayload } from './payload.js'
 import { sqlIdentifierPattern } from './identifiers.js'
 import * as rules from './rules.js'
 import type { RoleMatrix } from './rules.js'
@@ -41,7 +41,7 @@ function assertKeyType(name: string, value: unknown): void {
 }
 
 /** Validation per specification 2.3; returns the matrix the rules read. */
-function validate(config: AccessControlConfig<any, any>): RoleMatrix {
+function requireRoleMatrix(config: AccessControlConfig<any, any>): RoleMatrix {
   const roles: unknown = config.roles
   if (!Array.isArray(roles) || roles.length === 0)
     throw invalid('roles must list at least one role')
@@ -55,7 +55,7 @@ function validate(config: AccessControlConfig<any, any>): RoleMatrix {
   const permissions: unknown = config.permissions
   if (typeof permissions !== 'object' || permissions === null)
     throw invalid('permissions must be an object of resources')
-  const minimumRole = new Map<string, string>()
+  const minimumRoleByPermission = new Map<string, string>()
   for (const [resource, actions] of Object.entries(permissions as Record<string, unknown>)) {
     if (!namePattern.test(resource))
       throw invalid(`resource name ${JSON.stringify(resource)} must match ^[a-z][a-zA-Z0-9]*$`)
@@ -66,11 +66,11 @@ function validate(config: AccessControlConfig<any, any>): RoleMatrix {
         throw invalid(`action name ${JSON.stringify(action)} must match ^[a-z][a-zA-Z0-9]*$`)
       if (typeof role !== 'string' || !roles.includes(role))
         throw invalid(`permission ${resource}:${action} names ${JSON.stringify(role)}, not a role`)
-      minimumRole.set(`${resource}:${action}`, role)
+      minimumRoleByPermission.set(`${resource}:${action}`, role)
     }
   }
   for (const key of reservedKeys)
-    if (!minimumRole.has(key)) throw invalid(`reserved key ${key} is missing`)
+    if (!minimumRoleByPermission.has(key)) throw invalid(`reserved key ${key} is missing`)
   const ownerRole: unknown = config.ownerRole
   if (ownerRole !== undefined) {
     if (roles.length < 2) throw invalid('ownerRole needs at least two roles')
@@ -86,7 +86,7 @@ function validate(config: AccessControlConfig<any, any>): RoleMatrix {
   return {
     roles: Object.freeze([...roles]),
     ownerRole: ownerRole as string | undefined,
-    minimumRole,
+    minimumRoleByPermission,
   }
 }
 
@@ -118,7 +118,7 @@ export class AccessControl<
   #service: MembershipService<R[number]> | undefined
 
   constructor(config: AccessControlConfig<R, P>) {
-    this.#matrix = validate(config)
+    this.#matrix = requireRoleMatrix(config)
     // Freeze copies, so the caller's own objects stay writable.
     this.config = deepFreeze({
       ...config,
@@ -133,7 +133,7 @@ export class AccessControl<
     this.roles = this.config.roles
     this.ownerRole = this.config.ownerRole
     this.permissionKeys = Object.freeze([
-      ...this.#matrix.minimumRole.keys(),
+      ...this.#matrix.minimumRoleByPermission.keys(),
     ] as PermissionKeyOf<P>[])
     Object.freeze(this)
   }
@@ -169,7 +169,10 @@ export class AccessControl<
   clientPayload(
     membership: Membership | null | undefined
   ): ClientPayload<R[number], PermissionKeyOf<P>> | null {
-    return clientPayload(this, membership) as ClientPayload<R[number], PermissionKeyOf<P>> | null
+    return buildClientPayload(this, membership) as ClientPayload<
+      R[number],
+      PermissionKeyOf<P>
+    > | null
   }
 
   /** The index of the role in `roles`, -1 when unknown. */

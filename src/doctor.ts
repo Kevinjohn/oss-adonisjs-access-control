@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { Database } from '@adonisjs/lucid/database'
 import type { AccessControl } from './define.js'
-import { normaliseKey } from './keys.js'
+import { requireValidKey } from './keys.js'
 import { packageManifest } from './package_root.js'
+import { resolveStoredParentId } from './stored_keys.js'
 
 /** One doctor check: `ok` when `count` is zero; `sampleIds` holds up to 20 row ids. */
 export interface DoctorCheck {
@@ -34,11 +35,16 @@ export interface DoctorInput {
 const sampleLimit = 20
 const expectedColumns = ['id', 'scope_id', 'user_id', 'role', 'status', 'created_at', 'updated_at']
 
-function check(name: string, ids: unknown[], count = ids.length): DoctorCheck {
-  return { name, ok: count === 0, count, sampleIds: ids.slice(0, sampleLimit).map(String) }
+function buildDoctorCheck(name: string, ids: unknown[], findingCount = ids.length): DoctorCheck {
+  return {
+    name,
+    ok: findingCount === 0,
+    count: findingCount,
+    sampleIds: ids.slice(0, sampleLimit).map(String),
+  }
 }
 
-async function countOf(query: ReturnType<Database['from']>): Promise<number> {
+async function countMatchingRows(query: ReturnType<Database['from']>): Promise<number> {
   const [row] = await query.clone().clearSelect().clearOrder().count('* as total')
   return Number((row as { total: unknown }).total)
 }
@@ -58,16 +64,23 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
   const missing: string[] = []
   for (const column of expectedColumns)
     if (!(await schema().hasColumn(membershipsTable, column))) missing.push(column)
-  checks.push(check('memberships_table', missing))
+  checks.push(buildDoctorCheck('memberships_table', missing))
   if (missing.length > 0) return { checks: [...checks, ...(await accountKitCheck(input))] }
 
   const scopeId =
-    input.scope === undefined ? undefined : normaliseKey(scopeConfig.keyType, input.scope, 'scope')
-  const rows = () => {
+    input.scope === undefined
+      ? undefined
+      : await resolveStoredParentId(
+          db.connection(),
+          scopeConfig.table,
+          scopeConfig.keyType,
+          requireValidKey(scopeConfig.keyType, input.scope, 'scope')
+        )
+  const buildMembershipQuery = () => {
     const query = db.from(`${membershipsTable} as m`)
     return scopeId === undefined ? query : query.where('m.scope_id', scopeId)
   }
-  const sampleIds = async (query: ReturnType<Database['from']>) => {
+  const listSampleIds = async (query: ReturnType<Database['from']>) => {
     const found = await query.clone().select('m.id').orderBy('m.id', 'asc').limit(sampleLimit)
     return found.map((row) => row.id)
   }
@@ -75,21 +88,33 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
   // not, so `EDITOR` would pass `NOT IN ('editor', ...)` there and be refused at runtime.
   const exact = (column: string) =>
     db.connection().dialect.name === 'mysql' ? `binary ${column}` : column
-  const notIn = (column: string, values: string[]) =>
-    rows().where((query) =>
+  const buildExcludedValueQuery = (column: string, values: string[]) =>
+    buildMembershipQuery().where((query) =>
       query
         .whereNull(column)
         .orWhereRaw(`${exact(column)} not in (${values.map(() => '?').join(', ')})`, values)
     )
 
-  const unknownRole = notIn('m.role', [...roles])
-  checks.push(check('unknown_role', await sampleIds(unknownRole), await countOf(unknownRole)))
-  const unknownStatus = notIn('m.status', ['active', 'suspended'])
-  checks.push(check('unknown_status', await sampleIds(unknownStatus), await countOf(unknownStatus)))
+  const unknownRole = buildExcludedValueQuery('m.role', [...roles])
+  checks.push(
+    buildDoctorCheck(
+      'unknown_role',
+      await listSampleIds(unknownRole),
+      await countMatchingRows(unknownRole)
+    )
+  )
+  const unknownStatus = buildExcludedValueQuery('m.status', ['active', 'suspended'])
+  checks.push(
+    buildDoctorCheck(
+      'unknown_status',
+      await listSampleIds(unknownStatus),
+      await countMatchingRows(unknownStatus)
+    )
+  )
 
   if (ownerRole !== undefined) {
     const owners = (comparison: '=' | '>') =>
-      rows()
+      buildMembershipQuery()
         .select('m.scope_id')
         .groupBy('m.scope_id')
         .havingRaw(
@@ -99,25 +124,39 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
         .orderBy('m.scope_id', 'asc')
     const [without, many] = await Promise.all([owners('='), owners('>')])
     checks.push(
-      check(
+      buildDoctorCheck(
         'scope_without_owner',
         without.map((row) => row.scope_id)
       )
     )
     checks.push(
-      check(
+      buildDoctorCheck(
         'scope_with_many_owners',
         many.map((row) => row.scope_id)
       )
     )
   }
 
-  const orphanScope = rows()
+  const orphanScope = buildMembershipQuery()
     .leftJoin(`${scopeConfig.table} as s`, 'm.scope_id', 's.id')
     .whereNull('s.id')
-  checks.push(check('orphan_scope', await sampleIds(orphanScope), await countOf(orphanScope)))
-  const orphanUser = rows().leftJoin(`${users.table} as u`, 'm.user_id', 'u.id').whereNull('u.id')
-  checks.push(check('orphan_user', await sampleIds(orphanUser), await countOf(orphanUser)))
+  checks.push(
+    buildDoctorCheck(
+      'orphan_scope',
+      await listSampleIds(orphanScope),
+      await countMatchingRows(orphanScope)
+    )
+  )
+  const orphanUser = buildMembershipQuery()
+    .leftJoin(`${users.table} as u`, 'm.user_id', 'u.id')
+    .whereNull('u.id')
+  checks.push(
+    buildDoctorCheck(
+      'orphan_user',
+      await listSampleIds(orphanUser),
+      await countMatchingRows(orphanUser)
+    )
+  )
   checks.push(...(await accountKitCheck(input)))
   return { checks }
 }

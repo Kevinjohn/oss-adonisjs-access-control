@@ -47,7 +47,15 @@ async function resolveAccessControl(): Promise<AccessControl> {
 }
 
 /** True when admission is off, the admission provider is absent, or the kit admits the user. */
-async function admitted(userId: UserKey, trx: Trx | undefined, enabled: boolean): Promise<boolean> {
+async function checkAdmission({
+  userId,
+  trx,
+  enabled,
+}: {
+  userId: UserKey
+  trx: Trx | undefined
+  enabled: boolean
+}): Promise<boolean> {
   if (!enabled || !app.container.hasBinding(admissionBinding)) return true
   const admission = (await app.container.make(admissionBinding)) as AdmissionService
   return admission.isAdmitted(userId, trx)
@@ -59,22 +67,33 @@ async function admitted(userId: UserKey, trx: Trx | undefined, enabled: boolean)
  * (an upper-case UUID) would make the kit's acceptance order differ from the package's lock
  * order. Team invitations are authorised and honoured for the canonical spelling only.
  */
-function canonicalScope(access: AccessControl, scope: string | null | undefined): string | null {
+function readCanonicalInvitationScope(
+  access: AccessControl,
+  scope: string | null | undefined
+): string | null {
   if (scope === null || scope === undefined) return null
   return isCanonicalKey(access.config.scope.keyType, scope) ? scope : null
 }
 
-/** The actor's active membership in `scope`, read through `trx` without locking; null otherwise. */
-async function activeMembership(
-  access: AccessControl,
-  actor: AccountUser,
-  scope: string | null | undefined,
+interface InvitationSubject {
+  actor: AccountUser
+  scope: string | null | undefined
   trx: Trx | undefined
+}
+
+interface InvitationManagementSubject extends InvitationSubject {
+  admission: boolean
+}
+
+/** The actor's active membership in `scope`, read through `trx` without locking; null otherwise. */
+async function getActiveMembership(
+  { actor, scope, trx }: InvitationSubject,
+  access: AccessControl
 ): Promise<Membership | null> {
-  const canonical = canonicalScope(access, scope)
+  const canonical = readCanonicalInvitationScope(access, scope)
   if (canonical === null) return null
   try {
-    const membership = await access.memberships.findInvitationMembership(canonical, actor.id, trx)
+    const membership = await access.memberships.getInvitationMembership(canonical, actor.id, trx)
     return membership !== null && membership.status === 'active' ? membership : null
   } catch (error) {
     if (
@@ -87,31 +106,25 @@ async function activeMembership(
   }
 }
 
-/** Whether `actor` may manage invitations in `scope`: admitted, active there, holding the key. */
-async function mayManageInvitations(
-  actor: AccountUser,
-  scope: string | null | undefined,
-  trx: Trx | undefined,
-  admission: boolean
+/** The admitted actor's active membership when it grants invitation management. */
+async function getInvitationManagerMembership(
+  { actor, scope, trx, admission }: InvitationManagementSubject,
+  access: AccessControl
 ): Promise<Membership | null> {
-  const access = await resolveAccessControl()
-  const membership = await activeMembership(access, actor, scope, trx)
+  const membership = await getActiveMembership({ actor, scope, trx }, access)
   if (membership === null || !access.can(membership.role, 'invitations:manage')) return null
-  if (!(await admitted(actor.id, trx, admission))) return null
+  if (!(await checkAdmission({ userId: actor.id, trx, enabled: admission }))) return null
   return membership
 }
 
-/** Whether `actor` may invite someone with `role` into `scope`. */
-async function mayInvite(
-  actor: AccountUser,
-  role: string,
-  scope: string | null | undefined,
-  trx: Trx | undefined,
-  admission: boolean
-): Promise<boolean> {
+/** Checks whether the actor can invite someone with the given role into the scope. */
+async function checkInvitationPermission({
+  role,
+  ...subject
+}: InvitationManagementSubject & { role: string }): Promise<boolean> {
   const access = await resolveAccessControl()
   if (access.rank(role) < 0 || role === access.ownerRole) return false
-  const membership = await mayManageInvitations(actor, scope, trx, admission)
+  const membership = await getInvitationManagerMembership(subject, access)
   return membership !== null && access.rank(role) <= access.rank(membership.role)
 }
 
@@ -126,17 +139,28 @@ export function accessControlKitCallbacks(
   return {
     authorize: {
       async invite(actor, role, context) {
-        return mayInvite(actor, role, context?.scope, context?.trx, admission)
+        return checkInvitationPermission({
+          actor,
+          role,
+          scope: context?.scope,
+          trx: context?.trx,
+          admission,
+        })
       },
       async manageInvitation(actor, invitation, context) {
-        return mayInvite(actor, invitation.role, invitation.scope, context?.trx, admission)
+        return checkInvitationPermission({
+          actor,
+          role: invitation.role,
+          scope: invitation.scope,
+          trx: context?.trx,
+          admission,
+        })
       },
       async listInvitations(actor, context) {
-        const membership = await mayManageInvitations(
-          actor,
-          context?.scope,
-          context?.trx,
-          admission
+        const access = await resolveAccessControl()
+        const membership = await getInvitationManagerMembership(
+          { actor, scope: context?.scope, trx: context?.trx, admission },
+          access
         )
         return membership !== null
       },
@@ -144,7 +168,7 @@ export function accessControlKitCallbacks(
     async onInvitationAccepted(user, invitation, trx) {
       if (invitation.scope !== null) {
         const access = await resolveAccessControl()
-        if (canonicalScope(access, invitation.scope) === null)
+        if (readCanonicalInvitationScope(access, invitation.scope) === null)
           throw new AccessControlError('E_ACCESS_CONTROL_INVALID_INPUT', {
             message: `invitation ${invitation.id}: scope must be a canonical ${access.config.scope.keyType} key`,
           })

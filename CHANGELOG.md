@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Scoped doctor checks resolve equivalent string scope IDs to the stored spelling.
 - The Bouncer guide explains why custom authenticators must expose the stored user ID spelling.
 
 ## 0.2.0 - 2026-11-16

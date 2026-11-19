@@ -11,7 +11,8 @@ node ace access-control:doctor [--scope=<id>] [--json]
 
 A read-only check of the memberships table against `config/access_control.ts`. Each check
 reports a count and up to 20 sample ids, never names or emails. `--scope` limits the row checks to
-one scope. `--json` prints `{ "checks": [{ "name", "ok", "count", "sampleIds" }] }`.
+one scope. When the database accepts an equivalent spelling of a string scope ID, the doctor
+uses the stored spelling, just as a membership lookup does. `--json` prints `{ "checks": [{ "name", "ok", "count", "sampleIds" }] }`.
 
 | Check                    | Finds                                                                                  |
 | ------------------------ | -------------------------------------------------------------------------------------- |

@@ -19,7 +19,7 @@ declare module '@adonisjs/core/http' {
 }
 
 /** The authenticated user as the auth or Account Kit middleware left it, without depending on their types. */
-function userOf(ctx: HttpContext): { id: unknown } | null {
+function readAuthenticatedUser(ctx: HttpContext): { id: unknown } | null {
   const user = (ctx as { auth?: { user?: { id?: unknown } | null } }).auth?.user
   return user && user.id !== undefined && user.id !== null ? { id: user.id } : null
 }
@@ -33,7 +33,7 @@ export default class ScopeMiddleware {
   /** Resolves the membership for `ctx.auth.user` in the route's scope or refuses with 403. */
   async handle(ctx: HttpContext, next: NextFn, options: ScopeMiddlewareOptions = {}) {
     const access = await ctx.containerResolver.make(AccessControl)
-    const user = userOf(ctx)
+    const user = readAuthenticatedUser(ctx)
     if (!user) throw new AccessControlError('E_ACCESS_CONTROL_FORBIDDEN')
     const scopeId = options.resolveScope ? options.resolveScope(ctx) : ctx.params?.scopeId
     let membership: Membership | null

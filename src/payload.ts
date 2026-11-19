@@ -3,7 +3,7 @@ import type { AccessControl } from './define.js'
 import type { ClientPayload, Membership } from './types.js'
 
 /** `null` for no membership or a suspended one; otherwise the role, its keys and assignable roles. */
-export function clientPayload(
+export function buildClientPayload(
   access: AccessControl<any, any>,
   membership: Membership | null | undefined
 ): ClientPayload | null {
