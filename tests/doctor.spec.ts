@@ -10,12 +10,22 @@ import { AccessControl, defineAccessControl } from '../index.js'
 import { accountKitVersions, runDoctor, type DoctorReport } from '../src/doctor.js'
 import { sqlTimestamp } from '../src/kit_transaction.js'
 import { bootTestApp, type TestApp } from './helpers/app.js'
+import { testEngine } from './helpers/database.js'
 import { createParentTable } from './helpers/schema.js'
 import { permissions, roles } from './helpers/fixture.js'
 
 function idOf(rows: unknown[]): number {
   const [row] = rows
   return Number(typeof row === 'object' && row !== null ? (row as { id: unknown }).id : row)
+}
+
+async function runCommand(fixture: TestApp, ...args: string[]) {
+  const kernel = new Kernel(fixture.app)
+  kernel.addLoader(new ListLoader([AccessControlDoctor]))
+  kernel.ui.switchMode('raw')
+  const command = await kernel.exec('access-control:doctor', args)
+  const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map((log) => log.message)
+  return { exitCode: command.exitCode, logs }
 }
 
 test.group('access-control:doctor (spec 17.2)', (group) => {
@@ -55,15 +65,6 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     const [row] = await booted.db.from(booted.names.memberships).count('* as total')
     return Number(row.total)
   }
-  const exec = async (...args: string[]) => {
-    const kernel = new Kernel(booted.app)
-    kernel.addLoader(new ListLoader([AccessControlDoctor]))
-    kernel.ui.switchMode('raw')
-    const command = await kernel.exec('access-control:doctor', args)
-    const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map((l) => l.message)
-    return { exitCode: command.exitCode, logs }
-  }
-
   test('clean data passes every check and the command exits 0', async ({ assert }) => {
     const scope = await createScope()
     const [owner, editor] = await Promise.all([createUser(), createUser()])
@@ -90,7 +91,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     )
     for (const entry of report.checks)
       assert.deepEqual([entry.ok, entry.count, entry.sampleIds], [true, 0, []])
-    const result = await exec(`--scope=${scope}`)
+    const result = await runCommand(booted, `--scope=${scope}`)
     assert.equal(result.exitCode, 0, result.logs.join('\n'))
     assert.isTrue(result.logs.some((line) => line.includes('unknown_role: 0')))
     assert.isTrue(result.logs.some((line) => line.includes('account_kit_version: 0')))
@@ -133,7 +134,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       unknown_status: [String(weird)],
     })
     assert.deepEqual(failing(await runDoctor({ access, db: booted.db, scope: clean })), {})
-    const json = await exec('--json')
+    const json = await runCommand(booted, '--json')
     assert.equal(json.exitCode, 1)
     const printed = JSON.parse(json.logs.find((line) => line.startsWith('{'))!) as DoctorReport
     assert.deepEqual(Object.keys(printed), ['checks'])
@@ -386,7 +387,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
   })
 
   test('a malformed --scope exits 2', async ({ assert }) => {
-    const result = await exec('--scope=not-a-scope')
+    const result = await runCommand(booted, '--scope=not-a-scope')
     assert.equal(result.exitCode, 2)
     assert.isTrue(result.logs.some((line) => line.includes('the doctor could not run')))
   })
@@ -431,3 +432,71 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     }
   })
 })
+
+// SQLite allows the parent and membership columns to use different collations.
+if (testEngine === 'sqlite') {
+  test.group('access-control:doctor with SQLite string keys', () => {
+    for (const caseInsensitiveKeys of [true, false]) {
+      test(`scoped doctor checks stored string keys with ${caseInsensitiveKeys ? 'case-insensitive' : 'case-sensitive'} parents`, async ({
+        assert,
+      }) => {
+        const fixture = await bootTestApp({
+          keyTypes: { users: 'integer', scope: 'string' },
+          caseInsensitiveKeys,
+        })
+        try {
+          const { db, names } = fixture
+          const access = await fixture.app.container.make(AccessControl)
+          const stored = 'West'
+          const alternate = 'west'
+          const unrelated = 'East'
+          const clean = caseInsensitiveKeys ? [unrelated] : [unrelated, alternate]
+          await db.table(names.scope).insert([stored, ...clean].map((id) => ({ id, name: id })))
+          const userId = idOf(
+            await db.table(names.users).returning('id').insert({ name: 'member' })
+          )
+          for (const scopeId of clean)
+            await access.memberships.createFirstMember({ scopeId, userId })
+          const now = sqlTimestamp(db)
+          const badId = idOf(
+            await db.table(names.memberships).returning('id').insert({
+              scope_id: stored,
+              user_id: userId,
+              role: 'legacy',
+              status: 'active',
+              created_at: now,
+              updated_at: now,
+            })
+          )
+          const allMemberships = () => db.from(names.memberships).orderBy('id')
+          const before = await allMemberships()
+
+          for (const scope of [stored, alternate, unrelated]) {
+            const result = await runCommand(fixture, `--scope=${scope}`, '--json')
+            const report = JSON.parse(
+              result.logs.find((line) => line.startsWith('{'))!
+            ) as DoctorReport
+            const findings = report.checks.filter((entry) => !entry.ok)
+            if (clean.includes(scope)) {
+              assert.equal(result.exitCode, 0, scope)
+              assert.deepEqual(findings, [], scope)
+            } else {
+              assert.equal(result.exitCode, 1, scope)
+              assert.deepEqual(
+                findings.map((entry) => [entry.name, entry.count, entry.sampleIds]),
+                [
+                  ['unknown_role', 1, [String(badId)]],
+                  ['scope_without_owner', 1, [stored]],
+                ],
+                scope
+              )
+            }
+          }
+          assert.deepEqual(await allMemberships(), before)
+        } finally {
+          await fixture.close()
+        }
+      })
+    }
+  })
+}

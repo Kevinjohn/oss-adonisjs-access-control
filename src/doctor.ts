@@ -6,6 +6,7 @@ import type { Database } from '@adonisjs/lucid/database'
 import type { AccessControl } from './define.js'
 import { normaliseKey } from './keys.js'
 import { packageManifest } from './package_root.js'
+import { resolveStoredParentId } from './stored_keys.js'
 
 /** One doctor check: `ok` when `count` is zero; `sampleIds` holds up to 20 row ids. */
 export interface DoctorCheck {
@@ -62,7 +63,14 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
   if (missing.length > 0) return { checks: [...checks, ...(await accountKitCheck(input))] }
 
   const scopeId =
-    input.scope === undefined ? undefined : normaliseKey(scopeConfig.keyType, input.scope, 'scope')
+    input.scope === undefined
+      ? undefined
+      : await resolveStoredParentId(
+          db.connection(),
+          scopeConfig.table,
+          scopeConfig.keyType,
+          normaliseKey(scopeConfig.keyType, input.scope, 'scope')
+        )
   const rows = () => {
     const query = db.from(`${membershipsTable} as m`)
     return scopeId === undefined ? query : query.where('m.scope_id', scopeId)
