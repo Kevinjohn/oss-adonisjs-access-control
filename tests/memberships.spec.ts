@@ -30,6 +30,36 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     return () => f.cleanup()
   })
 
+  test('findActive resolves stored keys, narrows the active role and uses the supplied transaction', async ({
+    assert,
+  }) => {
+    const lookup = (userId: number | string) =>
+      f.memberships.findActive(String(scope), String(userId))
+    assert.isNull(await lookup(outsider))
+    assert.deepInclude(await lookup(editor), {
+      scopeId: scope,
+      userId: editor,
+      role: 'editor',
+      status: 'active',
+    })
+    await f.runner.transaction(f.db, async (trx) => {
+      await trx.from(f.names.memberships).where('user_id', editor).update({ role: 'admin' })
+      const updated = await f.memberships.findActive(scope, editor, trx)
+      assert.equal(updated?.role, 'admin')
+    })
+    await f.memberships.setStatus({
+      actor: actor(owner),
+      scopeId: scope,
+      userId: viewer,
+      status: 'suspended',
+    })
+    assert.isNull(await lookup(viewer))
+    await f.db.from(f.names.memberships).where('user_id', editor).update({ role: 'historical' })
+    assert.equal(await codeOf(lookup(editor)), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
+    const stored = await f.memberships.find(scope, editor)
+    assert.equal(stored?.role, 'historical')
+  })
+
   test('authorize: returns the active membership that holds the permission, in the caller transaction', async ({
     assert,
   }) => {

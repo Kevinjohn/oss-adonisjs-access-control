@@ -116,3 +116,12 @@ defineAccessControl({
 void config.memberships.grant({ scopeId: 1, userId: 2, role: 'editor' })
 
 void [role, key, badRole, badKey, dottedKey]
+
+async function inspectActiveMembership() {
+  const active = await config.memberships.findActive(1, 2)
+  if (!active) return
+  const configuredRole: Role = active.role
+  const status: 'active' = active.status
+  void [configuredRole, status]
+}
+void inspectActiveMembership

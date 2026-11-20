@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Document and test an optional SQLite constraint for one active owner per scope.
+- Add a typed active-membership lookup that rejects unconfigured stored roles.
 
 
 ## 0.2.1 - 2026-11-19

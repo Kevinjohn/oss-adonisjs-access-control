@@ -26,6 +26,12 @@ prove the caller may read that user's memberships. `authorize` checks the suppli
 membership and permission inside the required transaction; the application still chooses whose
 identity to pass. It returns the membership without writing data or emitting events.
 
+`findActive(scopeId, userId, trx?)` returns an active membership with a role narrowed to the
+configured role type. It returns `null` for an absent or suspended membership and throws
+`E_ACCESS_CONTROL_UNKNOWN_ROLE` for an active row with a role outside the configuration. Use
+`find` instead to inspect historical roles. The same caller authorization and transaction
+considerations apply to both reads.
+
 ## Actor-authorised operations
 
 Manager writes take an `actor` (the acting user), open a transaction through Account Kit's runner,
