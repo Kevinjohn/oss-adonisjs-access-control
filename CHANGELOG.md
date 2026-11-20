@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.2 - 2026-11-20
+
 - Document and test an optional SQLite constraint for one active owner per scope.
 - Add a typed active-membership lookup that rejects unconfigured stored roles.
 - Have Doctor verify the membership unique pair and restrictive parent references.
