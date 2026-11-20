@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Document and test an optional SQLite constraint for one active owner per scope.
+
+
 ## 0.2.1 - 2026-11-19
 
 - Scoped doctor checks resolve equivalent string scope IDs to the stored spelling.

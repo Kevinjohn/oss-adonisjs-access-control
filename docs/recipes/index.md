@@ -19,6 +19,7 @@ planning application; the links point at its code at revision `68b353794`.
 9. [Map package errors to your API](#map-package-errors-to-your-api)
 10. [A product rule stricter than the package](#a-product-rule-stricter-than-the-package)
 11. [Authorize with Bouncer inside the request transaction](#authorize-with-bouncer-inside-the-request-transaction)
+12. [Enforce at most one active owner on SQLite](#enforce-at-most-one-active-owner-on-sqlite)
 
 ## Create a team with its owner
 
@@ -392,3 +393,42 @@ A Bouncer built for the actor with the effective member's membership denies ever
 the abilities refuse a membership that belongs to another user. Capacity Lens builds the effective
 Bouncer in [`planning.ts`](https://github.com/Kevinjohn/capacitylens/blob/68b353794/apps/backend/app/services/planning.ts) and checks the actor in
 [`auth/masquerade.ts`](https://github.com/Kevinjohn/capacitylens/blob/68b353794/apps/backend/app/services/auth/masquerade.ts).
+
+## Enforce at most one active owner on SQLite
+
+Use this optional host-owned migration when imports or maintenance tasks also write memberships
+outside Access Control. The regular package transfer demotes the old owner before promoting the new
+owner in the same transaction.
+
+Before migrating, pause external membership writers and run `node ace access-control:doctor`
+without `--scope`. If `scope_with_many_owners` reports a scope, explicitly choose the owner who
+should remain and reconcile the other rows with your application’s audit process. Rerun Doctor
+before migration. SQLite refuses the index if duplicate owners are still present.
+
+This example assumes the default `memberships` table and a configured `ownerRole` of `owner`.
+Adapt both the table and role literal to your configuration. Add this in a new application
+migration after the membership table migration.
+
+<!-- source: ../../tests/owner_constraint_recipe.spec.ts#active_owner_constraint -->
+
+```ts
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class AddActiveOwnerConstraint extends BaseSchema {
+  async up() {
+    this.schema.raw(
+      "CREATE UNIQUE INDEX memberships_one_active_owner ON memberships (scope_id) WHERE status = 'active' AND role = 'owner'"
+    )
+  }
+
+  async down() {
+    this.schema.raw('DROP INDEX memberships_one_active_owner')
+  }
+}
+```
+
+The constraint is SQLite-only and enforces **at most** one active owner per scope. Continue using
+the application’s bootstrap and transfer rules to keep an owner where one is required. If you
+rename the owner role, replace the index predicate and migrate the stored roles in the same
+maintenance window. Rolling this migration back drops only the index. It does not restore any
+membership rows changed during reconciliation.
