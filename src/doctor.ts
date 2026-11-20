@@ -5,6 +5,7 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { Database } from '@adonisjs/lucid/database'
 import type { AccessControl } from './define.js'
 import { requireValidKey } from './keys.js'
+import { inspectMembershipConstraints } from './membership_constraints.js'
 import { packageManifest } from './package_root.js'
 import { resolveStoredParentId } from './stored_keys.js'
 
@@ -66,6 +67,17 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
     if (!(await schema().hasColumn(membershipsTable, column))) missing.push(column)
   checks.push(buildDoctorCheck('memberships_table', missing))
   if (missing.length > 0) return { checks: [...checks, ...(await accountKitCheck(input))] }
+
+  const constraints = await inspectMembershipConstraints(db.connection(), {
+    table: membershipsTable,
+    scopeTable: scopeConfig.table,
+    usersTable: users.table,
+  })
+  checks.push(
+    buildDoctorCheck('memberships_unique_scope_user', [], constraints.hasUniquePair ? 0 : 1),
+    buildDoctorCheck('memberships_scope_foreign_key', [], constraints.hasScopeReference ? 0 : 1),
+    buildDoctorCheck('memberships_user_foreign_key', [], constraints.hasUserReference ? 0 : 1)
+  )
 
   const scopeId =
     input.scope === undefined

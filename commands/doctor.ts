@@ -4,7 +4,7 @@ import { accountKitVersions, runDoctor } from '../src/doctor.js'
 
 /**
  * `node ace access-control:doctor [--scope=<id>] [--json]`: read-only checks of the memberships
- * table against the configuration. Exit code 0 when clean, 1 when a check finds rows, 2 when a
+ * table against the configuration. Exit code 0 when clean, 1 when a check reports a finding, 2 when a
  * check could not run.
  */
 export default class AccessControlDoctor extends BaseCommand {

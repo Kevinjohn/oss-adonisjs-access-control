@@ -1076,8 +1076,11 @@ Checks, each reported with a count and up to 20 sample ids (ids only, never name
 5. Memberships whose `scope_id` or `user_id` has no matching row (possible only if the app's foreign
    keys are missing).
 6. The installed Account Kit version matches the package's exact peer.
+7. The membership table has a unique scope/user pair and separate restrictive foreign keys to
+   the configured scope and user tables. These checks apply to the entire table when `--scope`
+   is given. A missing structural guarantee reports a count of 1 and no sample ids.
 
-Exit code `0` when clean, `1` when any check finds rows, `2` when the check could not run. `--json`
+Exit code `0` when clean, `1` when any check reports a finding, `2` when a check could not run. `--json`
 prints `{ checks: [{ name, ok, count, sampleIds }] }`. No writes, no locks.
 
 ### 17.3 Role and owner changes (guide: `docs/guide/changing-roles.md`)

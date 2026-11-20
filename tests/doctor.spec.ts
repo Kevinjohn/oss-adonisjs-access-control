@@ -81,6 +81,9 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       report.checks.map((c) => c.name),
       [
         'memberships_table',
+        'memberships_unique_scope_user',
+        'memberships_scope_foreign_key',
+        'memberships_user_foreign_key',
         'unknown_role',
         'unknown_status',
         'scope_without_owner',
@@ -95,6 +98,67 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     assert.equal(result.exitCode, 0, result.logs.join('\n'))
     assert.isTrue(result.logs.some((line) => line.includes('unknown_role: 0')))
     assert.isTrue(result.logs.some((line) => line.includes('account_kit_version: 0')))
+  })
+
+  test('checks empty app-owned tables for the scope/user unique pair and each restrictive reference', async ({
+    assert,
+  }) => {
+    const fixture = await bootTestApp()
+    const original = await fixture.app.container.make(AccessControl)
+    const { db, names } = fixture
+    const tableName = `${names.memberships}_app`
+    try {
+      for (const variant of [
+        'equivalent',
+        'no_unique',
+        'no_scope',
+        'no_user',
+        'wrong_parent',
+        'cascade',
+      ] as const) {
+        await db.connection().schema.createTable(tableName, (table) => {
+          table.increments('id')
+          table.integer('scope_id').unsigned().notNullable()
+          table.integer('user_id').unsigned().notNullable()
+          table.string('role').notNullable()
+          table.string('status').notNullable()
+          table.timestamp('created_at').notNullable()
+          table.timestamp('updated_at').notNullable()
+          if (variant !== 'no_unique') table.unique(['user_id', 'scope_id'], `${tableName}_pair`)
+          else table.unique(['user_id', 'scope_id', 'role'], `${tableName}_wider`)
+          if (variant !== 'no_scope')
+            table.foreign('scope_id').references('id').inTable(names.scope).onDelete('NO ACTION')
+          if (variant !== 'no_user')
+            table
+              .foreign('user_id')
+              .references('id')
+              .inTable(variant === 'wrong_parent' ? names.scope : names.users)
+              .onDelete(variant === 'cascade' ? 'CASCADE' : 'RESTRICT')
+        })
+        const adopted = defineAccessControl({ ...original.config, membershipsTable: tableName })
+        fixture.app.container.bindValue(AccessControl, adopted as AccessControl)
+        const expected = {
+          equivalent: [],
+          no_unique: ['memberships_unique_scope_user'],
+          no_scope: ['memberships_scope_foreign_key'],
+          no_user: ['memberships_user_foreign_key'],
+          wrong_parent: ['memberships_user_foreign_key'],
+          cascade: ['memberships_user_foreign_key'],
+        }[variant]
+        const json = await runCommand(fixture, '--json')
+        assert.equal(json.exitCode, expected.length ? 1 : 0, json.logs.join('\n'))
+        const printed = JSON.parse(json.logs.find((line) => line.startsWith('{'))!) as DoctorReport
+        assert.deepEqual(Object.keys(failing(printed)), expected, variant)
+        const cli = await runCommand(fixture)
+        assert.equal(cli.exitCode, json.exitCode, cli.logs.join('\n'))
+        for (const name of expected)
+          assert.isTrue(cli.logs.some((line) => line.includes(`${name}: 1`)))
+        await db.connection().schema.dropTable(tableName)
+      }
+    } finally {
+      await db.connection().schema.dropTableIfExists(tableName)
+      await fixture.close()
+    }
   })
 
   test('each check reports seeded bad rows with ids only; --scope filters; nothing is written', async ({
@@ -215,12 +279,15 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       const drifted = defineAccessControl({ ...access.config, membershipsTable: tableName })
       const report = await runDoctor({ access: drifted as AccessControl, db: booted.db, scope })
       assert.deepEqual(failing(report), {
+        memberships_unique_scope_user: [],
+        memberships_scope_foreign_key: [],
+        memberships_user_foreign_key: [],
         unknown_role: [String(noRole), String(neither)],
         unknown_status: [String(noStatus), String(neither)],
       })
       assert.deepEqual(
         report.checks.filter((entry) => !entry.ok).map((entry) => entry.count),
-        [2, 2]
+        [1, 1, 1, 2, 2]
       )
     } finally {
       await booted.db.connection().schema.dropTable(tableName)
@@ -279,7 +346,10 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         scope,
       })
       const [membership] = await booted.db.from(booted.names.memberships).where('scope_id', scope)
-      assert.deepEqual(failing(orphans), { orphan_user: [String(membership.id)] })
+      assert.deepEqual(failing(orphans), {
+        memberships_user_foreign_key: [],
+        orphan_user: [String(membership.id)],
+      })
       const noTable = defineAccessControl({ ...detached.config, membershipsTable: 'no_such_table' })
       const missingTable = await runDoctor({
         access: noTable as unknown as AccessControl,
