@@ -161,6 +161,48 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     }
   })
 
+  test('SQLite resolves equivalent referenced identifiers and implicit primary keys', async ({
+    assert,
+  }) => {
+    const client = booted.db.connection()
+    const tableName = `${booted.names.memberships}_app`
+    const usersTable = `${booted.names.users}_app`
+    const scopeTable = booted.names.scope.toUpperCase()
+    const adopted = defineAccessControl({
+      ...access.config,
+      membershipsTable: tableName,
+      users: { ...access.config.users, table: usersTable },
+    })
+
+    for (const [userColumns, expectedFailures] of [
+      ['id integer primary key', []],
+      ['id integer unique, alternate_id integer primary key', ['memberships_user_foreign_key']],
+      [
+        'id integer unique, alternate_id integer, primary key (alternate_id, id)',
+        ['memberships_user_foreign_key'],
+      ],
+    ] as const) {
+      try {
+        await client.rawQuery(`create table "${usersTable}" (${userColumns})`)
+        await client.rawQuery(`create table "${tableName}" (
+          id integer primary key,
+          scope_id integer not null references "${scopeTable}" ("ID") on delete restrict,
+          user_id integer not null references "${usersTable}" on delete restrict,
+          role text not null,
+          status text not null,
+          created_at text not null,
+          updated_at text not null,
+          unique (scope_id, user_id)
+        )`)
+        const report = await runDoctor({ access: adopted as AccessControl, db: booted.db })
+        assert.deepEqual(Object.keys(failing(report)), expectedFailures)
+      } finally {
+        await client.schema.dropTableIfExists(tableName)
+        await client.schema.dropTableIfExists(usersTable)
+      }
+    }
+  }).skip(testEngine !== 'sqlite', 'SQLite reference metadata')
+
   test('each check reports seeded bad rows with ids only; --scope filters; nothing is written', async ({
     assert,
   }) => {

@@ -26,10 +26,16 @@ async function readSqliteConstraints(client: QueryClientContract, table: string)
       where indexes."unique" = 1 and indexes.partial = 0`,
     [table]
   )) as IndexColumn[]
+  // SQLite omits the target column in its metadata when REFERENCES uses the parent primary key.
   const foreignKeys = (await client.rawQuery(
-    `select id as name, "from" as column_name, "table" as parent,
-            "to" as parent_column, on_delete as deletion
-       from pragma_foreign_key_list(?, 'main')`,
+    `select fk.id as name, fk."from" as column_name, fk."table" as parent,
+            coalesce(fk."to", (
+              select case when count(*) = 1 then max(name) end
+                from pragma_table_info(fk."table", 'main')
+               where pk > 0
+            )) as parent_column,
+            fk.on_delete as deletion
+       from pragma_foreign_key_list(?, 'main') as fk`,
     [table]
   )) as ForeignKeyColumn[]
   return { indexes, foreignKeys }
@@ -118,17 +124,23 @@ export async function inspectMembershipConstraints(
   schema: MembershipSchema
 ) {
   const { indexes, foreignKeys } = await readConstraints(client, schema)
+  const sqlite = client.dialect.name === 'sqlite3' || client.dialect.name === 'better-sqlite3'
+  const sameIdentifier = (actual: string | null, expected: string) =>
+    sqlite ? actual?.toLowerCase() === expected.toLowerCase() : actual === expected
   const hasUniquePair = groupColumns(indexes).some((index) => {
-    const columns = index.map((entry) => entry.column_name)
-    return columns.length === 2 && columns.includes('scope_id') && columns.includes('user_id')
+    return (
+      index.length === 2 &&
+      index.some(({ column_name }) => sameIdentifier(column_name, 'scope_id')) &&
+      index.some(({ column_name }) => sameIdentifier(column_name, 'user_id'))
+    )
   })
   const singleColumnReferences = groupColumns(foreignKeys).filter((group) => group.length === 1)
   const hasReference = (column: string, parent: string) =>
     singleColumnReferences.some(
       ([key]) =>
-        key.column_name === column &&
-        key.parent === parent &&
-        key.parent_column === 'id' &&
+        sameIdentifier(key.column_name, column) &&
+        sameIdentifier(key.parent, parent) &&
+        sameIdentifier(key.parent_column, 'id') &&
         (key.deletion === 'RESTRICT' || key.deletion === 'NO ACTION')
     )
 
