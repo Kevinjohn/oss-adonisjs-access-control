@@ -87,6 +87,16 @@ node ace migration:run
 node ace access-control:doctor
 ```
 
+Doctor checks that the membership table has an unconditional unique key on the
+`scope_id` / `user_id` pair and separate foreign keys to the configured parent tables'
+`id` columns. These findings apply to the whole table, including when using `--scope`:
+
+| Finding                         | What to verify in the application migration                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `memberships_unique_scope_user` | Both columns belong to the same unique key. A wider or partial key does not enforce the pair.              |
+| `memberships_scope_foreign_key` | `scope_id` references the configured scope table's `id` with `RESTRICT` or `NO ACTION` on parent deletion. |
+| `memberships_user_foreign_key`  | `user_id` references the configured user table's `id` with the same deletion behavior.                     |
+
 A clean doctor run means every copied row has a known role and status, a scope and a user, and
 one owner per scope. Then route the scoped requests through the `scope` middleware and the
 generated abilities as the [Bouncer guide](bouncer.md) shows, and stop writing to the old table:

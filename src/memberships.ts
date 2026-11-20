@@ -173,11 +173,15 @@ function allow(result: RuleResult): void {
  * its recipient key before resolving the scope.
  */
 export class MembershipService<Role extends string = string> {
-  readonly #access: AccessControl<any, any>
+  readonly #access: AccessControl<readonly [Role, ...Role[]], any>
   readonly #db: Database
   readonly #runner: TransactionRunner
 
-  constructor(access: AccessControl<any, any>, db: Database, runner: TransactionRunner) {
+  constructor(
+    access: AccessControl<readonly [Role, ...Role[]], any>,
+    db: Database,
+    runner: TransactionRunner
+  ) {
     this.#access = access
     this.#db = db
     this.#runner = runner
@@ -373,6 +377,23 @@ export class MembershipService<Role extends string = string> {
       await this.#resolveStoredScopeId(client, normalizedScope),
       await this.#resolveStoredUserId(client, normalizedUser)
     )
+  }
+
+  /**
+   * Reads an active membership with a configured role. Missing and suspended memberships return
+   * null. An active row with an unconfigured role throws E_ACCESS_CONTROL_UNKNOWN_ROLE.
+   * Like find, this reads without locking or authorizing the caller.
+   */
+  async findActive(
+    scopeId: ScopeKey,
+    userId: UserKey,
+    trx?: Trx
+  ): Promise<(Membership & { role: Role; status: 'active' }) | null> {
+    const membership = await this.find(scopeId, userId, trx)
+    if (membership?.status !== 'active') return null
+    const role = this.#access.roles.find((configured) => configured === membership.role)
+    if (role === undefined) throw error('E_ACCESS_CONTROL_UNKNOWN_ROLE')
+    return { ...membership, role, status: 'active' }
   }
 
   /** @internal The actor membership of a serialized invitation scope, only for its stored spelling. */

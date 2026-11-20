@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Document and test an optional SQLite constraint for one active owner per scope.
+- Add a typed active-membership lookup that rejects unconfigured stored roles.
+- Have Doctor verify the membership unique pair and restrictive parent references.
+
 ## 0.2.1 - 2026-11-19
 
 - Scoped doctor checks resolve equivalent string scope IDs to the stored spelling.
