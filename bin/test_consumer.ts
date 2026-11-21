@@ -170,14 +170,14 @@ async function schema(cwd: string, name: string, action: 'create' | 'drop') {
 }
 
 /** Stable filename/content snapshot, independent of the directory enumeration order. */
-async function migrationSnapshot(directory: string): Promise<Record<string, string>> {
-  const files = (await readdir(directory)).sort()
+async function migrationSnapshot(migrationDirectory: string): Promise<Record<string, string>> {
+  const files = await readdir(migrationDirectory)
   return Object.fromEntries(
     await Promise.all(
-      files.map(async (file) => [
+      files.sort().map(async (file) => [
         file,
         createHash('sha256')
-          .update(await readFile(join(directory, file)))
+          .update(await readFile(join(migrationDirectory, file)))
           .digest('hex'),
       ])
     )
