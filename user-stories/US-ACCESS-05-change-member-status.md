@@ -29,7 +29,7 @@ As an active scope manager, I want to suspend or restore a membership so that sc
 flowchart TD
     A["Manager suspends or restores membership"] --> B{"Actor may manage target?"}
     B -->|No| C["See authorization error"]
-    B -->|Yes| D["Status changes"]
+    B -->|Yes| D["Status is set, or unchanged if already correct"]
     D --> E{"New status suspended?"}
     E -->|Yes| F["Next scoped request is refused"]
     E -->|No| G["Active membership may enter scoped route"]
@@ -37,16 +37,19 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behaviour; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
+Scope: package behaviour; the runner commits when `input.trx` is omitted; otherwise the caller owns commit and rollback.
 
 ```mermaid
 flowchart TD
-    A["MembershipService.setStatus"] --> B["validate status (INVALID_INPUT); transaction; lock users then scope row (missing scope: SCOPE_NOT_FOUND)"]
-    B --> C["require active actor with members:manage (FORBIDDEN); load target (NOT_A_MEMBER); apply canManage"]
+    A["MembershipService.setStatus"] --> B["normalize keys and validate status; reuse or open trx; resolve stored keys and lock users then scope"]
+    B --> C["require known active manager; load target; apply canManage"]
     C --> D{"Allowed?"}
     D -->|No| E["throw rule error"]
-    D -->|Yes| F["update when changed and emit status_changed"]
-    F --> G["ScopeMiddleware later accepts active status only"]
+    D -->|Yes| F{"Status changed?"}
+    F -->|No| H["Return existing membership without write or event"]
+    F -->|Yes| I["Update and emit membership.status_changed"]
+    H --> G["After commit, scope middleware also requires active status"]
+    I --> G
 ```
 
 **Code references:** [setStatus](../src/memberships.ts), [scope middleware](../middleware/main.ts)

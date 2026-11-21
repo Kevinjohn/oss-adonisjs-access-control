@@ -30,12 +30,12 @@ Scope: package behaviour and host callback boundary; the application owns its sc
 
 ```mermaid
 flowchart TD
-    A["onAccountDeletingTransaction(user, trx)"] --> B["memberships.prepareAccountDeletion({ userId, trx })"]
+    A["Account Kit confirms actor and holds user lock; calls onAccountDeletingTransaction(user, trx)"] --> B["memberships.prepareAccountDeletion requires same trx"]
     B --> C["read memberships and lock involved scopes"]
-    C --> D{"Any active owner membership?"}
+    C --> D{"Owner role configured and any active owner membership?"}
     D -->|Yes| E["throw LAST_OWNER; Kit transaction rolls back"]
     D -->|No| F["delete memberships and emit account_deleted events"]
-    F --> G["Kit continues deletion in same trx"]
+    F --> G["Kit deletes account rows and user in same trx; commits"]
 ```
 
 **Code references:** [callback](../account_kit/main.ts), [prepareAccountDeletion](../src/memberships.ts)

@@ -27,6 +27,7 @@ flowchart TD
     A["Account holder requests a team route"] --> B["Host middleware resolves effective account"]
     B --> C["Scope middleware loads membership"]
     C --> D{"Active membership and known role?"}
+    C --> X["Invalid stored status or timestamp: configuration error"]
     D -->|No| E["Uniform forbidden response"]
     D -->|Yes| F["Bouncer checks permission key"]
     F --> G{"Role satisfies key?"}
@@ -41,12 +42,15 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 ```mermaid
 flowchart TD
     A["Account Kit managed-account or admission middleware"] --> B["ctx.auth.user is effective guard identity"]
-    B --> C["ScopeMiddleware.handle resolves scope and calls memberships.find"]
+    B --> C["ScopeMiddleware.handle resolves scope and calls memberships.find if user present"]
+    C --> X["Storage validation error propagates; invalid input becomes FORBIDDEN"]
     C --> D{"active membership and configured role?"}
     D -->|No| E["AccessControlError FORBIDDEN"]
     D -->|Yes| F["set ctx.membership; call next"]
     F --> G["AccessControl.abilities resolver reads ctx.membership"]
-    G --> H["Bouncer checks role permission; app policy checks record"]
+    G --> H{"Active membership matches subject and satisfies permission?"}
+    H -->|No| I["Bouncer denies"]
+    H -->|Yes| J["App policy checks record"]
 ```
 
 **Code references:** [scope middleware](../middleware/main.ts), [abilities](../src/abilities.ts), [guide](../docs/guide/bouncer.md)

@@ -13,6 +13,7 @@ As a host developer, I want to require a scoped permission inside my transaction
 
 - An active member whose configured role meets the permission threshold is returned to the caller.
 - An absent or suspended membership, unknown role, unknown permission or insufficient rank raises E_ACCESS_CONTROL_FORBIDDEN. The service requires a caller transaction and does not lock the row.
+- A missing transaction or malformed key raises `E_ACCESS_CONTROL_INVALID_INPUT`; invalid stored status or timestamps raise `E_ACCESS_CONTROL_INVALID_CONFIG`.
 - The host still owns record-level policy and any subsequent write.
 
 ## User flow
@@ -29,7 +30,9 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Require transaction"] --> B["Read membership in transaction"]
+    A["Require transaction"] --> B["Read membership through find in transaction without locking"]
+    A --> X["Missing trx: INVALID_INPUT"]
+    B --> Y["Invalid key or stored data: validation error propagates"]
     B --> C{"Active and role satisfies permission?"}
     C -->|Yes| D["Return membership"]
     C -->|No| E["Raise forbidden"]

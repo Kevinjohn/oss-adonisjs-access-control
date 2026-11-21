@@ -34,7 +34,9 @@ flowchart TD
     A["configure(command)"] --> B["require Account Kit config and resolve table from flag or prompt"]
     B --> C{"Prerequisites present?"}
     C -->|No| D["log error and set exit code"]
-    C -->|Yes| E["write config and released migrations if absent"]
+    C -->|Yes| H["validate all flags/schema and migration history"]
+    H -->|Invalid| D
+    H -->|Valid| E["write config and released migrations if absent"]
     E --> F["register provider, command and named scope middleware"]
     F --> G["print manual Bouncer and Account Kit integration steps"]
 ```

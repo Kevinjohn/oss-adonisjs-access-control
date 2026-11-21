@@ -22,6 +22,7 @@ As an application integrator, I want to export membership data with account reco
 flowchart TD
     A["Account holder requests account export"] --> B["Account Kit collects package and host export data"]
     B --> C["Export includes membership list with timestamps"]
+    B --> X["Invalid storage: export fails"]
 ```
 
 ## Code flow
@@ -32,6 +33,7 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 flowchart TD
     A["Account Kit exportAccountData callback"] --> B["memberships.exportFor({ userId, trx })"]
     B --> C["return memberships with ISO timestamps"]
+    B --> X["Invalid stored status or timestamps: INVALID_CONFIG"]
 ```
 
 **Code references:** [callbacks](../account_kit/main.ts), [lifecycle methods](../src/memberships.ts)

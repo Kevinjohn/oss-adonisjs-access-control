@@ -21,6 +21,7 @@ As an application developer, I want to obtain the configured Access Control sing
 flowchart TD
     A["Host registers provider"] --> B{"Config present?"}
     B -->|Yes| C["Validate and resolve at boot"]
+    C --> X["Invalid config: boot fails"]
     B -->|No| D["Skip eager resolution"]
 ```
 
@@ -28,7 +29,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Resolve class or alias"] --> B{"Valid configured instance?"}
+    S["Import services/main after app creation; boot callback resolves class"] --> A["Resolve class or alias"]
+    A --> B{"Valid configured instance?"}
     B -->|Yes| C["Attach Lucid and runner"]
     C --> D["Return singleton"]
     B -->|No| E["Raise invalid config"]

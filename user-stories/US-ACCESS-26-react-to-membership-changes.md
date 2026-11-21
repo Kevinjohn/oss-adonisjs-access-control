@@ -3,7 +3,7 @@
 As an application integrator, I want to audit or react to membership changes so that my own records or notifications follow every membership write.
 
 **Status:** Current when `onMembershipChanged` is set in the configuration
-**Access:** Application config author supplies the hook; the package calls it for every membership write, whoever the actor.
+**Access:** Application config author supplies the hook; the package calls it for every membership change made through its service, whoever the actor. Direct database writes are not observed.
 **Entry:** `onMembershipChanged` property of the object passed to `defineAccessControl`.
 **Documentation:** [memberships.md](../docs/guide/memberships.md#membership-change-callback)
 **Source:** [hook type](../src/types.ts), [emit](../src/memberships.ts)
@@ -38,7 +38,7 @@ Scope: package notification point and the host-supplied awaited callback; what t
 
 ```mermaid
 flowchart TD
-    A["MembershipService write method"] --> B["lock, validate and write the membership row"]
+    A["MembershipService write method"] --> B["lock, validate and write the membership row or rows"]
     B --> C["#notifyMembershipChanged(change, trx)"]
     C --> D["config.onMembershipChanged?.(change, trx)"]
     D --> E{"Hook throws?"}

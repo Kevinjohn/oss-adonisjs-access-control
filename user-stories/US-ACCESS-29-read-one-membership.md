@@ -28,8 +28,11 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["findActive"] --> B["find delegates to getMembership"]
-    B --> C{"Present and active?"}
+    A["findActive or find"] --> B["find delegates to getMembership: normalize and resolve keys, read row without lock"]
+    B --> X["Invalid key or stored data: error propagates"]
+    B --> H{"findActive caller?"}
+    H -->|No| J["Return stored row or null"]
+    H -->|Yes| C{"Present and active?"}
     C -->|No| D["Return null"]
     C -->|Yes| E["Return configured role or raise unknown role"]
 ```

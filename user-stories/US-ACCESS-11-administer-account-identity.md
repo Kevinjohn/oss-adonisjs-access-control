@@ -13,7 +13,7 @@ As an application administrator, I want to apply cross-scope identity administra
 
 - Actor map contains active memberships; target map includes suspended memberships and is loaded under locks.
 - A target with no memberships cannot be administered. Otherwise any target scope where actor is absent, too low-ranked, or target owns scope denies the operation; self-administration is allowed only when the target has membership data.
-- Assertion covers authorization at check time only; host operation runs separately and is not made atomic with that check.
+- Assertion covers authorization at check time only; it uses the supplied transaction or the runner's own. A separate Account Kit operation is not made atomic with that check.
 
 ## User flow
 
@@ -31,7 +31,7 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 
 ```mermaid
 flowchart TD
-    A["assertCanAdministerIdentity({ actorId, targetId, trx? })"] --> B["identityRoles loads actor active and target all roles under locks"]
+    A["assertCanAdministerIdentity({ actorId, targetId, trx? })"] --> B["Reuse or open trx; resolve stored user IDs; identityRoles locks users, reads memberships, locks union of scopes, builds role maps"]
     B --> C["canAdministerIdentity evaluates every target scope"]
     C --> D{"Allowed?"}
     D -->|No| E["throw FORBIDDEN"]

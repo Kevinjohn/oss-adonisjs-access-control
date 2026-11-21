@@ -14,11 +14,11 @@ As an application operator, I want to diagnose the access control installation s
 - Owner diagnostics count all matching scope groups and return up to 20 ordered scope IDs for each finding. A report count can exceed its sample length. Role and status comparisons use exact case even on MySQL.
 
 - With no flags, the command checks all scopes and prints named results, counts and up to 20 sample IDs. Optional `--scope=<id>` restricts row checks to one normalized configured scope; `--json` prints the report as JSON.
-- `runDoctor` checks that the configured memberships table and required columns exist, then checks exact known role/status strings and orphan user/scope references.
+- `runDoctor` checks that the configured memberships table and required columns exist. If present, it checks the unconditional unique scope/user pair and both restrictive parent foreign keys across the entire table, then checks exact known role/status strings and orphan user/scope references.
 - When an owner role is configured, scopes represented by membership rows are checked for zero or multiple active owners. Scopes without any membership rows are outside that row grouping.
 - The command supplies installed/expected Account Kit versions for a compatibility check. Direct `runDoctor` calls may omit that optional check.
 - Exit code is 0 when checks are clean, 1 when checks find inconsistencies, and 2 when a check cannot run. The operation neither writes nor locks rows.
-- It does not validate database column types or indexes, replace operational checks, or repair data; copy the published migration body and correct reported issues before cutover.
+- Apart from the specific unique-pair and foreign-key checks, it does not validate database column types or all indexes, replace operational checks, or repair data; copy the published migration body and correct reported issues before cutover.
 
 ## User flow
 
@@ -40,8 +40,10 @@ flowchart TD
     A["AccessControlDoctor.run"] --> B["Resolve AccessControl and lucid.db"]
     B --> C["runDoctor({ access, db, scope, accountKit: accountKitVersions() })"]
     C --> D["Check table and required columns"]
-    D --> E["If schema permits, check roles, statuses, owners and orphans"]
-    E --> F["Append optional Account Kit version check"]
+    D -->|Missing table or column| F["Append optional Account Kit version check"]
+    D -->|Present| I["Inspect unique pair and restrictive parent foreign keys"]
+    I --> E["Resolve optional scope; check roles, statuses, owners and orphans"]
+    E --> F
     F --> G["Render JSON or named counts/sample IDs"]
     G --> H["Set exit 0 or 1; caught inability to run sets exit 2"]
 ```

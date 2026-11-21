@@ -13,7 +13,7 @@ As a client application using team-aware controls, I want to send effective memb
 
 - Active membership returns the scope ID as a string, the stored role, permissions and assignable roles. An unknown active role is retained with both lists empty.
 - The standalone helper returns `null` for missing or suspended membership. A scoped HTTP route
-  refuses that request with 403 before its controller reaches the helper.
+  refuses that request with 403 before its controller reaches the helper. It also refuses an unknown role.
 - Server still checks each route with scope middleware/Bouncer and application record policy.
 
 ## User flow
@@ -23,7 +23,9 @@ flowchart TD
     A["Client requests current membership permissions"] --> B["Application loads effective account membership"]
     B --> C{"Membership active?"}
     C -->|No| D["Scope middleware refuses with 403; a standalone helper returns null"]
-    C -->|Yes| E["Client receives scope ID, role, permissions and assignable roles"]
+    C -->|Yes| G{"Scoped route with unknown role?"}
+    G -->|Yes| H["Scope middleware refuses with 403"]
+    G -->|No| E["Client receives scope ID, role, permissions and assignable roles"]
     E --> F["Each server request is authorized again"]
 ```
 

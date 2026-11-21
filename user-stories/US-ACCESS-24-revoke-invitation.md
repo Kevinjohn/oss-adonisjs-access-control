@@ -30,11 +30,11 @@ Scope: package behaviour and host callback boundary; the application owns its sc
 
 ```mermaid
 flowchart TD
-    A["Account Kit invokes authorize.manageInvitation"] --> B["Access Control resolves canonical scope and active membership"]
-    B --> C["check admission, invitations:manage and invitation role rank"]
+    A["Kit locks actor and invitation in its transaction; invokes authorize.manageInvitation"] --> B["Reject unknown or owner role; resolve canonical scope and active membership"]
+    B --> C["check invitations:manage, optional admission, then role rank"]
     C --> D{"Allowed?"}
     D -->|No| E["return false; Kit refuses"]
-    D -->|Yes| F["Kit revokes invitation"]
+    D -->|Yes| F["Kit deletes invitation, commits, then runs follow-up event"]
 ```
 
 **Code references:** [manageInvitation callback](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md)
