@@ -169,6 +169,21 @@ async function schema(cwd: string, name: string, action: 'create' | 'drop') {
   )
 }
 
+/** Stable filename/content snapshot, independent of the directory enumeration order. */
+async function migrationSnapshot(directory: string): Promise<Record<string, string>> {
+  const files = (await readdir(directory)).sort()
+  return Object.fromEntries(
+    await Promise.all(
+      files.map(async (file) => [
+        file,
+        createHash('sha256')
+          .update(await readFile(join(directory, file)))
+          .digest('hex'),
+      ])
+    )
+  )
+}
+
 try {
   if (failure === undefined) {
     for (const selected of profile === 'all' ? ['floor', 'latest'] : [profile]) {
@@ -188,10 +203,21 @@ try {
       console.log(`[consumer] isolated ${selected} app: ${app}`)
       await cp(join(root, 'examples/consumer'), app, {
         recursive: true,
-        filter: (source) =>
-          !relative(join(root, 'examples/consumer'), source)
+        filter: (source) => {
+          const path = relative(join(root, 'examples/consumer'), source)
+          // The checked-in functional fixture has a hand-written membership migration, not
+          // the package's released stable suffix. On a fresh disposable full consumer, omit
+          // that one file so configure publishes the actual packed migration. Keep the tracked
+          // fixture and any existing migration history untouched.
+          if (
+            !args.has('scaffold-only') &&
+            path === 'database/migrations/1793900000000_create_memberships.ts'
+          )
+            return false
+          return !path
             .split('/')
-            .some((part) => ['node_modules', 'build', 'tmp', '.git', '.adonisjs'].includes(part)),
+            .some((part) => ['node_modules', 'build', 'tmp', '.git', '.adonisjs'].includes(part))
+        },
       })
       await mkdir(join(app, 'tmp'), { recursive: true })
       const manifest = JSON.parse(await readFile(join(app, 'package.json'), 'utf8'))
@@ -279,27 +305,48 @@ try {
         continue
       }
       const migrationDirectory = join(app, 'database/migrations')
-      const beforeMigrations = await readdir(migrationDirectory)
+      const beforeMigrations = await migrationSnapshot(migrationDirectory)
       const beforeConfig = await readFile(join(app, 'config/access_control.ts'), 'utf8')
-      await run(
-        app,
-        [
-          'exec',
-          'node',
-          'ace',
-          'configure',
-          '@kevinjohn/adonisjs-access-control',
-          '--scope-table=teams',
-        ],
-        `${selected}_configure`,
-        { ...baseEnv, DB_CLIENT: 'sqlite' }
-      )
+      const configure = (stage: string) =>
+        run(
+          app,
+          [
+            'exec',
+            'node',
+            'ace',
+            'configure',
+            '@kevinjohn/adonisjs-access-control',
+            '--scope-table=teams',
+          ],
+          `${selected}_configure_${stage}`,
+          { ...baseEnv, DB_CLIENT: 'sqlite' }
+        )
+      await configure('initial')
+      const generated = await migrationSnapshot(migrationDirectory)
+      const added = Object.keys(generated).filter((filename) => !(filename in beforeMigrations))
       if (
-        JSON.stringify(await readdir(migrationDirectory)) !== JSON.stringify(beforeMigrations) ||
+        added.length !== 1 ||
+        !/^\d+_access_control_create_memberships\.ts$/.test(added[0]) ||
+        Object.keys(beforeMigrations).some((filename) => filename >= added[0])
+      )
+        throw new Error(
+          'Packed configure must publish exactly one membership migration after its parents'
+        )
+      if (
+        Object.entries(beforeMigrations).some(([filename, hash]) => generated[filename] !== hash) ||
         (await readFile(join(app, 'config/access_control.ts'), 'utf8')) !== beforeConfig
       )
         throw new Error(
-          'Packed configure must leave existing configuration and migrations unchanged'
+          'Packed configure must preserve existing configuration and parent migrations'
+        )
+
+      await configure('repeat')
+      if (
+        JSON.stringify(await migrationSnapshot(migrationDirectory)) !== JSON.stringify(generated) ||
+        (await readFile(join(app, 'config/access_control.ts'), 'utf8')) !== beforeConfig
+      )
+        throw new Error(
+          'Packed configure rerun must leave existing configuration and migrations unchanged'
         )
       await run(app, ['lint'], `${selected}_lint`)
       await run(app, ['build'], `${selected}_build`)
