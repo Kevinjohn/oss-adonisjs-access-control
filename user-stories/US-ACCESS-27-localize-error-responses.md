@@ -20,6 +20,8 @@ As an application integrator, I want Access Control errors to be translated so t
 - The body is `{ errors: [{ code, message }] }` with `Cache-Control: no-store`.
 - With `ctx.i18n` the message is `ctx.i18n.t('errors.<code>', {}, <fallback>)`. The fallback is the error's own message: the table's English text, or a custom detail message where the package raised one.
 
+- The package root exports the same error class and table directly and through the `errors` namespace. See [export identity checks](../tests/package_exports.spec.ts).
+
 ## User flow
 
 ```mermaid

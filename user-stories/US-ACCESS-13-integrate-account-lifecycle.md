@@ -11,6 +11,8 @@ As an application integrator, I want to export membership data with account reco
 
 ## Acceptance criteria
 
+- Exporting a stored row with an invalid status or a missing or unreadable required timestamp raises `E_ACCESS_CONTROL_INVALID_CONFIG` (500). The host receives the failure instead of a partially sanitised export. See [storage and export tests](../tests/membership_storage.spec.ts).
+
 - Account export adds the user’s memberships with ISO timestamps.
 - Export is a plain read through the supplied transaction; host owns the surrounding export route, proof and response.
 

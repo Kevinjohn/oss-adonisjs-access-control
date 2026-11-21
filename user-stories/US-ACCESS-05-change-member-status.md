@@ -1,6 +1,6 @@
-# US-ACCESS-05 — Suspend or reactivate a member
+# US-ACCESS-05 — Suspend or restore a membership
 
-As an active scope manager, I want to suspend or reactivate a member so that scoped access can be suspended or restored deliberately.
+As an active scope manager, I want to suspend or restore a membership so that scoped access can be suspended or restored deliberately.
 
 **Status:** Current
 **Access:** Actor must pass `members:manage`; cannot manage self, owner, or higher-ranked target.
@@ -11,13 +11,13 @@ As an active scope manager, I want to suspend or reactivate a member so that sco
 
 ## Acceptance criteria
 
-| Field     | Control              | Required/default/conditions                                                                                                |
-| --------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `actor`   | API input `{ id }`   | Required; the acting user, who must be an active member of the scope with `members:manage`.                                |
-| `scopeId` | API input            | Required; normalised to the configured scope key type.                                                                     |
-| `userId`  | API input            | Required; the member to suspend or reactivate. Not a member: `E_ACCESS_CONTROL_NOT_A_MEMBER` (404), after the actor check. |
-| `status`  | API input            | Required; `active` or `suspended`. Any other value: `E_ACCESS_CONTROL_INVALID_INPUT` (422), before locking.                |
-| `trx`     | Optional transaction | Omitted: the runner opens and commits one. Supplied: the caller owns commit and rollback.                                  |
+| Field     | Control              | Required/default/conditions                                                                                                              |
+| --------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `actor`   | API input `{ id }`   | Required; the acting user, who must be an active member of the scope with `members:manage`.                                              |
+| `scopeId` | API input            | Required; normalised to the configured scope key type.                                                                                   |
+| `userId`  | API input            | Required; the member whose membership to suspend or restore. Not a member: `E_ACCESS_CONTROL_NOT_A_MEMBER` (404), after the actor check. |
+| `status`  | API input            | Required; `active` or `suspended`. Any other value: `E_ACCESS_CONTROL_INVALID_INPUT` (422), before locking.                              |
+| `trx`     | Optional transaction | Omitted: the runner opens and commits one. Supplied: the caller owns commit and rollback.                                                |
 
 - Supported statuses are `active` and `suspended`.
 - Self, owner, unknown-role and rank restrictions refuse the change. A target who is not a member is refused with `NOT_A_MEMBER`, and a scope row that does not exist with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404).
@@ -27,7 +27,7 @@ As an active scope manager, I want to suspend or reactivate a member so that sco
 
 ```mermaid
 flowchart TD
-    A["Manager suspends or reactivates member"] --> B{"Actor may manage target?"}
+    A["Manager suspends or restores membership"] --> B{"Actor may manage target?"}
     B -->|No| C["See authorization error"]
     B -->|Yes| D["Status changes"]
     D --> E{"New status suspended?"}

@@ -16,6 +16,8 @@ As an invitee, I want to accept a scoped invitation so that acceptance creates t
 - For scoped invitations, trusted `acceptInvitation` refuses unknown/owner roles, a deleted scope (`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`) and existing membership, otherwise creates membership inside the Account Kit transaction. Any refusal rolls back the whole acceptance: token acceptance and social sign-up leave no new account behind, while activation and a confirming password reset roll back only that step and the existing account stays. The rollback restores the matched invitation, so every retry of that activation or reset fails the same way until the invitation expires or is revoked ([US-ACCESS-24](US-ACCESS-24-revoke-invitation.md)). The optional host callback runs for both scoped and global invitations in that transaction.
 - Global invitation (`scope: null`) does not create team membership.
 
+- When Account Kit accepts a batch, it calls the integration in stored scope order. A later scope with a non-canonical spelling rolls back earlier membership and transactional event writes. See [batch acceptance integration](../tests/invitation_batch.spec.ts).
+
 ## User flow
 
 ```mermaid

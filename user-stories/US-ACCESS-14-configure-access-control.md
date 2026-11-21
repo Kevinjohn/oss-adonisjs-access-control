@@ -11,16 +11,16 @@ As an application operator, I want to configure Access Control so that the appli
 
 ## Acceptance criteria
 
-- `--scope-table` is required. Optional flags are `--scope-id-type` (`integer`, default), `--users-table` (`users`), `--user-id-type` (`integer`) and `--memberships-table` (`memberships`). Key types are `integer`, `string` or `uuid`; table names must be plain SQL identifiers.
-- Configure refuses if Account Kit config or `--scope-table` is absent; existing files are skipped, not overwritten.
+- In an interactive terminal, omitting `--scope-table` prompts for the table. Unattended runs must supply it. Optional flags are `--scope-id-type` (`integer`, default), `--users-table` (`users`), `--user-id-type` (`integer`) and `--memberships-table` (`memberships`). Key types are `integer`, `string` or `uuid`; table names must be plain SQL identifiers.
+- Configure refuses when Account Kit config is missing. Invalid flag values and unsafe migration histories fail before codemods write files. `--migration-path` selects the destination, defaulting to the app migrations path. New migrations follow existing parent migrations in filename order. A rerun preserves existing files and publishes only missing released successors. A missing predecessor with an installed successor requires operator reconciliation.
 - Configure writes config and released migration(s), registers provider, doctor command and named `scope` middleware, and prints the Bouncer and Account Kit edits for the operator to apply. Run migrations after applying those changes.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    A["Operator installs Account Kit and chooses a scope table"] --> B["Run Access Control configure with required flag"]
-    B --> C{"Account Kit config and table flag present?"}
+    A["Operator installs Account Kit and chooses a scope table"] --> B["Run Access Control configure with flag or interactive answer"]
+    B --> C{"Account Kit config and valid scope table available?"}
     C -->|No| D["Configure reports setup error"]
     C -->|Yes| E["Apply printed Bouncer and callback steps; run migrations"]
 ```
@@ -31,7 +31,7 @@ Scope: configure publishes package files and integration steps; the operator app
 
 ```mermaid
 flowchart TD
-    A["configure(command)"] --> B["require --scope-table and config/account_kit.ts"]
+    A["configure(command)"] --> B["require Account Kit config and resolve table from flag or prompt"]
     B --> C{"Prerequisites present?"}
     C -->|No| D["log error and set exit code"]
     C -->|Yes| E["write config and released migrations if absent"]

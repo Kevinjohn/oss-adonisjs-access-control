@@ -4,14 +4,14 @@ As a client application using team-aware controls, I want to send effective memb
 
 **Status:** Current
 **Access:** Host derives payload from effective account membership; payload is presentational and does not authorize requests.
-**Entry:** Host controller calls `accessControl.clientPayload(membership)`.
+**Entry:** Host controller calls `accessControl.buildClientMembership(membership)` or its alias `clientPayload`.
 **Documentation:** [client.md](../docs/guide/client.md)
 **Source:** [src/payload.ts](../src/payload.ts)
 **Coverage:** [`tests/payload.spec.ts`](../tests/payload.spec.ts)
 
 ## Acceptance criteria
 
-- Active membership returns `scopeId`, `role`, `permissions`, and `assignableRoles`.
+- Active membership returns the scope ID as a string, the stored role, permissions and assignable roles. An unknown active role is retained with both lists empty.
 - The standalone helper returns `null` for missing or suspended membership. A scoped HTTP route
   refuses that request with 403 before its controller reaches the helper.
 - Server still checks each route with scope middleware/Bouncer and application record policy.

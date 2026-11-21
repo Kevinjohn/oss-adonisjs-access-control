@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `2e6390f4aa78ef8ea0f52309df3f549930324b47` (origin/main, 2026-11-14). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client payload, and Account Kit callbacks. Source-reviewed only; no runtime journeys were exercised for this catalogue.
+Source baseline: `9f1068f79aabb1e15a01823d54056900113957bf` (origin/main, 2026-11-21). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client payload, and Account Kit callbacks. The November 2026 review ran 103 focused tests covering abilities, configuration, diagnostics, invitation batches, membership storage and operations, middleware, payloads, provider resolution and rules. Host application browser journeys were outside that run.
 
 ## Index
 
@@ -10,7 +10,7 @@ Source baseline: `2e6390f4aa78ef8ea0f52309df3f549930324b47` (origin/main, 2026-1
 | [US-ACCESS-02](US-ACCESS-02-enter-scoped-route.md)               | Enter an authorized team-scoped route             | Current  |
 | [US-ACCESS-03](US-ACCESS-03-add-member.md)                       | Add a member to a scope                           | Current  |
 | [US-ACCESS-04](US-ACCESS-04-change-member-role.md)               | Change a member's role                            | Current  |
-| [US-ACCESS-05](US-ACCESS-05-change-member-status.md)             | Suspend or reactivate a member                    | Current  |
+| [US-ACCESS-05](US-ACCESS-05-change-member-status.md)             | Suspend or restore a membership                   | Current  |
 | [US-ACCESS-06](US-ACCESS-06-remove-member.md)                    | Remove a member from a scope                      | Current  |
 | [US-ACCESS-07](US-ACCESS-07-leave-scope.md)                      | Leave a scope                                     | Current  |
 | [US-ACCESS-08](US-ACCESS-08-transfer-ownership.md)               | Transfer scope ownership                          | Current  |
@@ -34,6 +34,9 @@ Source baseline: `2e6390f4aa78ef8ea0f52309df3f549930324b47` (origin/main, 2026-1
 | [US-ACCESS-26](US-ACCESS-26-react-to-membership-changes.md)      | Audit or react to membership changes              | Current  |
 | [US-ACCESS-27](US-ACCESS-27-localize-error-responses.md)         | Localise Access Control error responses           | Current  |
 | [US-ACCESS-28](US-ACCESS-28-attach-without-provider.md)          | Attach Access Control without the provider        | Operator |
+| [US-ACCESS-29](US-ACCESS-29-read-one-membership.md)              | Read one membership                               | Current  |
+| [US-ACCESS-30](US-ACCESS-30-authorise-service-operation.md)      | Authorise a service operation                     | Current  |
+| [US-ACCESS-31](US-ACCESS-31-resolve-provider-service.md)         | Resolve the application service                   | Current  |
 
 ## Files
 
