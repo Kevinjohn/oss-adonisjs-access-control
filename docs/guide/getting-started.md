@@ -16,7 +16,7 @@ shows these roles and team routes in a bearer-token app.
 ## 1. Install and configure
 
 ```sh
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.2.2/kevinjohn-adonisjs-access-control-0.2.2.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.2.3/kevinjohn-adonisjs-access-control-0.2.3.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 ```
 
