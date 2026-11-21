@@ -3,7 +3,7 @@
 As an active scope owner, I want to transfer scope ownership so that a scope continues to have a clearly assigned owner.
 
 **Status:** Current when an owner role is configured
-**Access:** Only active owner can transfer to a different active member; target role and current membership are checked under locks.
+**Access:** Only active owner can transfer to a different active member; actor's owner role and target membership status are checked under locks.
 **Entry:** Owner route calls `memberships.transferOwnership({ actor, scopeId, toUserId })`.
 **Documentation:** [memberships.md](../docs/guide/memberships.md)
 **Source:** [src/memberships.ts](../src/memberships.ts)
@@ -33,10 +33,10 @@ flowchart TD
     A["MembershipService.transferOwnership"] --> O{"Owner role configured?"}
     O -->|No| E["throw domain error"]
     O -->|Yes| B["transaction locks actor/target users and scope"]
-    B --> C["require active owner and distinct active target"]
-    C --> D{"Valid target?"}
+    B --> C["require active owner, then distinct target ID, then existing active target"]
+    C --> D{"Checks pass?"}
     D -->|No| E["throw domain error"]
-    D -->|Yes| F["update both roles atomically and emit ownership_transferred"]
+    D -->|Yes| F["demote prior owner, promote target, emit membership.ownership_transferred"]
     F --> G["runner commits if trx omitted; otherwise caller owns commit"]
 ```
 

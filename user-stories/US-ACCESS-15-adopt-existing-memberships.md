@@ -7,7 +7,7 @@ As an application operator, I want to adopt existing membership data so that acc
 **Entry:** Follow adoption guide to map, copy and reconcile existing membership rows before switching services.
 **Documentation:** [adopting.md](../docs/guide/adopting.md)
 **Source:** [configure](../configure.ts), [published schema](../src/migration_schema.ts), [doctor command](../commands/doctor.ts), [runDoctor](../src/doctor.ts)
-**Coverage:** [Published migration stub/schema tests](../tests/migration_stubs.spec.ts); these do not validate the host data copy.
+**Coverage:** [Published migration stub/schema tests](../tests/migration_stubs.spec.ts), [example copy and pagination test](../tests/adoption_copy.spec.ts); the example does not validate a production host's data copy.
 
 ## Acceptance criteria
 
@@ -37,7 +37,7 @@ flowchart TD
     H --> I{"Host copy reconciliation clean?"}
     I -->|No| F["Host corrects migration/data before cutover"]
     I -->|Yes| D["AccessControlDoctor.run invokes runDoctor"]
-    D --> E{"Table/columns, role/status, owner and orphan checks clean?"}
+    D --> E{"Table/columns, unique pair, restrictive foreign keys, row and version checks clean?"}
     E -->|No| F
     E -->|Yes| G["Host routes through scope/abilities and stops old-table writes"]
 ```

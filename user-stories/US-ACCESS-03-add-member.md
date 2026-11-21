@@ -12,7 +12,7 @@ As an active scope manager, I want to add a member to a scope so that the added 
 ## Acceptance criteria
 
 - Add is an actor-authorized membership write in the Kit transaction/lock process.
-- Unknown role, unknown user, existing member, inactive/missing actor or role above actor is refused. An actor who adds themselves is refused as an existing member (`E_ACCESS_CONTROL_ALREADY_MEMBER`), not as self-management. A scope row that does not exist is refused with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404) when the scope is locked, before the actor is checked.
+- Unknown role, unknown user, existing member, inactive/missing actor or role above actor is refused. If the proposed role passes the assignment checks, an actor who adds themselves is refused as an existing member (`E_ACCESS_CONTROL_ALREADY_MEMBER`), not as self-management. A scope row that does not exist is refused with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404) when the scope is locked, before the actor is checked.
 - Successful add creates membership and emits `membership.added` inside the same transaction.
 
 ## User flow
@@ -34,8 +34,9 @@ Scope: package behaviour; the runner commits when `input.trx` is omitted; suppli
 flowchart TD
     A["MembershipService.add"] --> B["normalize keys; enter transaction; lock users then scope row (missing scope: SCOPE_NOT_FOUND)"]
     B --> C["load and require actor membership"]
-    C --> D["canAssign(actorRole, newRole)"]
-    D --> E{"User exists and no membership?"}
+    C --> D{"canAssign allows proposed role as target and next role?"}
+    D -->|No| F
+    D -->|Yes| E{"User exists and no membership?"}
     E -->|No| F["throw domain error"]
     E -->|Yes| G["insert membership and emit membership.added"]
     G --> H["runner commits if trx omitted; otherwise caller owns commit"]

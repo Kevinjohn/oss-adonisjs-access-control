@@ -11,10 +11,14 @@ As an authenticated account holder, I want to enter an authorized team-scoped ro
 
 ## Acceptance criteria
 
+- Both package subpaths `./middleware` and `./scope_middleware` expose the named middleware class and the inline `scopeMiddleware` factory. A malformed input key becomes a forbidden response. Invalid persisted status or timestamps raise a configuration error from the membership reader; the middleware propagates that failure.
+
 - Scope defaults to `ctx.params.scopeId`; host may supply `resolveScope`.
 - Missing effective user, malformed scope, no membership, suspended membership or unknown role fails with the same forbidden error.
 - Success sets `ctx.membership`; generated ability resolves it at check time and matches it to Bouncer subject.
 - Permission ability answers role-level permission only; record-level policies remain app-owned.
+
+- Generated Bouncer abilities use the permission key as the ability name. Guests, absent or suspended members, unknown roles and memberships belonging to another subject are denied. Edge can use colon-delimited keys and host abilities can coexist. See [Bouncer integration tests](../tests/abilities.spec.ts).
 
 ## User flow
 
@@ -23,6 +27,7 @@ flowchart TD
     A["Account holder requests a team route"] --> B["Host middleware resolves effective account"]
     B --> C["Scope middleware loads membership"]
     C --> D{"Active membership and known role?"}
+    C --> X["Invalid stored status or timestamp: configuration error"]
     D -->|No| E["Uniform forbidden response"]
     D -->|Yes| F["Bouncer checks permission key"]
     F --> G{"Role satisfies key?"}
@@ -37,12 +42,15 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 ```mermaid
 flowchart TD
     A["Account Kit managed-account or admission middleware"] --> B["ctx.auth.user is effective guard identity"]
-    B --> C["ScopeMiddleware.handle resolves scope and calls memberships.find"]
+    B --> C["ScopeMiddleware.handle resolves scope and calls memberships.find if user present"]
+    C --> X["Storage validation error propagates; invalid input becomes FORBIDDEN"]
     C --> D{"active membership and configured role?"}
     D -->|No| E["AccessControlError FORBIDDEN"]
     D -->|Yes| F["set ctx.membership; call next"]
     F --> G["AccessControl.abilities resolver reads ctx.membership"]
-    G --> H["Bouncer checks role permission; app policy checks record"]
+    G --> H{"Active membership matches subject and satisfies permission?"}
+    H -->|No| I["Bouncer denies"]
+    H -->|Yes| J["App policy checks record"]
 ```
 
 **Code references:** [scope middleware](../middleware/main.ts), [abilities](../src/abilities.ts), [guide](../docs/guide/bouncer.md)

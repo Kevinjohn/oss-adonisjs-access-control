@@ -34,10 +34,12 @@ Scope: a plain read through the caller-supplied transaction or the default datab
 ```mermaid
 flowchart TD
     A["MembershipService.listForScope"] --> B["normalize scope and actor key; validate limit and decode cursor"]
-    B --> C["read actor membership; require active and members:list"]
+    B --> C["resolve stored keys; read actor membership; require active and members:list"]
+    B --> X["Bad limit, cursor or keys: INVALID_INPUT"]
+    C --> Y["No active permitted actor: FORBIDDEN"]
     C --> D["apply cursor continuation predicates"]
-    D --> E["query ordered created_at,id page"]
-    E --> F["return rows and next opaque cursor"]
+    D --> E["query ordered created_at,id page with limit + 1"]
+    E --> F["return up to limit rows and next opaque cursor or null"]
 ```
 
 **Code references:** [listForScope](../src/memberships.ts), [pagination](../src/pagination.ts)

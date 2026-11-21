@@ -11,7 +11,7 @@ As a signed-in account holder, I want to see my memberships so that I can choose
 
 ## Acceptance criteria
 
-- The returned memberships include scope ID, role, status and timestamps for that user.
+- The returned memberships include scope ID, user ID, role, status and timestamps for that user, including suspended memberships, ordered by `created_at` then `id`.
 - Host uses the effective authenticated account ID, not a user ID supplied by an untrusted client.
 - This list read does not authorize scope access; the destination route still runs account middleware, scope middleware and Bouncer.
 
@@ -33,7 +33,7 @@ Scope: service read only; host owns identity binding, route and presentation.
 ```mermaid
 flowchart TD
     A["Host derives ctx.auth.user.id"] --> B["MembershipService.listForUser(userId)"]
-    B --> C["normalize user key and query memberships"]
+    B --> C["normalize and resolve stored user key; read through supplied trx or default connection without locking"]
     C --> D["return membership records"]
     D --> E["host renders choices; scope route independently authorizes"]
 ```

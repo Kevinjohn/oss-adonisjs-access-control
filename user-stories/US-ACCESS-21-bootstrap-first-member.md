@@ -31,8 +31,9 @@ Scope: package behaviour and host callback boundary; the application owns scope 
 
 ```mermaid
 flowchart TD
-    A["MembershipService.createFirstMember(input)"] --> B["resolve role from ownerRole or supplied manager role"]
-    B --> C["reuse input.trx or open runner transaction; lock user and scope"]
+    A["MembershipService.createFirstMember(input)"] --> B["normalize keys; validate role from ownerRole or supplied manager role"]
+    B --> X["Invalid input: refuse before locking"]
+    B --> C["reuse input.trx or open runner transaction; resolve stored keys; lock user then scope"]
     C --> D{"Scope empty?"}
     D -->|No| E["throw SCOPE_NOT_EMPTY error"]
     D -->|Yes| F["insert membership and emit first_member; storage failures propagate"]

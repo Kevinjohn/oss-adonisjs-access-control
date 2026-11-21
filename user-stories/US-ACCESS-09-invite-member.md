@@ -14,6 +14,7 @@ As an active team member allowed to invite, I want to invite a person to a scope
 - Invite/manage/list authorization uses active membership and canonical configured scope.
 - Optional admission check applies unless callback option sets `admission: false`.
 - Role above inviter, unknown role, owner role, noncanonical scope or missing permission is denied.
+- Account Kit checks invite permission in preflight and again in the write transaction; delivery follows commit and may fail separately.
 
 ## User flow
 
@@ -31,11 +32,13 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 ```mermaid
 flowchart TD
     A["Account Kit invitations.send"] --> B["accessControlKitCallbacks authorize.invite"]
-    B --> C["resolve canonical scope and active membership"]
-    C --> D["check admission, invitations:manage and role rank"]
+    B --> C["reject unknown or owner invitation role; resolve canonical scope and active membership"]
+    C --> D["check invitations:manage, then optional admission, then role rank"]
     D --> E{"Allowed?"}
     E -->|No| F["return false; Kit denies"]
-    E -->|Yes| G["Kit creates invitation and delivers provision"]
+    E -->|Yes| G["Kit repeats callback in write transaction before creating invitation"]
+    G -->|Denied| F
+    G -->|Allowed and committed| H["Kit delivers provision"]
 ```
 
 **Code references:** [callback factory](../account_kit/main.ts), [Kit guide](../docs/guide/account-kit.md)

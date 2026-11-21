@@ -32,7 +32,7 @@ Scope: the package callback authorizes; Account Kit performs the invitation quer
 flowchart TD
     A["Account Kit invitations.list"] --> B["authorize.listInvitations"]
     B --> C["resolve active membership and canonical scope"]
-    C --> D["check optional admission and invitations:manage"]
+    C --> D["check invitations:manage, then optional admission"]
     D --> E{"Allowed?"}
     E -->|No| F["return false; Kit refuses"]
     E -->|Yes| G["Kit returns invitation page"]

@@ -13,6 +13,7 @@ As a scope member, I want to leave a scope so that members can leave without nee
 
 - Leave is a self-action and takes no actor authorization; caller must pass authenticated user ID from host, never raw request identity.
 - Suspended membership may leave.
+- Missing scope and missing membership both raise `E_ACCESS_CONTROL_NOT_A_MEMBER`.
 - Owner cannot leave and receives owner-protected error. Successful leave deletes membership and emits `membership.left`.
 
 ## User flow
@@ -26,15 +27,17 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behaviour; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
+Scope: package behaviour; the runner commits when `input.trx` is omitted; otherwise the caller owns commit and rollback.
 
 ```mermaid
 flowchart TD
-    A["Host supplies authenticated user ID to memberships.leave"] --> B["normalize keys and run transaction"]
+    A["Host supplies authenticated user ID to memberships.leave"] --> B["normalize keys; reuse or open trx; resolve stored keys; lock user then scope"]
+    B -->|Missing scope| X["Throw NOT_A_MEMBER"]
     B --> C["load membership, including suspended state"]
+    C -->|Missing membership| X
     C --> D{"Owner role?"}
     D -->|Yes| E["throw OWNER_PROTECTED"]
-    D -->|No| F["delete membership and emit membership.left"]
+    D -->|No| F["delete membership and emit membership.left inside trx"]
 ```
 
 **Code references:** [leave](../src/memberships.ts), [management rules](../docs/guide/rules.md)

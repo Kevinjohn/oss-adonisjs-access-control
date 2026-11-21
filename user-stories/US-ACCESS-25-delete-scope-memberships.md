@@ -32,7 +32,7 @@ Scope: package behaviour and host callback boundary; the application owns its sc
 
 ```mermaid
 flowchart TD
-    A["MembershipService.removeAllForScope({ scopeId, trx })"] --> B["snapshot members; lock users then scope"]
+    A["MembershipService.removeAllForScope requires trx"] --> B["resolve stored keys; snapshot members; lock users then scope"]
     B --> C["read member set again"]
     C --> D{"Same member user IDs?"}
     D -->|No| E["throw CONFLICT"]

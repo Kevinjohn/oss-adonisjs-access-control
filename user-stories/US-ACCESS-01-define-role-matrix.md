@@ -14,7 +14,8 @@ As an application developer, I want to declare ordered roles and permission keys
 - Roles are ordered lowest to highest. Role names match `^[a-z][a-z0-9_-]*$`, have at most 32 characters and are not duplicated; resource and action names match `^[a-z][a-zA-Z0-9]*$`.
 - The reserved keys `members:list`, `members:manage` and `invitations:manage` must be declared, each mapped to a listed role.
 - Optional owner role is last and has another role below it. Users, scope and memberships table names are plain SQL identifiers; `membershipsTable` defaults to `memberships`; key types are `integer`, `string` or `uuid`.
-- Typed keys and runtime helpers expose permission/rank/assignment/management predicates from the same matrix.
+- The root export `defineConfig` aliases `defineAccessControl`. Unknown roles rank −1. Unknown roles or permissions make `can` false. `permissionsFor` keeps declaration order. `assignableRoles` requires members:manage and excludes higher ranks and the owner.
+- `decideManagement` (alias `canManage`) returns a decision with `allowed` and a denial code. Checks run in order for unknown roles, self-management, missing permission, protected owner and higher target rank. Equal rank can pass. `decideAssignment` (alias `canAssign`) first applies management, then rejects an unknown, owner or higher proposed role. Both are pure checks. See [rules and denial precedence](../tests/rules.spec.ts).
 
 ## User flow
 

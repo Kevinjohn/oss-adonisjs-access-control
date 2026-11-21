@@ -11,6 +11,8 @@ As an application integrator, I want to export membership data with account reco
 
 ## Acceptance criteria
 
+- Exporting a stored row with an invalid status or a missing or unreadable required timestamp raises `E_ACCESS_CONTROL_INVALID_CONFIG` (500). The host receives the failure instead of a partially sanitised export. See [storage and export tests](../tests/membership_storage.spec.ts).
+
 - Account export adds the user’s memberships with ISO timestamps.
 - Export is a plain read through the supplied transaction; host owns the surrounding export route, proof and response.
 
@@ -20,6 +22,7 @@ As an application integrator, I want to export membership data with account reco
 flowchart TD
     A["Account holder requests account export"] --> B["Account Kit collects package and host export data"]
     B --> C["Export includes membership list with timestamps"]
+    B --> X["Invalid storage: export fails"]
 ```
 
 ## Code flow
@@ -30,6 +33,7 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 flowchart TD
     A["Account Kit exportAccountData callback"] --> B["memberships.exportFor({ userId, trx })"]
     B --> C["return memberships with ISO timestamps"]
+    B --> X["Invalid stored status or timestamps: INVALID_CONFIG"]
 ```
 
 **Code references:** [callbacks](../account_kit/main.ts), [lifecycle methods](../src/memberships.ts)

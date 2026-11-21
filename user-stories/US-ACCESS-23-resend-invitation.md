@@ -13,7 +13,7 @@ As an active member authorized to manage invitations, I want to resend a pending
 
 - Callback checks the invitation’s own canonical scope and role, not a client-selected replacement.
 - Unknown role, owner role, role above actor, missing membership/permission or failed admission denies resend.
-- Access Control authorizes only; Account Kit sends the replacement invitation notification.
+- Access Control authorizes only; Account Kit replaces the token and expiry in the write transaction, then sends the replacement invitation notification after commit.
 - Account Kit reports a denial from either callback as a not-found error (`E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED`, status 404).
 
 ## User flow
@@ -31,11 +31,13 @@ Scope: package behaviour and host callback boundary; the application owns its sc
 
 ```mermaid
 flowchart TD
-    A["Account Kit invokes authorize.manageInvitation, then authorize.invite(role, scope)"] --> B["Access Control resolves canonical scope and active membership"]
-    B --> C["check admission, invitations:manage and invitation role rank"]
+    A["Kit preflight or write transaction invokes authorize.manageInvitation then, if allowed, authorize.invite"] --> B["Each callback rejects unknown or owner role; resolves canonical scope and active membership"]
+    B --> C["check invitations:manage, optional admission, then role rank"]
     C --> D{"Both callbacks allow?"}
     D -->|No| E["return false; Kit refuses with not-found error"]
-    D -->|Yes| F["Kit resends invitation provision"]
+    D -->|Yes| P{"Preflight?"}
+    P -->|Yes| A
+    P -->|No| F["Kit updates token and expiry, commits, then sends invitation provision"]
 ```
 
-**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), Account Kit `node_modules/@kevinjohn/adonisjs-account-kit/build/account_kit-DJQDBFqq.js:1577-1590` (resend)
+**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), Account Kit 0.4.2 `resendInvitation`, `lockManagedInvitation` and `lockResendable` (invitation management service).

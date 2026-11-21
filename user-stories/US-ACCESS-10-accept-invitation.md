@@ -4,7 +4,7 @@ As an invitee, I want to accept a scoped invitation so that acceptance creates t
 
 **Status:** Current when Account Kit acceptance callback is wired
 **Access:** Invitation token/recipient validation is owned by Account Kit; acceptance creates the account and is refused for an already registered email. Scoped membership is created only for a canonical configured scope.
-**Entry:** Account Kit `invitations.accept` consumes the token, creates the account, then calls the `onInvitationAccepted` callback. The callback also runs for each pending invitation matched to a newly confirmed address: social sign-up with a provider-verified email, account activation, and a password reset that confirms a never-confirmed account.
+**Entry:** Account Kit `invitations.accept` looks up the token, checks the email, creates the account, consumes the token and other matching invitations, confirms the email, then calls `onInvitationAccepted` for each. The callback also runs for each pending invitation matched to a newly confirmed address: social sign-up with a provider-verified email, account activation, and a password reset that confirms a never-confirmed account.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
 **Source:** [account_kit/main.ts](../account_kit/main.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
@@ -15,6 +15,8 @@ As an invitee, I want to accept a scoped invitation so that acceptance creates t
 - For a scoped invitation, scope must use canonical configured key spelling; invalid scope is refused.
 - For scoped invitations, trusted `acceptInvitation` refuses unknown/owner roles, a deleted scope (`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`) and existing membership, otherwise creates membership inside the Account Kit transaction. Any refusal rolls back the whole acceptance: token acceptance and social sign-up leave no new account behind, while activation and a confirming password reset roll back only that step and the existing account stays. The rollback restores the matched invitation, so every retry of that activation or reset fails the same way until the invitation expires or is revoked ([US-ACCESS-24](US-ACCESS-24-revoke-invitation.md)). The optional host callback runs for both scoped and global invitations in that transaction.
 - Global invitation (`scope: null`) does not create team membership.
+
+- When Account Kit accepts a batch, it calls the integration in stored scope order. A later scope with a non-canonical spelling rolls back earlier membership and transactional event writes. See [batch acceptance integration](../tests/invitation_batch.spec.ts).
 
 ## User flow
 
@@ -32,7 +34,10 @@ flowchart TD
     H -->|No| G
     H -->|Yes| J["Membership is created with invitation role"]
     J --> I
-    I --> K["Transaction commits: account and any membership exist"]
+    I --> N{"Any more matched invitations?"}
+    N -->|Yes| D
+    N -->|No| K["Transaction commits: account and any membership exist"]
+    I -->|Callback throws| G
 ```
 
 ## Code flow
@@ -41,15 +46,20 @@ Scope: package behaviour, entered from Account Kit acceptance and matched-invita
 
 ```mermaid
 flowchart TD
-    K1["Kit invitations.accept: consume token, refuse registered email, create account"] --> A
+    K1["Kit invitations.accept: check token and email, create account, consume matching invitations and confirm email"] --> A
     K2["Kit matchInvitation: social sign-up, activation, confirming reset"] --> A
     A["onInvitationAccepted(user, invitation, trx)"] --> B{"Non-null invitation scope?"}
     B -->|No| C["skip membership creation"]
     C --> F
     B -->|Yes| D["validate canonical scope key"]
-    D --> E["memberships.acceptInvitation uses same trx; refuse invalid role, deleted scope or existing membership"]
+    D --> E["memberships.acceptInvitation requires same trx; validate role and stored spelling, lock user then scope, refuse duplicate, insert and emit membership.invitation_accepted"]
+    D -->|Invalid key| X["Kit transaction rolls back"]
+    E -->|Error| X
     E --> F["run optional host callback"]
-    F --> G["Account Kit commits global acceptance or scoped acceptance with membership"]
+    F -->|Callback throws| X
+    F --> N{"More invitations in stored scope order?"}
+    N -->|Yes| A
+    N -->|No| G["Account Kit commits acceptance"]
 ```
 
-**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), Account Kit `node_modules/@kevinjohn/adonisjs-account-kit/build/account_kit-DJQDBFqq.js:1667-1678` (accept) and `:67-80` (matchInvitation)
+**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), Account Kit 0.4.2 `acceptInvitation`, `applyInvitations` and `matchInvitation` (invitation services).
