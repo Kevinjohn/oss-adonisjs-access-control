@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-21
+
+- Require Account Kit 0.5.0.
+- Document and verify the package user stories and implementation flows.
+
 - Clarify membership callback transaction ownership and client membership summary route responses.
 - Add compatible `defineConfig`, `buildClientMembership`, `getMembership`, `decideManagement`,
   `decideAssignment` and scope middleware aliases.
