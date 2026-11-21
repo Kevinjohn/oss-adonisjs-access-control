@@ -1,5 +1,5 @@
 // Compiled against the installed archive by the consumer typecheck, not run as a test.
-import { defineConfig, defineAccessControl } from '@kevinjohn/adonisjs-access-control'
+import { defineConfig } from '@kevinjohn/adonisjs-access-control'
 import type {
   AccessControlKitCallbacks,
   ScopeMiddlewareOptions,
@@ -10,9 +10,10 @@ import type {
 } from '@kevinjohn/adonisjs-access-control/types'
 import type {
   AccessControlKitCallbackOptions,
+  defineAccessControl,
   ScopeMiddlewareOptions as RootScopeMiddlewareOptions,
 } from '@kevinjohn/adonisjs-access-control'
-import ScopeMiddleware from '@kevinjohn/adonisjs-access-control/middleware'
+import type ScopeMiddleware from '@kevinjohn/adonisjs-access-control/middleware'
 import ScopeMiddlewareAlias from '@kevinjohn/adonisjs-access-control/scope_middleware'
 
 const config = defineConfig({

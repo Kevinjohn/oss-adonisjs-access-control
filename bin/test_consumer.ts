@@ -348,8 +348,43 @@ try {
         throw new Error(
           'Packed configure rerun must leave existing configuration and migrations unchanged'
         )
+      // The immutable released stub predates the consumer's current format rules. Run the
+      // host's formatter on only the new disposable migration, after byte-preservation checks.
+      await run(
+        app,
+        ['exec', 'prettier', '--write', join('database/migrations', added[0])],
+        `${selected}_format_generated_migration`
+      )
       await run(app, ['lint'], `${selected}_lint`)
       await run(app, ['build'], `${selected}_build`)
+      // Resolve a new production-only graph rather than reusing dev peer links. Check it
+      // before recording any database pass, so results include the runtime prerequisite.
+      const runtime = await mkdtemp(join(tmpdir(), `access_control_runtime_${selected}_`))
+      try {
+        await cp(artifact, join(runtime, 'package.tgz'))
+        await cp(join(app, 'pnpm-workspace.yaml'), join(runtime, 'pnpm-workspace.yaml'))
+        await writeFile(
+          join(runtime, 'package.json'),
+          JSON.stringify({
+            name: 'access-control-runtime-probe',
+            private: true,
+            type: 'module',
+            dependencies: manifest.dependencies,
+          })
+        )
+        await run(
+          runtime,
+          ['install', '--prod', '--no-frozen-lockfile'],
+          `${selected}_runtime_install`
+        )
+        await run(
+          runtime,
+          ['exec', 'node', '--input-type=module', '--eval', runtimeWithoutAssemblerProbe],
+          `${selected}_runtime_without_assembler`
+        )
+      } finally {
+        await rm(runtime, { recursive: true, force: true })
+      }
       for (const engine of database === 'all' ? ['sqlite', 'pg'] : [database]) {
         const schemaName = `consumer_${selected}_${randomUUID().replaceAll('-', '')}`
         if (engine === 'pg' && !ownsPostgres && process.env.CONSUMER_PG_EXTERNAL !== '1') {
@@ -390,6 +425,7 @@ try {
             functional: Number(match[1]),
             fixtureLint: 'passed',
             fixtureBuild: 'passed',
+            runtimeWithoutAssembler: 'passed',
             packageSha256: digest,
           })
           await writeResults()
@@ -421,33 +457,6 @@ try {
       for (const entry of results)
         if (entry.profile === selected) Object.assign(entry, { lockfileSha256, dependencyGraph })
       await writeResults()
-      // Resolve a new production-only graph rather than reusing dev peer links.
-      const runtime = await mkdtemp(join(tmpdir(), `access_control_runtime_${selected}_`))
-      try {
-        await cp(artifact, join(runtime, 'package.tgz'))
-        await cp(join(app, 'pnpm-workspace.yaml'), join(runtime, 'pnpm-workspace.yaml'))
-        await writeFile(
-          join(runtime, 'package.json'),
-          JSON.stringify({
-            name: 'access-control-runtime-probe',
-            private: true,
-            type: 'module',
-            dependencies: manifest.dependencies,
-          })
-        )
-        await run(
-          runtime,
-          ['install', '--prod', '--no-frozen-lockfile'],
-          `${selected}_runtime_install`
-        )
-        await run(
-          runtime,
-          ['exec', 'node', '--input-type=module', '--eval', runtimeWithoutAssemblerProbe],
-          `${selected}_runtime_without_assembler`
-        )
-      } finally {
-        await rm(runtime, { recursive: true, force: true })
-      }
       // A passing app is removed; a failing one stays for inspection next to its logs.
       await rm(app, { recursive: true, force: true })
     }
