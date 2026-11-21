@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Require Account Kit 0.4.2.
+
 ## 0.2.2 - 2026-11-20
 
 - Document and test an optional SQLite constraint for one active owner per scope.
