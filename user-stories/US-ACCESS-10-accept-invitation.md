@@ -62,4 +62,4 @@ flowchart TD
     N -->|No| G["Account Kit commits acceptance"]
 ```
 
-**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), Account Kit 0.4.2 `acceptInvitation`, `applyInvitations` and `matchInvitation` (invitation services).
+**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), Account Kit 0.5.0 `acceptInvitation`, `applyInvitations` and `matchInvitation` (invitation services).
