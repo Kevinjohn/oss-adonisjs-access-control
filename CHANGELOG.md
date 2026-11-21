@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.3 - 2026-11-21
+
 ### Changed
 
 - Require Account Kit 0.4.2.
