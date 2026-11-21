@@ -1,5 +1,5 @@
 // Type-level checks for defineAccessControl inference; compiled by `pnpm typecheck`, never run.
-import { defineAccessControl } from '../../index.js'
+import { defineAccessControl, defineConfig } from '../../index.js'
 import type { MembershipEvent, PermissionKeyOf, RoleOf } from '../../src/types.js'
 
 const config = defineAccessControl({
@@ -13,6 +13,26 @@ const config = defineAccessControl({
     invitations: { manage: 'admin' },
   },
 })
+
+const alias = defineConfig({
+  roles: ['viewer', 'admin'],
+  users: { table: 'users', keyType: 'integer' },
+  scope: { table: 'teams', keyType: 'integer' },
+  permissions: { members: { list: 'admin', manage: 'admin' }, invitations: { manage: 'admin' } },
+})
+const aliasRole: RoleOf<typeof alias> = 'admin'
+// @ts-expect-error alias keeps role literals
+const badAliasRole: RoleOf<typeof alias> = 'owner'
+const aliasKey: PermissionKeyOf<typeof alias> = 'members:list'
+// @ts-expect-error alias keeps permission literals
+const badAliasKey: PermissionKeyOf<typeof alias> = 'project:read'
+const aliasSummary = alias.buildClientMembership(null)
+if (aliasSummary) {
+  const key: PermissionKeyOf<typeof alias> = aliasSummary.permissions[0]
+  const role: RoleOf<typeof alias> = aliasSummary.assignableRoles[0]
+  void [key, role]
+}
+void [aliasRole, badAliasRole, aliasKey, badAliasKey]
 
 type Role = RoleOf<typeof config>
 type Key = PermissionKeyOf<typeof config>

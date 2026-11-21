@@ -17,7 +17,7 @@ export default defineAccessControl({
     members: { list: 'admin', manage: 'admin' },
     invitations: { manage: 'admin' },
   },
-  onMembershipChanged: async (event, trx) => {},
+  onMembershipChanged: async (change, trx) => {},
 })
 ```
 
@@ -52,7 +52,7 @@ Three keys are required because the package uses them:
 | `invitations:manage` | the Account Kit `authorize` callbacks              |
 
 Keys are not stored. Renaming a key is a code change, but a frontend reading the
-[client payload](client.md) must change in the same deployment.
+[client membership summary](client.md) must change in the same deployment.
 
 ## Boot validation
 
@@ -73,8 +73,8 @@ For an active membership with a historical role, `clientPayload` still returns t
 as a string. Its `permissions` and `assignableRoles` arrays are empty. Consumers should handle a
 role outside the current configured tuple while the data migration is pending.
 
-Cleanup hooks can also receive historical role strings in `membership.left` and
-`membership.removed` events. Treat those event roles as raw stored values. Events for newly
+The membership change callback can also receive historical role strings in `membership.left` and
+`membership.removed` records. Treat those roles as raw stored values. Records for newly
 validated role assignments remain typed to the configured role tuple.
 
 ## Types

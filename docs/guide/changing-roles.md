@@ -30,6 +30,10 @@ Exit code 0 when every check is clean, 1 when a check finds rows, 2 when a check
 Schema checks run first: a missing memberships table or required column is reported with exit 1
 even when `--scope` is malformed. With a complete schema, a malformed scope exits 2.
 
+Owner checks count all matching scopes and return at most twenty ordered samples per check.
+Each owner check obtains its count and samples in one database statement; reports as a whole
+are not a locked snapshot, so concurrent changes may affect different checks differently.
+
 ### Run it in CI
 
 Run the doctor wherever the application starts against a real schema: after `migration:run` in

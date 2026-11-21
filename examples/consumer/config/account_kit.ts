@@ -38,7 +38,7 @@ export function createAccountKitConfig(): AccountKitConfig {
     enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
 
     /**
-     * Choose admission in the application before exposing a public signup route.
+     * Choose admission in the application before exposing a public sign-up route.
      */
     registration: { availability: 'open' },
 
@@ -81,11 +81,11 @@ export function createAccountKitConfig(): AccountKitConfig {
     },
 
     /**
-     * Choose your revocation policy explicitly. For API tokens/outbox, see examples/api.
+     * Choose your credential-revocation handling explicitly. For API tokens/outbox, see examples/api.
      * Applications without revocable credentials may deliberately replace this with a no-op.
      */
     onCredentialsChangedTransaction: async () => {
-      throw new Error('account_kit: implement the application credential-revocation policy')
+      throw new Error('account_kit: implement the application credential-revocation handling')
     },
 
     /**

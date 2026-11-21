@@ -32,7 +32,7 @@ Source baseline: `2e6390f4aa78ef8ea0f52309df3f549930324b47` (origin/main, 2026-1
 | [US-ACCESS-24](US-ACCESS-24-revoke-invitation.md)                | Revoke a pending invitation                       | Current  |
 | [US-ACCESS-25](US-ACCESS-25-delete-scope-memberships.md)         | Remove memberships when deleting a scope          | Current  |
 | [US-ACCESS-26](US-ACCESS-26-react-to-membership-changes.md)      | Audit or react to membership changes              | Current  |
-| [US-ACCESS-27](US-ACCESS-27-localize-error-responses.md)         | Localize Access Control error responses           | Current  |
+| [US-ACCESS-27](US-ACCESS-27-localize-error-responses.md)         | Localise Access Control error responses           | Current  |
 | [US-ACCESS-28](US-ACCESS-28-attach-without-provider.md)          | Attach Access Control without the provider        | Operator |
 
 ## Files

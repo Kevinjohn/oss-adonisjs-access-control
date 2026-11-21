@@ -87,8 +87,10 @@ The check runs in its own transaction immediately before the kit operation.
 ```ts
 export default defineAccessControl({
   // ...
-  onMembershipChanged: async (event, trx) => {
-    await trx.table('membership_audit').insert({ type: event.type, payload: JSON.stringify(event) })
+  onMembershipChanged: async (change, trx) => {
+    await trx
+      .table('membership_audit')
+      .insert({ type: change.type, payload: JSON.stringify(change) })
   },
 })
 ```

@@ -37,7 +37,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behavior, entered from Account Kit acceptance and matched-invitation paths; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
+Scope: package behaviour, entered from Account Kit acceptance and matched-invitation paths; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
 
 ```mermaid
 flowchart TD

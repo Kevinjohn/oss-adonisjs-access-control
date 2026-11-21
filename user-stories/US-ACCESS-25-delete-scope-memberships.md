@@ -28,7 +28,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behavior and host callback boundary; the application owns its screens, scope records and transaction commit.
+Scope: package behaviour and host callback boundary; the application owns its screens, scope records and transaction commit.
 
 ```mermaid
 flowchart TD

@@ -221,14 +221,32 @@ export class MembershipService<Role extends string = string> {
   }
 
   #toMembership(row: Row): Membership {
+    if (!statuses.includes(row.status as MembershipStatus))
+      throw error('E_ACCESS_CONTROL_INVALID_CONFIG', 'stored membership has an unsupported status')
     return {
       scopeId: this.#scopeKey(row.scope_id),
       userId: this.#userKey(row.user_id),
       role: row.role,
       status: row.status as MembershipStatus,
-      createdAt: this.#runner.readTimestamp(row.created_at)!,
-      updatedAt: this.#runner.readTimestamp(row.updated_at)!,
+      createdAt: this.#readRequiredTimestamp(row.created_at, 'created_at'),
+      updatedAt: this.#readRequiredTimestamp(row.updated_at, 'updated_at'),
     }
+  }
+
+  #readRequiredTimestamp(value: unknown, column: 'created_at' | 'updated_at') {
+    try {
+      const timestamp = this.#runner.readTimestamp(value)
+      if (timestamp?.isValid) return timestamp
+    } catch (cause) {
+      throw new AccessControlError('E_ACCESS_CONTROL_INVALID_CONFIG', {
+        message: `access-control: stored membership has an invalid ${column} timestamp`,
+        cause,
+      })
+    }
+    throw error(
+      'E_ACCESS_CONTROL_INVALID_CONFIG',
+      `stored membership has an invalid ${column} timestamp`
+    )
   }
 
   async #read(
@@ -262,8 +280,8 @@ export class MembershipService<Role extends string = string> {
     return rows.map((row) => this.#toMembership(row))
   }
 
-  async #emit(event: MembershipEvent<Role>, trx: Trx): Promise<void> {
-    await this.#access.config.onMembershipChanged?.(event, trx)
+  async #notifyMembershipChanged(change: MembershipEvent<Role>, trx: Trx): Promise<void> {
+    await this.#access.config.onMembershipChanged?.(change, trx)
   }
 
   async #insert(
@@ -368,7 +386,7 @@ export class MembershipService<Role extends string = string> {
   }
 
   /** The membership, or null. A plain read without locks. */
-  async find(scopeId: ScopeKey, userId: UserKey, trx?: Trx): Promise<Membership | null> {
+  async getMembership(scopeId: ScopeKey, userId: UserKey, trx?: Trx): Promise<Membership | null> {
     const normalizedScope = this.#scopeKey(scopeId)
     const normalizedUser = this.#userKey(userId)
     const client = this.#client(trx)
@@ -377,6 +395,11 @@ export class MembershipService<Role extends string = string> {
       await this.#resolveStoredScopeId(client, normalizedScope),
       await this.#resolveStoredUserId(client, normalizedUser)
     )
+  }
+
+  /** Alias of `getMembership`. */
+  async find(scopeId: ScopeKey, userId: UserKey, trx?: Trx): Promise<Membership | null> {
+    return this.getMembership(scopeId, userId, trx)
   }
 
   /**
@@ -498,7 +521,7 @@ export class MembershipService<Role extends string = string> {
       if (!user) throw error('E_ACCESS_CONTROL_USER_NOT_FOUND')
       if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
       const membership = await this.#insert(trx, { scopeId, userId, role })
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         { type: 'membership.added', scopeId, userId, actorId, role: role as Role },
         trx
       )
@@ -529,7 +552,7 @@ export class MembershipService<Role extends string = string> {
       )
       if (target.role === role) return target
       const membership = await this.#update(trx, { scopeId, userId, patch: { role } })
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         {
           type: 'membership.role_changed',
           scopeId,
@@ -568,7 +591,7 @@ export class MembershipService<Role extends string = string> {
       )
       if (target.status === status) return target
       const membership = await this.#update(trx, { scopeId, userId, patch: { status } })
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         {
           type: 'membership.status_changed',
           scopeId,
@@ -603,7 +626,7 @@ export class MembershipService<Role extends string = string> {
         })
       )
       await this.#delete(trx, scopeId, userId)
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         {
           type: 'membership.removed',
           scopeId,
@@ -640,7 +663,7 @@ export class MembershipService<Role extends string = string> {
       if (this.#access.ownerRole !== undefined && membership.role === this.#access.ownerRole)
         throw error('E_ACCESS_CONTROL_OWNER_PROTECTED')
       await this.#delete(trx, scopeId, userId)
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         { type: 'membership.left', scopeId, userId, role: membership.role as Role },
         trx
       )
@@ -670,7 +693,7 @@ export class MembershipService<Role extends string = string> {
         throw error('E_ACCESS_CONTROL_INVALID_INPUT', 'ownership can only go to an active member')
       await this.#update(trx, { scopeId, userId: actorId, patch: { role: demotedTo } })
       await this.#update(trx, { scopeId, userId: toUserId, patch: { role: ownerRole } })
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         {
           type: 'membership.ownership_transferred',
           scopeId,
@@ -709,7 +732,7 @@ export class MembershipService<Role extends string = string> {
       const existing = await trx.from(this.#table).where('scope_id', scopeId).first()
       if (existing) throw error('E_ACCESS_CONTROL_SCOPE_NOT_EMPTY')
       const membership = await this.#insert(trx, { scopeId, userId, role })
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         { type: 'membership.first_member', scopeId, userId, role: role as Role },
         trx
       )
@@ -734,7 +757,7 @@ export class MembershipService<Role extends string = string> {
     await this.#lock(trx, scopeId, [userId])
     if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
     const membership = await this.#insert(trx, { scopeId, userId, role })
-    await this.#emit(
+    await this.#notifyMembershipChanged(
       {
         type: 'membership.invitation_accepted',
         scopeId,
@@ -762,7 +785,10 @@ export class MembershipService<Role extends string = string> {
     if (!user) throw error('E_ACCESS_CONTROL_USER_NOT_FOUND')
     if (await this.#read(trx, scopeId, userId)) throw error('E_ACCESS_CONTROL_ALREADY_MEMBER')
     const membership = await this.#insert(trx, { scopeId, userId, role })
-    await this.#emit({ type: 'membership.granted', scopeId, userId, role: role as Role }, trx)
+    await this.#notifyMembershipChanged(
+      { type: 'membership.granted', scopeId, userId, role: role as Role },
+      trx
+    )
     return membership
   }
 
@@ -788,13 +814,11 @@ export class MembershipService<Role extends string = string> {
         ),
       })
       const byScope = (memberships: Membership[]) => {
-        const rolesByScopeId = new Map<ScopeKey, string>()
-        for (const scopeId of ascending(memberships.map((membership) => membership.scopeId)))
-          rolesByScopeId.set(
-            scopeId,
-            memberships.find((membership) => membership.scopeId === scopeId)!.role
-          )
-        return rolesByScopeId
+        const roles = new Map<ScopeKey, string>()
+        // Preserve the first row for a scope, even if an app-owned table lacks the unique pair.
+        for (const membership of memberships)
+          if (!roles.has(membership.scopeId)) roles.set(membership.scopeId, membership.role)
+        return new Map(ascending(roles.keys()).map((scopeId) => [scopeId, roles.get(scopeId)!]))
       }
       return {
         actorRoles: byScope(
@@ -836,7 +860,7 @@ export class MembershipService<Role extends string = string> {
       throw error('E_ACCESS_CONTROL_LAST_OWNER')
     await trx.from(this.#table).where('user_id', userId).delete()
     for (const membership of memberships)
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         {
           type: 'membership.removed',
           scopeId: membership.scopeId,
@@ -873,7 +897,7 @@ export class MembershipService<Role extends string = string> {
       throw error('E_ACCESS_CONTROL_CONFLICT')
     await trx.from(this.#table).where('scope_id', scopeId).delete()
     for (const membership of members)
-      await this.#emit(
+      await this.#notifyMembershipChanged(
         {
           type: 'membership.removed',
           scopeId,

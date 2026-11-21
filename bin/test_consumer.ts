@@ -90,14 +90,21 @@ const rootProbe = `
   import { join } from 'node:path'
   const api = await import('@kevinjohn/adonisjs-access-control')
   assert.equal(typeof api.configure, 'function')
+  assert.equal(api.defineConfig, api.defineAccessControl)
   assert.equal(typeof api.stubsRoot, 'string')
   await access(join(api.stubsRoot, 'main.js'))
   await access(join(api.stubsRoot, 'migrations', 'released.json'))
   const commands = await import('@kevinjohn/adonisjs-access-control/commands')
   const metadata = await commands.getMetaData()
   assert.deepEqual(metadata.map((c) => c.commandName), ['access-control:doctor'])
-  for (const subpath of ['types', 'services/main', 'middleware', 'account-kit'])
+  for (const subpath of ['types', 'middleware', 'scope_middleware', 'account-kit'])
     assert.equal(typeof (await import('@kevinjohn/adonisjs-access-control/' + subpath)), 'object')
+  const middleware = await import('@kevinjohn/adonisjs-access-control/middleware')
+  const scopeMiddleware = await import('@kevinjohn/adonisjs-access-control/scope_middleware')
+  assert.equal(middleware.default, scopeMiddleware.default)
+  assert.equal(middleware.scopeMiddleware, scopeMiddleware.scopeMiddleware)
+  await assert.rejects(import('@kevinjohn/adonisjs-access-control/services/main'), /requires an AdonisJS application/)
+  assert.equal(api.AccessControlError, api.errors.AccessControlError)
 `
 
 const providerProbe = `
@@ -108,6 +115,22 @@ const providerProbe = `
     import('@kevinjohn/adonisjs-access-control/providers/access_control_provider'),
     { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' }
   )
+`
+
+const runtimeWithoutAssemblerProbe = `
+  import assert from 'node:assert/strict'
+  import { createRequire } from 'node:module'
+  const entry = import.meta.resolve('@kevinjohn/adonisjs-access-control')
+  const requireFromPackage = createRequire(entry)
+  assert.throws(() => requireFromPackage.resolve('@adonisjs/assembler'), { code: 'MODULE_NOT_FOUND' })
+  const api = await import(entry)
+  const config = api.defineConfig({
+    roles: ['viewer'],
+    users: { table: 'users', keyType: 'integer' },
+    scope: { table: 'teams', keyType: 'integer' },
+    permissions: { members: { list: 'viewer', manage: 'viewer' }, invitations: { manage: 'viewer' } },
+  })
+  assert.equal(config.can('viewer', 'members:list'), true)
 `
 
 const pgEnv = {
@@ -146,6 +169,21 @@ async function schema(cwd: string, name: string, action: 'create' | 'drop') {
   )
 }
 
+/** Stable filename/content snapshot, independent of the directory enumeration order. */
+async function migrationSnapshot(migrationDirectory: string): Promise<Record<string, string>> {
+  const files = await readdir(migrationDirectory)
+  return Object.fromEntries(
+    await Promise.all(
+      files.sort().map(async (file) => [
+        file,
+        createHash('sha256')
+          .update(await readFile(join(migrationDirectory, file)))
+          .digest('hex'),
+      ])
+    )
+  )
+}
+
 try {
   if (failure === undefined) {
     for (const selected of profile === 'all' ? ['floor', 'latest'] : [profile]) {
@@ -165,10 +203,21 @@ try {
       console.log(`[consumer] isolated ${selected} app: ${app}`)
       await cp(join(root, 'examples/consumer'), app, {
         recursive: true,
-        filter: (source) =>
-          !relative(join(root, 'examples/consumer'), source)
+        filter: (source) => {
+          const path = relative(join(root, 'examples/consumer'), source)
+          // The checked-in functional fixture has a hand-written membership migration, not
+          // the package's released stable suffix. On a fresh disposable full consumer, omit
+          // that one file so configure publishes the actual packed migration. Keep the tracked
+          // fixture and any existing migration history untouched.
+          if (
+            !args.has('scaffold-only') &&
+            path === 'database/migrations/1793900000000_create_memberships.ts'
+          )
+            return false
+          return !path
             .split('/')
-            .some((part) => ['node_modules', 'build', 'tmp', '.git', '.adonisjs'].includes(part)),
+            .some((part) => ['node_modules', 'build', 'tmp', '.git', '.adonisjs'].includes(part))
+        },
       })
       await mkdir(join(app, 'tmp'), { recursive: true })
       const manifest = JSON.parse(await readFile(join(app, 'package.json'), 'utf8'))
@@ -255,8 +304,87 @@ try {
         await rm(app, { recursive: true, force: true })
         continue
       }
+      const migrationDirectory = join(app, 'database/migrations')
+      const beforeMigrations = await migrationSnapshot(migrationDirectory)
+      const beforeConfig = await readFile(join(app, 'config/access_control.ts'), 'utf8')
+      const configure = (stage: string) =>
+        run(
+          app,
+          [
+            'exec',
+            'node',
+            'ace',
+            'configure',
+            '@kevinjohn/adonisjs-access-control',
+            '--scope-table=teams',
+          ],
+          `${selected}_configure_${stage}`,
+          { ...baseEnv, DB_CLIENT: 'sqlite' }
+        )
+      await configure('initial')
+      const generated = await migrationSnapshot(migrationDirectory)
+      const added = Object.keys(generated).filter((filename) => !(filename in beforeMigrations))
+      if (
+        added.length !== 1 ||
+        !/^\d+_access_control_create_memberships\.ts$/.test(added[0]) ||
+        Object.keys(beforeMigrations).some((filename) => filename >= added[0])
+      )
+        throw new Error(
+          'Packed configure must publish exactly one membership migration after its parents'
+        )
+      if (
+        Object.entries(beforeMigrations).some(([filename, hash]) => generated[filename] !== hash) ||
+        (await readFile(join(app, 'config/access_control.ts'), 'utf8')) !== beforeConfig
+      )
+        throw new Error(
+          'Packed configure must preserve existing configuration and parent migrations'
+        )
+
+      await configure('repeat')
+      if (
+        JSON.stringify(await migrationSnapshot(migrationDirectory)) !== JSON.stringify(generated) ||
+        (await readFile(join(app, 'config/access_control.ts'), 'utf8')) !== beforeConfig
+      )
+        throw new Error(
+          'Packed configure rerun must leave existing configuration and migrations unchanged'
+        )
+      // The immutable released stub predates the consumer's current format rules. Run the
+      // host's formatter on only the new disposable migration, after byte-preservation checks.
+      await run(
+        app,
+        ['exec', 'prettier', '--write', join('database/migrations', added[0])],
+        `${selected}_format_generated_migration`
+      )
       await run(app, ['lint'], `${selected}_lint`)
       await run(app, ['build'], `${selected}_build`)
+      // Resolve a new production-only graph rather than reusing dev peer links. Check it
+      // before recording any database pass, so results include the runtime prerequisite.
+      const runtime = await mkdtemp(join(tmpdir(), `access_control_runtime_${selected}_`))
+      try {
+        await cp(artifact, join(runtime, 'package.tgz'))
+        await cp(join(app, 'pnpm-workspace.yaml'), join(runtime, 'pnpm-workspace.yaml'))
+        await writeFile(
+          join(runtime, 'package.json'),
+          JSON.stringify({
+            name: 'access-control-runtime-probe',
+            private: true,
+            type: 'module',
+            dependencies: manifest.dependencies,
+          })
+        )
+        await run(
+          runtime,
+          ['install', '--prod', '--no-frozen-lockfile'],
+          `${selected}_runtime_install`
+        )
+        await run(
+          runtime,
+          ['exec', 'node', '--input-type=module', '--eval', runtimeWithoutAssemblerProbe],
+          `${selected}_runtime_without_assembler`
+        )
+      } finally {
+        await rm(runtime, { recursive: true, force: true })
+      }
       for (const engine of database === 'all' ? ['sqlite', 'pg'] : [database]) {
         const schemaName = `consumer_${selected}_${randomUUID().replaceAll('-', '')}`
         if (engine === 'pg' && !ownsPostgres && process.env.CONSUMER_PG_EXTERNAL !== '1') {
@@ -297,6 +425,7 @@ try {
             functional: Number(match[1]),
             fixtureLint: 'passed',
             fixtureBuild: 'passed',
+            runtimeWithoutAssembler: 'passed',
             packageSha256: digest,
           })
           await writeResults()

@@ -24,6 +24,12 @@ export type {
   MembershipExport,
 } from './memberships.js'
 export type { AbilityMap, AbilitySubject, MembershipResolver } from './abilities.js'
+export type { ScopeMiddlewareOptions } from '../middleware/main.js'
+export type {
+  AccessControlKitCallbackOptions,
+  AccessControlKitCallbacks,
+} from '../account_kit/main.js'
+export type { DoctorCheck, DoctorReport, DoctorInput } from './doctor.js'
 
 /** A Lucid transaction client, as started by Account Kit's `transaction()` runner. */
 export type Trx = TransactionClientContract
@@ -55,7 +61,7 @@ export interface Actor {
   id: UserKey
 }
 
-/** Events passed to `onMembershipChanged` inside the write transaction, after the write. */
+/** Change records passed to the awaited `onMembershipChanged` callback after the write. */
 export type MembershipEvent<Role extends string> =
   | { type: 'membership.added'; scopeId: ScopeKey; userId: UserKey; actorId: UserKey; role: Role }
   | { type: 'membership.first_member'; scopeId: ScopeKey; userId: UserKey; role: Role }
@@ -133,11 +139,13 @@ export interface AccessControlConfig<
   /** resource -> action -> lowest role allowed. Must include the reserved keys. */
   permissions: P
   /**
-   * Runs inside every membership write transaction, after the write. Throwing rolls back.
+   * Awaited inside every membership write transaction, after the write. Throwing rolls back a
+   * package-owned transaction; in a caller-owned transaction it rejects the operation and the
+   * caller must roll back.
    * It must not lock or write other users' rows or Account Kit tables, which sit earlier in the
    * lock order; writing app tables is fine.
    */
-  onMembershipChanged?: (event: MembershipEvent<R[number]>, trx: Trx) => Promise<void>
+  onMembershipChanged?: (change: MembershipEvent<R[number]>, trx: Trx) => Promise<void>
 }
 
 /** The validated, frozen configuration carried by an `AccessControl` instance. */
@@ -169,7 +177,7 @@ export type PermissionKeyOf<T> =
 /** The role union of an `AccessControl` instance. */
 export type RoleOf<T> = T extends AccessControl<infer R, any> ? R[number] : never
 
-/** The outcome of a pure rule: allowed, or denied with the error code to raise. */
+/** The decision of a pure rule: allowed, or denied with the error code to raise. */
 export type RuleResult = { allowed: true } | { allowed: false; code: AccessControlErrorCode }
 
 /** Every public error code. */
@@ -220,7 +228,7 @@ export interface TransactionRunner {
   readTimestamp(value: unknown): DateTime | null
 }
 
-/** The payload a client receives for the current membership. A stored role may be historical. */
+/** The client's membership summary. A stored role may be historical. */
 export interface ClientPayload<Role extends string = string, Key extends string = string> {
   scopeId: string
   role: string

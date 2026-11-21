@@ -1,4 +1,6 @@
 import { test } from '@japa/runner'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { AccessControl, defineAccessControl } from '../index.js'
 import { bootTestApp } from './helpers/app.js'
 import { codeOf } from './helpers/fixture.js'
@@ -80,4 +82,19 @@ test.group('provider and service (spec 1.7, 5)', () => {
       await booted.close()
     }
   })
+})
+test('services/main rejects a pre-creation import explicitly, even after later boot', () => {
+  execFileSync(process.execPath, [
+    '--import=@poppinss/ts-exec',
+    fileURLToPath(new URL('./fixtures/service_lifecycle.ts', import.meta.url)),
+    'pre-app',
+  ])
+})
+
+test('services/main registers its boot callback when imported after creation but before boot', () => {
+  execFileSync(process.execPath, [
+    '--import=@poppinss/ts-exec',
+    fileURLToPath(new URL('./fixtures/service_lifecycle.ts', import.meta.url)),
+    'pre-boot',
+  ])
 })

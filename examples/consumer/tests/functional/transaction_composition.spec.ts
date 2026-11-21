@@ -183,7 +183,7 @@ test.group('transaction composition on SQLite', (group) => {
     assert.lengthOf(new Set(statements.map((s) => s.connectionId)), 1)
     assert.lengthOf(new Set(statements.map((s) => s.transactionId)), 1)
     assert.equal(attempt.inside[0].table, 'account_transaction_lock')
-    assert.isTrue(attempt.inside.every((s) => s.outcome === 'succeeded'))
+    assert.isTrue(attempt.inside.every((s) => s.executionStatus === 'succeeded'))
     assert.isTrue(has(attempt, 'update', 'account_sessions'))
     assert.isTrue(has(attempt, 'update', 'memberships'))
     assert.isTrue(has(attempt, 'insert', 'composition_effects'))
@@ -336,7 +336,7 @@ test.group('transaction composition on SQLite', (group) => {
     assert.lengthOf(attempts, 1)
     assert.equal(attempts[0].terminal?.kind, 'rollback')
     // Dispatched without a control-query error.
-    assert.equal(attempts[0].terminal?.outcome, 'dispatched')
+    assert.equal(attempts[0].terminal?.executionStatus, 'dispatched')
     assert.isFalse(attempts.some((a) => a.terminal?.kind === 'commit'))
   })
 

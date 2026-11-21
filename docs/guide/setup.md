@@ -11,16 +11,19 @@ node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 node ace migration:run
 ```
 
+The flags and behaviour below include the next release's interactive prompt, custom host paths
+and safe migration ordering. The command above remains valid on the current release.
+
 ## What configure does
 
-| Step | Result                                                                                       |
-| ---- | -------------------------------------------------------------------------------------------- |
-| 1    | Stops with a message when `config/account_kit.ts` is missing or `--scope-table` is absent.   |
-| 2    | Writes `config/access_control.ts` with the example roles and the table names from the flags. |
-| 3    | Publishes `database/migrations/<timestamp>_access_control_create_memberships.ts`.            |
-| 4    | Registers the provider and the `access-control:doctor` command in `adonisrc.ts`.             |
-| 5    | Registers the named middleware `scope` in `start/kernel.ts`.                                 |
-| 6    | Prints the Bouncer initializer and Account Kit config changes for you to apply.              |
+| Step | Result                                                                                                                       |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Checks for `account_kit.ts` in the host config directory; prompts for a missing scope table only in an interactive terminal. |
+| 2    | Writes `access_control.ts` in the host config directory with the example roles and table names.                              |
+| 3    | Publishes `<timestamp>_access_control_create_memberships.ts` in the selected migrations directory.                           |
+| 4    | Registers the provider and the `access-control:doctor` command in `adonisrc.ts`.                                             |
+| 5    | Registers the named middleware `scope` in `start/kernel.ts`.                                                                 |
+| 6    | Prints the Bouncer initializer and Account Kit config changes for you to apply.                                              |
 
 Existing files are skipped with a message, never rewritten. Re-running after a package upgrade
 publishes only migrations that are new to the application. Run one configure process at a time
@@ -29,13 +32,26 @@ coordinated and can race while publishing migrations or editing application sour
 
 Flags:
 
-| Flag                  | Default       | Values                      |
-| --------------------- | ------------- | --------------------------- |
-| `--scope-table`       | required      | a plain SQL identifier      |
-| `--scope-id-type`     | `integer`     | `integer`, `string`, `uuid` |
-| `--users-table`       | `users`       | a plain SQL identifier      |
-| `--user-id-type`      | `integer`     | `integer`, `string`, `uuid` |
-| `--memberships-table` | `memberships` | a plain SQL identifier      |
+| Flag                  | Default                                  | Values                                                   |
+| --------------------- | ---------------------------------------- | -------------------------------------------------------- |
+| `--scope-table`       | prompt in a terminal; required otherwise | a plain SQL identifier                                   |
+| `--scope-id-type`     | `integer`                                | `integer`, `string`, `uuid`                              |
+| `--users-table`       | `users`                                  | a plain SQL identifier                                   |
+| `--user-id-type`      | `integer`                                | `integer`, `string`, `uuid`                              |
+| `--memberships-table` | `memberships`                            | a plain SQL identifier                                   |
+| `--migration-path`    | host `app.migrationsPath()`              | the migration directory relative to the application root |
+
+By default the destination follows the AdonisJS RC migrations directory. When Lucid configures
+an explicit `migrations.paths` override for the intended connection, pass `--migration-path`
+with the appropriate directory and keep that choice on reruns. Configure does not load the
+application database or choose a connection for you. It places newly published migrations after
+the greatest existing numeric prefix in that directory, including future-dated parent
+migrations, in released dependency order. Existing files are never renamed. If an already
+published successor has a missing predecessor or the package migration order cannot safely
+be extended, configure stops before publishing and asks you to review that history. Do not
+rename applied migrations. In multiple-directory configurations, Lucid runs sources in the
+configured directory order; a later timestamp in one source cannot reorder another source.
+Ensure the users and scope parent migrations run before the membership migration.
 
 The key types must match the primary keys of the users and scope tables: `integer` for
 `increments()` columns, `uuid` for `uuid()` columns and `string` for string keys up to 254
@@ -48,7 +64,8 @@ before writing application files.
 ## Source registration prerequisites
 
 Configure's provider, command and middleware edits use the framework's assembler transformer.
-Run configure in a development installation with `@adonisjs/assembler` available and check its
+Run configure in a development installation with `@adonisjs/assembler` 8.6 or later in the
+8.x line available and check its
 warnings. If the framework skips a source edit, the printed next steps do not mean registration
 succeeded. Repair the development installation and rerun configure, or register these entries
 manually alongside the application's existing entries:
@@ -61,6 +78,9 @@ manually alongside the application's existing entries:
 
 Then complete the Bouncer and Account Kit steps below and verify the scoped route as shown in
 [getting started](getting-started.md).
+
+Assembler is an optional development peer for configure's source transforms, not a requirement
+for a deployed application that already has the generated sources.
 
 ## The two manual steps
 

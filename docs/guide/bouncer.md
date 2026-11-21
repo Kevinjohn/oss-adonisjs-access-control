@@ -48,6 +48,9 @@ router
   .use(scopeMiddleware({ resolveScope: (ctx) => ctx.request.header('x-team') }))
 ```
 
+The next release also exports the same class and factory through the `scope_middleware`
+subpath. The existing `middleware` subpath remains supported.
+
 The kit middleware leaves the authenticated user on `ctx.auth.user`, which is all the scope
 middleware and the Bouncer initializer read; the example consumer's scoped routes run that way.
 Under Masquerade the effective guard is the business guard, so the user, the membership and the
@@ -55,7 +58,7 @@ Bouncer subject are the same customer.
 
 ## Permission-read consistency
 
-Membership reads follow the application's Lucid connection policy. With asynchronous read
+Membership reads follow the application's Lucid read-connection configuration. With asynchronous read
 replicas, a default read can still see an active membership after its primary has revoked it.
 The middleware reads once for the request; Bouncer then uses that loaded membership. No package
 cache does not mean primary freshness or protection from a revocation after the check.
@@ -66,8 +69,15 @@ transaction or a per-request primary-read option. For an application-owned trans
 pass the Account Kit runner's `trx` to `find`, `listForScope` or `authorize` and perform the
 protected database work through that same transaction. `authorize` requires `trx`; see
 [membership transactions](memberships.md#transactions-and-locks). Package mutations recheck their
-own rules inside the write transaction. Choose and test the host's freshness policy before
+own rules inside the write transaction. Choose and test the host's freshness requirements before
 configuring replicas; a read alone cannot guarantee access remains valid for the rest of a request.
+
+In an HTTP controller, use the request's Bouncer (`await bouncer.authorize('project:write')`)
+for permission checks and any application-owned Bouncer policies. If a protected database write
+also needs the permission checked in its own transaction, call
+`await accessControl.memberships.authorize({ scopeId, userId, permission: 'project:write', trx })`
+inside that transaction. Both checks have a distinct boundary: the controller authorises HTTP
+access, and the membership service checks the write's transaction state.
 
 ## Generated abilities
 

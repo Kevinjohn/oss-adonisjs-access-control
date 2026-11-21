@@ -8,6 +8,16 @@ result; the verification column records the command and database outcome.
 
 Legend: `-` not started; `M<n>` the milestone that delivers it.
 
+## Unreleased amendments
+
+| Requirement                                                                                                                               | Evidence                                                                                                                      | Implemented | Verified                                                          | Shipped |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------- | ------- |
+| Pre-creation service imports explicitly refuse; imports between creation and boot resolve the singleton                                   | `tests/provider.spec.ts` · fresh-process lifecycle tests; `tests/package_exports.spec.ts` · public service/container identity | #140        | focused SQLite `pnpm quick:test`                                  | -       |
+| Host paths and future-dated migrations; partial histories fail before writes                                                              | `tests/configure.spec.ts` · custom directories, future-dated parents and generated sequence, missing predecessor              | #141, #142  | focused SQLite `pnpm quick:test`; PostgreSQL and MySQL pending CI | -       |
+| Callback rejection rolls back package transactions and propagates to caller-owned transactions; invalid stored data is a typed diagnostic | `tests/memberships.spec.ts`, `tests/memberships_trusted.spec.ts`, `tests/membership_storage.spec.ts`                          | #142        | focused SQLite `pnpm quick:test`; PostgreSQL and MySQL pending CI | -       |
+| Compatible names preserve decisions, nullable reads and membership summary shape                                                          | `tests/rules.spec.ts`, `tests/payload.spec.ts`, `tests/types/define.ts`, `tests/membership_storage.spec.ts`                   | #142, #143  | focused SQLite `pnpm quick:test`, `pnpm typecheck`                | -       |
+| Ordered identity maps and bounded owner samples preserve existing results                                                                 | `tests/memberships_trusted.spec.ts` · unordered rows; `tests/doctor.spec.ts` · exact counts and limited samples               | #77, #78    | focused SQLite `pnpm quick:test`; PostgreSQL and MySQL pending CI | -       |
+
 ## Scaffold (section 1)
 
 | Requirement                                       | Evidence                                                                                                              | Implemented | Verified                                                             | Shipped |

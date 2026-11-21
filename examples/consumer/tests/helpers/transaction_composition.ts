@@ -200,7 +200,7 @@ async function build(
     await kit.authentication.login({ email, password, clientKey: 'composition-test' }, guard)
     const session = established()
     if (!session || typeof session.handle !== 'string' || session.handle.length === 0)
-      throw new Error('composition fixture: login established no session handle')
+      throw new Error('composition fixture: sign-in established no session handle')
     return { userId: session.userId, revision: session.revision, sessionHandle: session.handle }
   }
   const current = await signIn(actor.email)

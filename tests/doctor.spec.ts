@@ -347,13 +347,35 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     assert.deepEqual(unknownRole.sampleIds, ids.slice(0, 20).map(String))
     await booted.db.from(booted.names.memberships).where('scope_id', scope).delete()
     const headless: number[] = []
+    const multiple: number[] = []
     for (let index = 0; index < 21; index++) {
       const created = await createScope()
       headless.push(created)
       await rawMembership(created, await createUser(), 'editor')
+      const duplicated = await createScope()
+      multiple.push(duplicated)
+      await rawMembership(duplicated, await createUser(), 'owner')
+      await rawMembership(duplicated, await createUser(), 'owner')
     }
-    const owners = await runDoctor({ access, db: booted.db })
+    const knex = booted.db.connection().getReadClient()
+    const ownerQueries: string[] = []
+    const capture = ({ sql }: { sql: string }) => {
+      if (sql.toLowerCase().includes('having sum(')) ownerQueries.push(sql)
+    }
+    knex.on('query', capture)
+    let owners: DoctorReport
+    try {
+      owners = await runDoctor({ access, db: booted.db })
+    } finally {
+      knex.off('query', capture)
+    }
+    assert.lengthOf(ownerQueries, 2)
+    for (const query of ownerQueries) {
+      assert.match(query, /count\(\*\) over\(\)/i)
+      assert.match(query, /\blimit\b/i)
+    }
     const withoutOwner = owners.checks.find((c) => c.name === 'scope_without_owner')!
+    const manyOwners = owners.checks.find((c) => c.name === 'scope_with_many_owners')!
     assert.equal(withoutOwner.count, 21)
     assert.deepEqual(
       withoutOwner.sampleIds,
@@ -362,7 +384,18 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         .slice(0, 20)
         .map(String)
     )
-    await booted.db.from(booted.names.memberships).whereIn('scope_id', headless).delete()
+    assert.equal(manyOwners.count, 21)
+    assert.deepEqual(
+      manyOwners.sampleIds,
+      multiple
+        .sort((a, b) => a - b)
+        .slice(0, 20)
+        .map(String)
+    )
+    await booted.db
+      .from(booted.names.memberships)
+      .whereIn('scope_id', [...headless, ...multiple])
+      .delete()
   })
 
   test('orphans, a missing table and missing columns are reported; the Account Kit version is compared', async ({

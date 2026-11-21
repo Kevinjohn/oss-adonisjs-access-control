@@ -15,7 +15,7 @@ export interface ObservedStatement {
   connectionId: string | null
   transactionId: string | null
   queryId: string | null
-  outcome: 'dispatched' | 'succeeded' | 'failed'
+  executionStatus: 'dispatched' | 'succeeded' | 'failed'
   errorCode: string | null
   /** The attempt the statement belongs to, by BEGIN order from 0; null outside every attempt. */
   attempt: number | null
@@ -106,7 +106,7 @@ export function classifyForTest(): StatementClassifier {
         connectionId: payload.__knexUid,
         transactionId: payload.__knexTxId ?? null,
         queryId,
-        outcome: 'dispatched',
+        executionStatus: 'dispatched',
         errorCode: null,
         attempt,
       }
@@ -124,16 +124,16 @@ export function classifyForTest(): StatementClassifier {
       const statement = recorded.findLast(
         (s) => s.queryId === null && s.connectionId === payload.__knexUid
       )
-      if (!statement || statement.outcome !== 'dispatched')
+      if (!statement || statement.executionStatus !== 'dispatched')
         throw new Error('transaction observer: control error without its statement')
-      statement.outcome = 'failed'
+      statement.executionStatus = 'failed'
       statement.errorCode = input.code
       return
     }
     const statement = byQueryId.get(queryId)
-    if (!statement || statement.outcome !== 'dispatched')
+    if (!statement || statement.executionStatus !== 'dispatched')
       throw new Error(`transaction observer: unmatched ${input.event}`)
-    statement.outcome = input.event === 'query-response' ? 'succeeded' : 'failed'
+    statement.executionStatus = input.event === 'query-response' ? 'succeeded' : 'failed'
     if (input.event === 'query-error') statement.errorCode = input.code
   }
 
@@ -162,7 +162,9 @@ export function classifyForTest(): StatementClassifier {
     statements: () => recorded,
     attempts,
     detach() {
-      const missing = recorded.filter((s) => s.kind === 'query' && s.outcome === 'dispatched')
+      const missing = recorded.filter(
+        (s) => s.kind === 'query' && s.executionStatus === 'dispatched'
+      )
       if (missing.length > 0)
         throw new Error(
           `transaction observer: ${missing.length} query without a response or error (seq ${missing.map((s) => s.seq).join(', ')})`
