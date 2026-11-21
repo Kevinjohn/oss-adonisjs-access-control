@@ -1,4 +1,4 @@
-# US-ACCESS-27 — Localize Access Control error responses
+# US-ACCESS-27 — Localise Access Control error responses
 
 As an application integrator, I want Access Control errors to be translated so that API clients see messages in their own language.
 

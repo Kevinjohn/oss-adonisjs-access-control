@@ -165,14 +165,21 @@ export class AccessControl<
     return abilities<P>(this, resolve)
   }
 
-  /** The payload for a membership; its role may be a historical string outside this configuration. */
-  clientPayload(
+  /** The client membership summary; its role may be a historical string outside this configuration. */
+  buildClientMembership(
     membership: Membership | null | undefined
   ): ClientPayload<R[number], PermissionKeyOf<P>> | null {
     return buildClientPayload(this, membership) as ClientPayload<
       R[number],
       PermissionKeyOf<P>
     > | null
+  }
+
+  /** Alias of `buildClientMembership`. */
+  clientPayload(
+    membership: Membership | null | undefined
+  ): ClientPayload<R[number], PermissionKeyOf<P>> | null {
+    return this.buildClientMembership(membership)
   }
 
   /** The index of the role in `roles`, -1 when unknown. */
@@ -195,19 +202,34 @@ export class AccessControl<
     return rules.assignableRoles(this.#matrix, actorRole) as R[number][]
   }
 
-  /** Management truth table (3.1). */
-  canManage(input: { actorRole: string; targetRole: string; isSelf: boolean }): RuleResult {
+  /** Management decision (3.1). */
+  decideManagement(input: { actorRole: string; targetRole: string; isSelf: boolean }): RuleResult {
     return rules.canManage(this.#matrix, input)
   }
 
-  /** Assignment rules (3.2). */
-  canAssign(input: {
+  /** Alias of `decideManagement`, returning a decision record, not a boolean. */
+  canManage(input: { actorRole: string; targetRole: string; isSelf: boolean }): RuleResult {
+    return this.decideManagement(input)
+  }
+
+  /** Assignment decision (3.2). */
+  decideAssignment(input: {
     actorRole: string
     targetRole: string
     nextRole: string
     isSelf: boolean
   }): RuleResult {
     return rules.canAssign(this.#matrix, input)
+  }
+
+  /** Alias of `decideAssignment`, returning a decision record, not a boolean. */
+  canAssign(input: {
+    actorRole: string
+    targetRole: string
+    nextRole: string
+    isSelf: boolean
+  }): RuleResult {
+    return this.decideAssignment(input)
   }
 
   /** Identity predicate (3.4). */

@@ -3,6 +3,10 @@
 The rules are pure functions on the configuration, exposed on the `AccessControl` instance and
 applied by the membership service inside its transactions. `O` is the owner role when set.
 
+`canManage` and `canAssign` return `RuleResult` decisions (`{ allowed: true }` or
+`{ allowed: false, code }`), not booleans. The next release exposes the equivalent names
+`decideManagement` and `decideAssignment` for new callers.
+
 ## Vocabulary
 
 - `rank(role)`: the position of the role in the tuple, or -1 when the role is unknown.

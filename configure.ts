@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import type Configure from '@adonisjs/core/commands/configure'
 import { stubsRoot } from './stubs/main.js'
 import { membershipsMigrationSchema } from './src/migration_schema.js'
+import { planMigrations } from './src/migration_order.js'
 import type { KeyType } from './src/types.js'
 
 const packageName = '@kevinjohn/adonisjs-access-control'
@@ -56,32 +57,46 @@ Then run node ace migration:run and node ace access-control:doctor.`
  * The configure steps against a given stub directory: config file, released migrations,
  * provider, command and named middleware. Existing files are skipped, never rewritten.
  */
-export async function configureWith(command: Configure, root: string): Promise<void> {
-  if (command.parsedFlags['scope-table'] === undefined) {
+export async function configureWith(
+  command: Configure,
+  root: string,
+  interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY)
+): Promise<void> {
+  const accountKitPath = command.app.configPath('account_kit.ts')
+  if (!existsSync(accountKitPath)) {
+    command.logger.error(
+      `access-control: ${command.app.relativePath(accountKitPath)} is missing; configure @kevinjohn/adonisjs-account-kit first`
+    )
+    command.exitCode = 1
+    return
+  }
+  if (command.parsedFlags['scope-table'] === undefined && !interactive) {
     command.logger.error(
       'access-control: --scope-table=<table> is required (the table your scope rows live in)'
     )
     command.exitCode = 1
     return
   }
-  if (!existsSync(command.app.makePath('config/account_kit.ts'))) {
-    command.logger.error(
-      'access-control: config/account_kit.ts is missing; configure @kevinjohn/adonisjs-account-kit first'
-    )
-    command.exitCode = 1
-    return
-  }
-  const scopeTable = flagString(command, 'scope-table', '')
+  const scopeTable =
+    command.parsedFlags['scope-table'] === undefined
+      ? await command.prompt.ask('Which table holds the scope rows?', { name: 'scope-table' })
+      : flagString(command, 'scope-table', '')
   const usersTable = flagString(command, 'users-table', 'users')
   const membershipsTable = flagString(command, 'memberships-table', 'memberships')
   const userKeyType = flagString(command, 'user-id-type', 'integer') as KeyType | undefined
   const scopeKeyType = flagString(command, 'scope-id-type', 'integer') as KeyType | undefined
+  const migrationPath = flagString(
+    command,
+    'migration-path',
+    command.app.relativePath(command.app.migrationsPath())
+  )
   if (
     scopeTable === undefined ||
     usersTable === undefined ||
     membershipsTable === undefined ||
     userKeyType === undefined ||
-    scopeKeyType === undefined
+    scopeKeyType === undefined ||
+    migrationPath === undefined
   )
     return
   let schema: ReturnType<typeof membershipsMigrationSchema>
@@ -99,6 +114,22 @@ export async function configureWith(command: Configure, root: string): Promise<v
     return
   }
 
+  const destination = command.app.makePath(migrationPath)
+  let migrationFiles: string[] = []
+  try {
+    migrationFiles = await readdir(destination)
+  } catch (error) {
+    if (!isMissing(error)) throw error
+  }
+  let plan: ReturnType<typeof planMigrations>
+  try {
+    plan = planMigrations(migrationFiles, await releasedMigrations(root))
+  } catch (error) {
+    command.logger.error((error as Error).message)
+    command.exitCode = 1
+    return
+  }
+
   const codemods = await command.createCodemods()
   codemods.overwriteExisting = false
 
@@ -110,24 +141,15 @@ export async function configureWith(command: Configure, root: string): Promise<v
     membershipsTable,
   })
 
-  let migrationFiles: string[] = []
-  try {
-    migrationFiles = await readdir(command.app.makePath('database/migrations'))
-  } catch (error) {
-    if (!isMissing(error)) throw error
-  }
-  const timestamp = Date.now()
-  const released = await releasedMigrations(root)
-  for (const [index, name] of released.entries()) {
-    const suffix = `_${name}.ts`
-    if (migrationFiles.some((filename) => filename.endsWith(suffix))) {
-      command.logger.info(`Skipped database/migrations/*${suffix}`)
+  for (const { name, filename, existing } of plan) {
+    if (existing) {
+      command.logger.info(`Skipped ${migrationPath}/*_${name}.ts`)
       continue
     }
     await codemods.makeUsingStub(root, `migrations/${name}.stub`, {
       ...schema,
       migration: {
-        destination: command.app.makePath(`database/migrations/${timestamp + index}${suffix}`),
+        destination: join(destination, filename),
       },
     })
   }

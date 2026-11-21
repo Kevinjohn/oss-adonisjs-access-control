@@ -27,7 +27,7 @@ As a [role], I want to [action] so that [useful outcome].
 | [Exact visible label or API input] | [Control type or API parameter] | [Required/optional, default, limits, options, dependent choices, visibility, read-only state] |
 
 - [Observable success result.]
-- [Relevant cancellation, refusal and failure behavior.]
+- [Relevant cancellation, refusal and failure behaviour.]
 
 ## User flow
 
@@ -74,7 +74,7 @@ Replace the field table with a short list of controls and their visible results.
   required/optional state, defaults, limits, available options and dependent choices. For dynamic
   choices, describe their source and filtering rules rather than listing transient data.
 - Edit forms include current-value prefills. API/library/CLI actions document real argument names,
-  required values, omission/null defaults, flag/prompt behavior and limits. Verify what callbacks
+  required values, omission/null defaults, flag/prompt behaviour and limits. Verify what callbacks
   receive before assigning host policy to them.
 - Move repeated or lengthy field lists, technical schemas and protocol details to one cohesive
   repository guide/reference with a direct section link. Keep relevant controls, outcomes and
@@ -140,7 +140,7 @@ semantics and explain their mapping where an established scheme differs.
   actual missing entry/trigger and retained support in the code flow without implying execution.
 - Reconcile labels and branches against source. Parse changed Mermaid diagrams and inspect
   representative rendering; report any check that could not be completed. Syntax validation does
-  not establish behavioral correctness or prove a browser journey was exercised.
+  not establish behavioural correctness or prove a browser journey was exercised.
 
 ## Verification and sign-off
 

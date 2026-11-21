@@ -128,23 +128,27 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
     const owners = (comparison: '=' | '>') =>
       buildMembershipQuery()
         .select('m.scope_id')
+        .select(db.raw('count(*) over() as total'))
         .groupBy('m.scope_id')
         .havingRaw(
           `sum(case when ${exact('m.role')} = ? and ${exact('m.status')} = 'active' then 1 else 0 end) ${comparison} ?`,
           [ownerRole, comparison === '=' ? 0 : 1]
         )
         .orderBy('m.scope_id', 'asc')
+        .limit(sampleLimit)
     const [without, many] = await Promise.all([owners('='), owners('>')])
     checks.push(
       buildDoctorCheck(
         'scope_without_owner',
-        without.map((row) => row.scope_id)
+        without.map((row) => row.scope_id),
+        Number(without[0]?.total ?? 0)
       )
     )
     checks.push(
       buildDoctorCheck(
         'scope_with_many_owners',
-        many.map((row) => row.scope_id)
+        many.map((row) => row.scope_id),
+        Number(many[0]?.total ?? 0)
       )
     )
   }

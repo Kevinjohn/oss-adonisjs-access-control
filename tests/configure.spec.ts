@@ -10,6 +10,9 @@ import { IgnitorFactory } from '@adonisjs/core/factories'
 import { configureWith, manualSteps } from '../configure.js'
 import { stubsRoot } from '../stubs/main.js'
 import { renderMembershipsStub } from './helpers/schema.js'
+import { testDatabase } from './helpers/database.js'
+import type { BaseSchema } from '@adonisjs/lucid/schema'
+import { planMigrations } from '../src/migration_order.js'
 
 const packageName = '@kevinjohn/adonisjs-access-control'
 const kernelSource = [
@@ -25,8 +28,20 @@ const kernelSource = [
   '',
 ].join('\n')
 
-async function freshApp(options: { accountKit?: boolean; stubs?: string } = {}) {
+async function freshApp(
+  options: {
+    accountKit?: boolean
+    stubs?: string
+    configPath?: string
+    migrationPath?: string
+    interactive?: boolean
+    promptScope?: string
+  } = {}
+) {
   const root = await mkdtemp(join(tmpdir(), 'access_control_configure_'))
+  const configPath = options.configPath ?? 'config'
+  const migrationPath = options.migrationPath ?? 'database/migrations'
+  const directories = { config: configPath, migrations: migrationPath }
   await writeFile(
     join(root, 'package.json'),
     '{"type":"module","devDependencies":{"@adonisjs/assembler":"8.6.0"}}'
@@ -34,13 +49,13 @@ async function freshApp(options: { accountKit?: boolean; stubs?: string } = {}) 
   await writeFile(join(root, 'tsconfig.json'), '{}')
   await writeFile(
     join(root, 'adonisrc.ts'),
-    "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ commands: [], providers: [] })\n"
+    `import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ commands: [], providers: [], directories: ${JSON.stringify(directories)} })\n`
   )
   await mkdir(join(root, 'start'))
   await writeFile(join(root, 'start', 'kernel.ts'), kernelSource)
-  await mkdir(join(root, 'config'))
+  await mkdir(join(root, configPath), { recursive: true })
   if (options.accountKit !== false)
-    await writeFile(join(root, 'config', 'account_kit.ts'), 'export default {}\n')
+    await writeFile(join(root, configPath, 'account_kit.ts'), 'export default {}\n')
   await symlink(
     fileURLToPath(new URL('../node_modules', import.meta.url)),
     join(root, 'node_modules')
@@ -48,19 +63,26 @@ async function freshApp(options: { accountKit?: boolean; stubs?: string } = {}) 
   const stubs = options.stubs ?? stubsRoot
   const importer = (specifier: string) =>
     specifier === packageName
-      ? Promise.resolve({ configure: (command: Configure) => configureWith(command, stubs) })
+      ? Promise.resolve({
+          configure: (command: Configure) =>
+            configureWith(command, stubs, options.interactive ?? false),
+        })
       : import(specifier)
   const ignitor = new IgnitorFactory()
     .withCoreProviders()
     .withCoreConfig()
     .merge({
-      rcFileContents: { providers: [], commands: [async () => new ListLoader([Configure])] },
+      rcFileContents: {
+        directories,
+        providers: [],
+        commands: [async () => new ListLoader([Configure])],
+      },
     })
     .create(pathToFileURL(`${root}/`), { importer })
   const read = (path: string) => readFile(join(root, path), 'utf8')
   const migrations = async () => {
     try {
-      const files = await readdir(join(root, 'database', 'migrations'))
+      const files = await readdir(join(root, migrationPath))
       return files.sort()
     } catch {
       return []
@@ -72,6 +94,7 @@ async function freshApp(options: { accountKit?: boolean; stubs?: string } = {}) 
     const kernel = new Kernel(app)
     kernel.addLoader(new ListLoader([Configure]))
     kernel.ui.switchMode('raw')
+    if (options.promptScope) kernel.prompt.trap('scope-table').replyWith(options.promptScope)
     try {
       const command = await kernel.exec('configure', [packageName, '--force', ...flags])
       return {
@@ -161,6 +184,170 @@ test.group('configure (spec 11)', (group) => {
     } finally {
       await app.cleanup()
     }
+  })
+
+  test('prompts only in interactive setup and honours an explicit scope flag', async ({
+    assert,
+  }) => {
+    const prompted = await freshApp({ interactive: true, promptScope: 'groups' })
+    const flagged = await freshApp({ interactive: true, promptScope: 'ignored' })
+    try {
+      const first = await prompted.run()
+      assert.equal(first.exitCode, 0, first.logs.join('\n'))
+      assert.include(await prompted.read('config/access_control.ts'), "scope: { table: 'groups'")
+      const second = await flagged.run('--scope-table=teams')
+      assert.equal(second.exitCode, 0, second.logs.join('\n'))
+      assert.include(await flagged.read('config/access_control.ts'), "scope: { table: 'teams'")
+    } finally {
+      await prompted.cleanup()
+      await flagged.cleanup()
+    }
+  })
+
+  test('uses the host config and migrations directories and leaves existing files intact', async ({
+    assert,
+  }) => {
+    const app = await freshApp({ configPath: 'settings', migrationPath: 'db/changes' })
+    try {
+      const first = await app.run('--scope-table=teams')
+      assert.equal(first.exitCode, 0, first.logs.join('\n'))
+      assert.include(await app.read('settings/access_control.ts'), "scope: { table: 'teams'")
+      const files = await app.migrations()
+      assert.lengthOf(files, 1)
+      const second = await app.run('--scope-table=teams')
+      assert.equal(second.exitCode, 0)
+      assert.deepEqual(await app.migrations(), files)
+    } finally {
+      await app.cleanup()
+    }
+  })
+
+  test('an explicit migration path selects a Lucid destination instead of the RC default', async ({
+    assert,
+  }) => {
+    const app = await freshApp()
+    try {
+      const result = await app.run('--scope-table=teams', '--migration-path=database/custom')
+      assert.equal(result.exitCode, 0, result.logs.join('\n'))
+      const files = await readdir(join(app.root, 'database/custom'))
+      assert.lengthOf(files, 1)
+      assert.match(files[0], /^\d+_access_control_create_memberships\.ts$/)
+      assert.deepEqual(await app.migrations(), [])
+      const again = await app.run('--scope-table=teams', '--migration-path=database/custom')
+      assert.equal(again.exitCode, 0, again.logs.join('\n'))
+      assert.deepEqual(await readdir(join(app.root, 'database/custom')), files)
+    } finally {
+      await app.cleanup()
+    }
+  })
+
+  test('generates after future-dated parents and runs the generated sequence on the test database', async ({
+    assert,
+  }) => {
+    const app = await freshApp()
+    const fixture = await testDatabase()
+    const users = `users_${fixture.suffix}`
+    const teams = `teams_${fixture.suffix}`
+    const memberships = `memberships_${fixture.suffix}`
+    try {
+      const directory = join(app.root, 'database/migrations')
+      await mkdir(directory, { recursive: true })
+      const parents = [
+        [`2999999999998_create_users.ts`, users],
+        [`2999999999999_create_teams.ts`, teams],
+      ] as const
+      for (const [filename, table] of parents) {
+        await writeFile(
+          join(directory, filename),
+          `import { BaseSchema } from '@adonisjs/lucid/schema'\nexport default class extends BaseSchema { async up() { this.schema.createTable('${table}', (t) => t.increments('id')) } }\n`
+        )
+      }
+      const result = await app.run(
+        `--scope-table=${teams}`,
+        `--users-table=${users}`,
+        `--memberships-table=${memberships}`
+      )
+      assert.equal(result.exitCode, 0, result.logs.join('\n'))
+      const files = await app.migrations()
+      assert.deepEqual(files, [
+        parents[0][0],
+        parents[1][0],
+        '3000000000000_access_control_create_memberships.ts',
+      ])
+      for (const filename of files) {
+        if (filename.includes('access_control_create_memberships')) {
+          assert.isTrue(await fixture.db.connection().schema.hasTable(users))
+          assert.isTrue(await fixture.db.connection().schema.hasTable(teams))
+        }
+        const module = (await import(pathToFileURL(join(directory, filename)).href)) as {
+          default: new (db: unknown, file: string, dryRun: boolean) => BaseSchema
+        }
+        await new module.default(fixture.db.connection(), filename, false).execUp()
+      }
+      assert.isTrue(await fixture.db.connection().schema.hasTable(memberships))
+      const second = await app.run(
+        `--scope-table=${teams}`,
+        `--users-table=${users}`,
+        `--memberships-table=${memberships}`
+      )
+      assert.equal(second.exitCode, 0)
+      assert.deepEqual(await app.migrations(), files)
+    } finally {
+      for (const table of [memberships, teams, users])
+        await fixture.db.connection().schema.dropTableIfExists(table)
+      await fixture.cleanup()
+      await app.cleanup()
+    }
+  })
+
+  test('refuses an existing successor with a missing predecessor before writing anything', async ({
+    assert,
+  }) => {
+    const extended = await mkdtemp(join(tmpdir(), 'access_control_stubs_'))
+    const app = await freshApp({ stubs: extended })
+    try {
+      await cp(stubsRoot, extended, { recursive: true })
+      await writeFile(
+        join(extended, 'migrations', 'released.json'),
+        JSON.stringify([
+          { name: 'access_control_create_memberships' },
+          { name: 'add_membership_notes' },
+        ])
+      )
+      const directory = join(app.root, 'database/migrations')
+      const successor = '2999999999999_add_membership_notes.ts'
+      await mkdir(directory, { recursive: true })
+      await writeFile(join(directory, successor), '// app-owned\n')
+      const result = await app.run('--scope-table=teams')
+      assert.equal(result.exitCode, 1, result.logs.join('\n'))
+      assert.isTrue(
+        result.logs.some((message) => message.includes('Do not rename applied migrations'))
+      )
+      assert.deepEqual(await app.migrations(), [successor])
+      assert.equal(await app.read(`database/migrations/${successor}`), '// app-owned\n')
+      assert.deepEqual(await readdir(join(app.root, 'config')), ['account_kit.ts'])
+      assert.notInclude(await app.read('adonisrc.ts'), 'access_control_provider')
+    } finally {
+      await app.cleanup()
+      await rm(extended, { recursive: true, force: true })
+    }
+  })
+
+  test('rejects non-conventional numeric prefixes that cannot preserve filename order', ({
+    assert,
+  }) => {
+    assert.throws(
+      () => planMigrations(['9999999999999_parent.ts'], ['membership'], 1000000000000),
+      /migration history cannot be ordered safely/
+    )
+    assert.throws(
+      () =>
+        planMigrations(
+          ['2999999999999_next.ts', '3000000000000_previous.ts'],
+          ['previous', 'next']
+        ),
+      /migration history cannot be ordered safely/
+    )
   })
 
   test('refuses without config/account_kit.ts, without --scope-table, and with invalid values', async ({

@@ -111,7 +111,7 @@ test.group('transaction observer classifier', () => {
       code: 'SQLITE_CONSTRAINT',
     })
     const [failed] = observer.attempts()[0].inside
-    assert.equal(failed.outcome, 'failed')
+    assert.equal(failed.executionStatus, 'failed')
     assert.equal(failed.errorCode, 'SQLITE_CONSTRAINT')
     assert.equal(failed.table, 'composition_effects')
     observer.feed(query('BEGIN;', 'trx2'))

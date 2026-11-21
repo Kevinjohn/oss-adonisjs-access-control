@@ -27,7 +27,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: package behavior and host callback boundary; the application owns scope records; transaction ownership depends on whether input.trx is supplied.
+Scope: package behaviour and host callback boundary; the application owns scope records; transaction ownership depends on whether input.trx is supplied.
 
 ```mermaid
 flowchart TD

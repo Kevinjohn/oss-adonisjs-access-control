@@ -124,6 +124,7 @@ what this spec requires. Anything not in the manifest is not brought over.
 - Account Kit is a dev dependency by **GitHub release tarball URL**, and the peer is the **exact**
   version of that release (Masquerade pins `"0.2.0"`). **[repo]**
 - `typescript` is an optional peer `^5.9.3 || ^6.0.3`.
+- `@adonisjs/assembler` is an optional peer `^8.6.0` for configure-time source transforms.
 - `tsdown.entry`: `index.ts`, `configure.ts`, `stubs/main.ts`, `src/types.ts`,
   `providers/access_control_provider.ts`, `services/main.ts`, `middleware/main.ts`,
   `account_kit/main.ts`, `commands/main.ts`. `copy:templates` is Masquerade's
@@ -163,15 +164,16 @@ what this spec requires. Anything not in the manifest is not brought over.
 
 ### 1.7 Exports and source layout (replaces the earlier tables)
 
-| Subpath                     | File                                   | Contents                                                                                                                                                                       |
-| --------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `.`                         | `index.ts`                             | `defineAccessControl`, `AccessControl`, errors, `configure` (from `configure.ts`) and `stubsRoot` (from `stubs/main.ts`); `node ace configure` reads both from the root export |
-| `./types`                   | `src/types.ts`                         | type-only public types (`Role`, `PermissionKeyOf`, `ClientPayload`, …)                                                                                                         |
-| `./access_control_provider` | `providers/access_control_provider.ts` | service provider (sibling naming: `./account_kit_provider`, `./masquerade_provider`)                                                                                           |
-| `./services/main`           | `services/main.ts`                     | container-resolved `AccessControl` singleton                                                                                                                                   |
-| `./middleware`              | `middleware/main.ts`                   | default export `ScopeMiddleware` class; `scopeMiddleware(options)`                                                                                                             |
-| `./account-kit`             | `account_kit/main.ts`                  | `accessControlKitCallbacks` (Masquerade's subpath name)                                                                                                                        |
-| `./commands`                | `commands/main.ts`                     | Ace commands: `access-control:doctor` (17.2)                                                                                                                                   |
+| Subpath                     | File                                   | Contents                                                                                                                                                                                             |
+| --------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.`                         | `index.ts`                             | `defineAccessControl` (also `defineConfig`), `AccessControl`, errors, `configure` (from `configure.ts`) and `stubsRoot` (from `stubs/main.ts`); `node ace configure` reads both from the root export |
+| `./types`                   | `src/types.ts`                         | type-only public types (`Role`, `PermissionKeyOf`, `ClientPayload`, …)                                                                                                                               |
+| `./access_control_provider` | `providers/access_control_provider.ts` | service provider (sibling naming: `./account_kit_provider`, `./masquerade_provider`)                                                                                                                 |
+| `./services/main`           | `services/main.ts`                     | container-resolved `AccessControl` singleton                                                                                                                                                         |
+| `./middleware`              | `middleware/main.ts`                   | default export `ScopeMiddleware` class; `scopeMiddleware(options)`                                                                                                                                   |
+| `./scope_middleware`        | `middleware/main.ts`                   | equivalent middleware subpath, same exports and class identity                                                                                                                                       |
+| `./account-kit`             | `account_kit/main.ts`                  | `accessControlKitCallbacks` (Masquerade's subpath name)                                                                                                                                              |
+| `./commands`                | `commands/main.ts`                     | Ace commands: `access-control:doctor` (17.2)                                                                                                                                                         |
 
 ```
 index.ts
@@ -328,11 +330,12 @@ export interface AccessControlConfig<
   /** resource -> action -> lowest role allowed. Must include the reserved keys. */
   permissions: P
   /**
-   * Runs inside every membership write transaction, after the write. Throwing rolls back.
+   * Awaited inside every membership write transaction after the write. Throwing rolls back
+   * the package-owned transaction; a caller-owned transaction must roll back on failure.
    * It must not lock or write other users' rows or Account Kit tables, which sit earlier in the
    * lock order (4.2); writing app tables is fine.
    */
-  onMembershipChanged?: (event: MembershipEvent<R[number]>, trx: Trx) => Promise<void>
+  onMembershipChanged?: (change: MembershipEvent<R[number]>, trx: Trx) => Promise<void>
 }
 
 export type PermissionMap<Role extends string> = Record<string, Record<string, Role>> & {
@@ -919,14 +922,17 @@ export interface ClientPayload<Role extends string = string, Key extends string 
 ## 11. `configure` command
 
 `node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams [--scope-id-type=integer]
-[--users-table=users] [--user-id-type=integer] [--memberships-table=memberships]`. Flags only, no prompts, same value sets as Account
-Kit's own configure flags (`configure.ts:211-227`). **[repo]**
+[--users-table=users] [--user-id-type=integer] [--memberships-table=memberships] [--migration-path=database/migrations]`.
+Flags are authoritative; a missing scope table prompts only in an interactive terminal.
 
-1. Fail with a clear message if `config/account_kit.ts` is missing, or `--scope-table` is missing, or a
+1. Fail with a clear message if `account_kit.ts` is missing in `app.configPath()`, or `--scope-table` is missing in unattended use, or a
    table name or id type is invalid.
-2. Write `config/access_control.ts` from `stubs/config.stub` (the 2.1 example with the flag values),
+2. Write `app.configPath('access_control.ts')` from `stubs/config.stub` (the 2.1 example with the flag values),
    always including `membershipsTable: '<value>'` (default `'memberships'`).
-3. Publish `database/migrations/<timestamp>_access_control_create_memberships.ts` with placeholders filled.
+3. Publish `<timestamp>_access_control_create_memberships.ts` in the selected directory (default
+   `app.migrationsPath()`). New numeric prefixes must sort after existing numeric prefixes there.
+   Refuse a missing predecessor of an existing successor and preserve applied history. Lucid's
+   ordering between separate migration directories is owned by the application.
 4. Register `@kevinjohn/adonisjs-access-control/access_control_provider` in `adonisrc.ts`.
 5. Register named middleware `scope` → `@kevinjohn/adonisjs-access-control/middleware` in
    `start/kernel.ts` (`codemods.registerMiddleware('named', ...)`).
@@ -1050,7 +1056,7 @@ fixtures. Section 17 (change over time) was added after this review and has not 
   `tests/migration_stubs.spec.ts` fails if a listed stub's hash changes or a listed stub is deleted.
   Adding a stub to a release adds its entry in the release PR.
 - `configure` publishes every stub whose stable name is not already present (matched by file-name
-  suffix in `database/migrations/`) and never rewrites an existing file. Re-running `configure` after
+  suffix in the selected migration directory) and never rewrites an existing file. Re-running `configure` after
   an upgrade is how an app receives new migrations.
 - The changelog gets a `### Migrations` subsection for any release that adds a stub, naming the stub
   and what it does.

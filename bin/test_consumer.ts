@@ -90,14 +90,21 @@ const rootProbe = `
   import { join } from 'node:path'
   const api = await import('@kevinjohn/adonisjs-access-control')
   assert.equal(typeof api.configure, 'function')
+  assert.equal(api.defineConfig, api.defineAccessControl)
   assert.equal(typeof api.stubsRoot, 'string')
   await access(join(api.stubsRoot, 'main.js'))
   await access(join(api.stubsRoot, 'migrations', 'released.json'))
   const commands = await import('@kevinjohn/adonisjs-access-control/commands')
   const metadata = await commands.getMetaData()
   assert.deepEqual(metadata.map((c) => c.commandName), ['access-control:doctor'])
-  for (const subpath of ['types', 'services/main', 'middleware', 'account-kit'])
+  for (const subpath of ['types', 'middleware', 'scope_middleware', 'account-kit'])
     assert.equal(typeof (await import('@kevinjohn/adonisjs-access-control/' + subpath)), 'object')
+  const middleware = await import('@kevinjohn/adonisjs-access-control/middleware')
+  const scopeMiddleware = await import('@kevinjohn/adonisjs-access-control/scope_middleware')
+  assert.equal(middleware.default, scopeMiddleware.default)
+  assert.equal(middleware.scopeMiddleware, scopeMiddleware.scopeMiddleware)
+  await assert.rejects(import('@kevinjohn/adonisjs-access-control/services/main'), /requires an AdonisJS application/)
+  assert.equal(api.AccessControlError, api.errors.AccessControlError)
 `
 
 const providerProbe = `
@@ -108,6 +115,22 @@ const providerProbe = `
     import('@kevinjohn/adonisjs-access-control/providers/access_control_provider'),
     { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' }
   )
+`
+
+const runtimeWithoutAssemblerProbe = `
+  import assert from 'node:assert/strict'
+  import { createRequire } from 'node:module'
+  const entry = import.meta.resolve('@kevinjohn/adonisjs-access-control')
+  const requireFromPackage = createRequire(entry)
+  assert.throws(() => requireFromPackage.resolve('@adonisjs/assembler'), { code: 'MODULE_NOT_FOUND' })
+  const api = await import(entry)
+  const config = api.defineConfig({
+    roles: ['viewer'],
+    users: { table: 'users', keyType: 'integer' },
+    scope: { table: 'teams', keyType: 'integer' },
+    permissions: { members: { list: 'viewer', manage: 'viewer' }, invitations: { manage: 'viewer' } },
+  })
+  assert.equal(config.can('viewer', 'members:list'), true)
 `
 
 const pgEnv = {
@@ -255,6 +278,29 @@ try {
         await rm(app, { recursive: true, force: true })
         continue
       }
+      const migrationDirectory = join(app, 'database/migrations')
+      const beforeMigrations = await readdir(migrationDirectory)
+      const beforeConfig = await readFile(join(app, 'config/access_control.ts'), 'utf8')
+      await run(
+        app,
+        [
+          'exec',
+          'node',
+          'ace',
+          'configure',
+          '@kevinjohn/adonisjs-access-control',
+          '--scope-table=teams',
+        ],
+        `${selected}_configure`,
+        { ...baseEnv, DB_CLIENT: 'sqlite' }
+      )
+      if (
+        JSON.stringify(await readdir(migrationDirectory)) !== JSON.stringify(beforeMigrations) ||
+        (await readFile(join(app, 'config/access_control.ts'), 'utf8')) !== beforeConfig
+      )
+        throw new Error(
+          'Packed configure must leave existing configuration and migrations unchanged'
+        )
       await run(app, ['lint'], `${selected}_lint`)
       await run(app, ['build'], `${selected}_build`)
       for (const engine of database === 'all' ? ['sqlite', 'pg'] : [database]) {
@@ -328,6 +374,33 @@ try {
       for (const entry of results)
         if (entry.profile === selected) Object.assign(entry, { lockfileSha256, dependencyGraph })
       await writeResults()
+      // Resolve a new production-only graph rather than reusing dev peer links.
+      const runtime = await mkdtemp(join(tmpdir(), `access_control_runtime_${selected}_`))
+      try {
+        await cp(artifact, join(runtime, 'package.tgz'))
+        await cp(join(app, 'pnpm-workspace.yaml'), join(runtime, 'pnpm-workspace.yaml'))
+        await writeFile(
+          join(runtime, 'package.json'),
+          JSON.stringify({
+            name: 'access-control-runtime-probe',
+            private: true,
+            type: 'module',
+            dependencies: manifest.dependencies,
+          })
+        )
+        await run(
+          runtime,
+          ['install', '--prod', '--no-frozen-lockfile'],
+          `${selected}_runtime_install`
+        )
+        await run(
+          runtime,
+          ['exec', 'node', '--input-type=module', '--eval', runtimeWithoutAssemblerProbe],
+          `${selected}_runtime_without_assembler`
+        )
+      } finally {
+        await rm(runtime, { recursive: true, force: true })
+      }
       // A passing app is removed; a failing one stays for inspection next to its logs.
       await rm(app, { recursive: true, force: true })
     }

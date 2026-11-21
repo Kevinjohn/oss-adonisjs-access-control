@@ -15,11 +15,11 @@ test.group('memberships: concurrent operations serialise on the locks (spec 4.2)
   }) => {
     const s = await f.createScope()
     const [a, b] = await Promise.all([f.createUser(), f.createUser()])
-    const outcomes = await Promise.all([
+    const results = await Promise.all([
       codeOf(f.memberships.createFirstMember({ scopeId: s, userId: a })),
       codeOf(f.memberships.createFirstMember({ scopeId: s, userId: b })),
     ])
-    assert.sameMembers(outcomes, ['resolved', 'E_ACCESS_CONTROL_SCOPE_NOT_EMPTY'])
+    assert.sameMembers(results, ['resolved', 'E_ACCESS_CONTROL_SCOPE_NOT_EMPTY'])
     assert.lengthOf(await f.rows(s), 1)
     assert.lengthOf(f.events, 1)
   })
@@ -32,15 +32,15 @@ test.group('memberships: concurrent operations serialise on the locks (spec 4.2)
     await f.memberships.createFirstMember({ scopeId: s, userId: o })
     await f.memberships.add({ actor: actor(o), scopeId: s, userId: a, role: 'admin' })
     await f.memberships.add({ actor: actor(o), scopeId: s, userId: b, role: 'admin' })
-    const outcomes = await Promise.all([
+    const results = await Promise.all([
       codeOf(f.memberships.remove({ actor: actor(a), scopeId: s, userId: b })),
       codeOf(f.memberships.remove({ actor: actor(b), scopeId: s, userId: a })),
     ])
     assert.lengthOf(
-      outcomes.filter((outcome) => outcome === 'resolved'),
+      results.filter((result) => result === 'resolved'),
       1
     )
-    assert.include(outcomes, 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.include(results, 'E_ACCESS_CONTROL_FORBIDDEN')
     assert.lengthOf(await f.rows(s), 2)
   })
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Clarify membership callback transaction ownership and client membership summary route responses.
+- Add compatible `defineConfig`, `buildClientMembership`, `getMembership`, `decideManagement`,
+  `decideAssignment` and scope middleware aliases.
+- Diagnose malformed membership timestamps and statuses during reads and account export.
+- Reject service imports before application creation instead of retaining an undefined singleton.
+- Honour host configure paths and publish migrations after existing numeric prefixes without
+  renaming applied history.
+- Bound owner diagnostics to twenty sampled scopes per check and index identity role maps while
+  preserving their ordering.
+
 ## 0.2.3 - 2026-11-21
 
 ### Changed

@@ -28,6 +28,7 @@
     "./access_control_provider": "./build/providers/access_control_provider.js",
     "./services/main": "./build/services/main.js",
     "./middleware": "./build/middleware/main.js",
+    "./scope_middleware": "./build/middleware/main.js",
     "./account-kit": "./build/account_kit/main.js",
     "./commands": "./build/commands/main.js"
   },
@@ -111,6 +112,7 @@
     "vitepress": "^1.6.4"
   },
   "peerDependencies": {
+    "@adonisjs/assembler": "^8.6.0",
     "@adonisjs/auth": "^10.0.0",
     "@adonisjs/bouncer": "^4.0.0",
     "@adonisjs/core": "^7.0.0",
@@ -120,6 +122,9 @@
     "typescript": "^5.9.3 || ^6.0.3"
   },
   "peerDependenciesMeta": {
+    "@adonisjs/assembler": {
+      "optional": true
+    },
     "typescript": {
       "optional": true
     }

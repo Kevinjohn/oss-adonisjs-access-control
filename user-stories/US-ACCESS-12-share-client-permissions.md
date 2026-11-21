@@ -12,7 +12,8 @@ As a client application using team-aware controls, I want to send effective memb
 ## Acceptance criteria
 
 - Active membership returns `scopeId`, `role`, `permissions`, and `assignableRoles`.
-- Missing or suspended membership returns `null`.
+- The standalone helper returns `null` for missing or suspended membership. A scoped HTTP route
+  refuses that request with 403 before its controller reaches the helper.
 - Server still checks each route with scope middleware/Bouncer and application record policy.
 
 ## User flow
@@ -21,14 +22,14 @@ As a client application using team-aware controls, I want to send effective memb
 flowchart TD
     A["Client requests current membership permissions"] --> B["Application loads effective account membership"]
     B --> C{"Membership active?"}
-    C -->|No| D["Client receives null"]
+    C -->|No| D["Scope middleware refuses with 403; a standalone helper returns null"]
     C -->|Yes| E["Client receives scope ID, role, permissions and assignable roles"]
     E --> F["Each server request is authorized again"]
 ```
 
 ## Code flow
 
-Scope: package behavior; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
+Scope: package behaviour; the host owns team records, page rendering, route placement, record-level policy, and trusted operations outside the package callback.
 
 ```mermaid
 flowchart TD

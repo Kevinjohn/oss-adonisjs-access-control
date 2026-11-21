@@ -25,9 +25,16 @@ test.group('client payload (spec 10)', () => {
     assert.isNull(config.clientPayload(null))
     assert.isNull(config.clientPayload(undefined))
     assert.isNull(config.clientPayload(membership('owner', 'suspended')))
+    assert.isNull(config.buildClientMembership(null))
+    assert.isNull(config.buildClientMembership(undefined))
+    assert.isNull(config.buildClientMembership(membership('owner', 'suspended')))
   })
 
   test('an editor payload has a string scopeId, its keys and no assignable roles', ({ assert }) => {
+    assert.deepEqual(
+      config.buildClientMembership(membership('editor')),
+      config.clientPayload(membership('editor'))
+    )
     assert.deepEqual(config.clientPayload(membership('editor')), {
       scopeId: '42',
       role: 'editor',

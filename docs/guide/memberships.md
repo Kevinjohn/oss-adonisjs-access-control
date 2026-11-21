@@ -9,6 +9,12 @@ import accessControl from '@kevinjohn/adonisjs-access-control/services/main'
 const page = await accessControl.memberships.listForScope({ actor: { id: user.id }, scopeId })
 ```
 
+Import `services/main` only after AdonisJS creates its application. The live service export is
+populated at boot: modules imported between creation and boot may import it, but must wait for
+boot before using it. A pre-creation import throws explicitly and stays failed in that ESM
+module graph; bootstrap the application in a fresh process instead. For standalone configuration
+and rules use `defineAccessControl` from the root export (`defineConfig` is an alias in the next release).
+
 A membership is `{ scopeId, userId, role, status, createdAt, updatedAt }`. Keys are normalised to
 the configured key types on the way in: a numeric string becomes a number for `integer` keys, a
 UUID is lower-cased, and a `string` key keeps its exact spelling when it has 1 to 254
@@ -19,8 +25,9 @@ historical rows.
 
 ## Raw reads
 
-`find(scopeId, userId, trx?)` and `listForUser(userId, trx?)` return stored memberships without
-authorising a caller. Neither writes data or emits events. Keep them behind application checks;
+`find(scopeId, userId, trx?)` (also available as `getMembership` in the next release) and `listForUser(userId, trx?)`
+return stored memberships without authorising a caller. Neither writes data or invokes the
+change callback. Keep them behind application checks;
 a request-supplied user ID does not
 prove the caller may read that user's memberships. `authorize` checks the supplied user's active
 membership and permission inside the required transaction; the application still chooses whose
@@ -31,6 +38,11 @@ configured role type. It returns `null` for an absent or suspended membership an
 `E_ACCESS_CONTROL_UNKNOWN_ROLE` for an active row with a role outside the configuration. Use
 `find` instead to inspect historical roles. The same caller authorization and transaction
 considerations apply to both reads.
+
+Rows with an unsupported status or a missing or unreadable `created_at` or `updated_at` fail
+with `AccessControlError` (`E_ACCESS_CONTROL_INVALID_CONFIG`, 500). This diagnostic also applies
+to Account Kit's membership data export. Historical role strings remain valid data for raw reads
+and exports; repair invalid stored values in application-owned data migrations.
 
 ## Actor-authorised operations
 
@@ -94,13 +106,18 @@ repair ownership with an application-owned data migration, or remove the existin
 through a trusted cleanup and bootstrap again only when discarding them is intended. Back up and
 account for membership events and other application data before recovery.
 
-## Events
+<a id="events"></a>
 
-`onMembershipChanged(event, trx)` in the configuration runs inside the write transaction after the
-row changes, with the same `trx`. Throwing rolls the write back. Use it for audit rows written
-through `trx`, or to queue notifications that a commit hook sends afterwards.
+## Membership change callback
 
-Event types: `membership.added`, `membership.first_member`, `membership.invitation_accepted`,
+`onMembershipChanged(change, trx)` is an awaited callback in the configuration, invoked after
+the row changes, with the same active `trx`. It is not a framework event or a post-commit
+notification. Throwing rolls back a package-owned transaction. With a caller-owned transaction,
+the error propagates to the caller, who must roll back; do not catch the failure and commit the
+partial operation. Use it for audit rows written through `trx`, or to queue notifications that
+a commit hook sends afterwards.
+
+Change types: `membership.added`, `membership.first_member`, `membership.invitation_accepted`,
 `membership.granted`, `membership.role_changed`, `membership.status_changed`, `membership.removed`
 (with `reason`: `removed`, `scope_deleted` or `account_deleted`), `membership.left` and
 `membership.ownership_transferred`. The `MembershipEvent<Role>` union in

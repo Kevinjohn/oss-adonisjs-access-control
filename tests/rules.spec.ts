@@ -27,6 +27,20 @@ const withoutOwner = defineAccessControl({
 const ALLOWED = { allowed: true } as const
 const denied = (code: string) => ({ allowed: false, code: `E_ACCESS_CONTROL_${code}` })
 
+test('decision-oriented names preserve allowed and refused rule records', ({ assert }) => {
+  for (const [actorRole, expected] of [
+    ['admin', ALLOWED],
+    ['viewer', denied('FORBIDDEN')],
+  ] as const) {
+    const input = { actorRole, targetRole: 'viewer', isSelf: false }
+    assert.deepEqual(withOwner.decideManagement(input), expected)
+    assert.deepEqual(withOwner.canManage(input), expected)
+    const assignment = { ...input, nextRole: 'editor' }
+    assert.deepEqual(withOwner.decideAssignment(assignment), expected)
+    assert.deepEqual(withOwner.canAssign(assignment), expected)
+  }
+})
+
 test('successful rule results are independent across instances', ({ assert }) => {
   const first = withOwner.canManage({ actorRole: 'admin', targetRole: 'viewer', isSelf: false })
   assert.isTrue(first.allowed)

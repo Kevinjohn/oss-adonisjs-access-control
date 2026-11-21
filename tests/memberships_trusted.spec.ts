@@ -186,9 +186,12 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
       'outer'
     )
     assert.deepEqual(await f.rows(scope), [])
+    const callbackError = new Error('hook')
+    let callerTrx: unknown
     const g = await membershipFixture({
-      onMembershipChanged: async () => {
-        throw new Error('hook')
+      onMembershipChanged: async (_change, trx) => {
+        assert.strictEqual(trx, callerTrx)
+        throw callbackError
       },
     })
     try {
@@ -196,9 +199,24 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
       const hookUser = await g.createUser()
       await assert.rejects(
         () =>
-          g.runner.transaction(g.db, (trx) =>
-            g.memberships.grant({ scopeId: hookScope, userId: hookUser, role: 'editor', trx })
-          ),
+          g.runner.transaction(g.db, async (trx) => {
+            callerTrx = trx
+            try {
+              await g.memberships.grant({
+                scopeId: hookScope,
+                userId: hookUser,
+                role: 'editor',
+                trx,
+              })
+            } catch (error) {
+              assert.strictEqual(error, callbackError)
+              // The callback received the caller's live transaction. It is the caller that rolls back.
+              const membership = await g.memberships.getMembership(hookScope, hookUser, trx)
+              assert.equal(membership?.role, 'editor')
+              throw error
+            }
+            assert.fail('expected callback rejection')
+          }),
         'hook'
       )
       assert.deepEqual(await g.rows(hookScope), [])
@@ -264,6 +282,52 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     assert.equal(
       await codeOf(f.memberships.identityRoles({ actorId: a, targetId: 'nope' })),
       'E_ACCESS_CONTROL_INVALID_INPUT'
+    )
+  })
+
+  test('identityRoles preserves code-unit scope order across many unordered rows, with suspended targets', async ({
+    assert,
+  }) => {
+    const [actorId, targetId] = await Promise.all([f.createUser(), f.createUser()])
+    const scopes: (number | string)[] = []
+    for (let index = 0; index < 30; index++) scopes.push(await f.createScope())
+    const now = f.runner.sqlTimestamp(f.db)
+    const rows = scopes
+      .slice()
+      .reverse()
+      .flatMap((scopeId, index) => [
+        {
+          scope_id: scopeId,
+          user_id: actorId,
+          role: 'admin',
+          status: index % 2 === 0 ? 'active' : 'suspended',
+          created_at: now,
+          updated_at: now,
+        },
+        {
+          scope_id: scopeId,
+          user_id: targetId,
+          role: 'historical_role',
+          status: 'suspended',
+          created_at: now,
+          updated_at: now,
+        },
+      ])
+    await f.db.table(f.names.memberships).insert(rows)
+    const roles = await f.memberships.identityRoles({ actorId, targetId })
+    const sorted = (keys: (string | number)[]) =>
+      keys.sort((a, b) => (String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0))
+    assert.deepEqual(
+      [...roles.actorRoles],
+      sorted(
+        rows
+          .filter((row) => row.user_id === actorId && row.status === 'active')
+          .map((row) => row.scope_id)
+      ).map((id) => [id, 'admin'])
+    )
+    assert.deepEqual(
+      [...roles.targetRoles],
+      sorted(scopes).map((id) => [id, 'historical_role'])
     )
   })
 

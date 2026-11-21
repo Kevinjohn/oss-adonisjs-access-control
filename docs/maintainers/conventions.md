@@ -22,6 +22,10 @@ together. `bin/release_check.sh` refuses to release unless the dev dependency is
 tarball of the exact peer version, so a kit commit or another kit release never ships as the
 declared peer.
 
+The archive's optional Assembler peer describes the configure-time source transformer.
+Runtime imports and services do not require Assembler. Public aliases resolve to the same
+implementation and preserve the original imports; `./scope_middleware` is an alias of `./middleware`.
+
 The `luxon` peer floor is `^3.4.4`, the Luxon peer of Lucid `22.4.2`, which is the Lucid floor. The
 packed floor consumer installs `luxon 3.4.4`. Decided on 2026-11-15 under the owner's delegation;
 specification section 1.12 matches.
@@ -113,6 +117,11 @@ provider attribution, tool traces, credentials, or the forbidden standalone word
 GitHub-visible text. Review complete outgoing content before publication.
 
 ## Deviations
+
+- Issues #140–143 extend the original section 1 contract with a pre-creation service diagnostic,
+  optional Assembler peer, additive public entry points, and configure paths resolved through
+  the host application. The existing import paths, exact Account Kit peer, event type keys and
+  migration history remain supported.
 
 - `leave` answers `NOT_A_MEMBER`, not `SCOPE_NOT_FOUND`, when the scope row is missing
   (specification section 6 lists `SCOPE_NOT_FOUND` for a missing row during a lock). `leave` is
