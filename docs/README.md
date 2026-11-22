@@ -23,7 +23,7 @@ request's membership.
 - [Memberships](guide/memberships.md): the service, trusted operations, events and transactions.
 - [Scope middleware and Bouncer](guide/bouncer.md): scoped routes and generated abilities.
 - [Account Kit](guide/account-kit.md): invitation, acceptance, deletion and export callbacks.
-- [Client payload](guide/client.md): what a frontend receives and the type-only imports.
+- [Client membership summary](guide/client.md): what a frontend receives and the type-only imports.
 - [Changing roles and the doctor](guide/changing-roles.md): renames, owner changes and upgrades.
 - [Adopting an existing table](guide/adopting.md): moving memberships an application already
   stores into the package's table, or replacing a home-grown access layer.

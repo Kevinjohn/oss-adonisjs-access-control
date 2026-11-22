@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `9f1068f79aabb1e15a01823d54056900113957bf` (origin/main, 2026-11-21). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client payload, and Account Kit callbacks. The November 2026 review ran 103 focused tests covering abilities, configuration, diagnostics, invitation batches, membership storage and operations, middleware, payloads, provider resolution and rules. Host application browser journeys were outside that run.
+Source baseline: `9f1068f79aabb1e15a01823d54056900113957bf` (origin/main, 2026-11-21). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client membership summary, and Account Kit callbacks. The November 2026 review ran 103 focused tests covering abilities, configuration, diagnostics, invitation batches, membership storage and operations, middleware, payloads, provider resolution and rules. Host application browser journeys were outside that run.
 
 ## Index
 

@@ -3,7 +3,7 @@
 As a client application using team-aware controls, I want to send effective membership permissions to a client so that the client can reflect the effective account’s current access.
 
 **Status:** Current
-**Access:** Host derives payload from effective account membership; payload is presentational and does not authorize requests.
+**Access:** Host derives the client membership summary from effective account membership; the summary is presentational and does not authorize requests.
 **Entry:** Host controller calls `accessControl.buildClientMembership(membership)` or its alias `clientPayload`.
 **Documentation:** [client.md](../docs/guide/client.md)
 **Source:** [src/payload.ts](../src/payload.ts)

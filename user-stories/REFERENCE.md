@@ -16,6 +16,6 @@
 - Error codes, statuses and response handler: [`src/errors.ts`](../src/errors.ts); instance binding (`attach`): [`src/define.ts`](../src/define.ts), [`providers/access_control_provider.ts`](../providers/access_control_provider.ts).
 - Account Kit invitation, deletion and export callbacks: [`account_kit/main.ts`](../account_kit/main.ts).
 - Setup and diagnosis: [`configure.ts`](../configure.ts), [`src/doctor.ts`](../src/doctor.ts), [adoption guide](../docs/guide/adopting.md).
-- User docs: [scope/Bouncer](../docs/guide/bouncer.md), [memberships](../docs/guide/memberships.md), [management rules](../docs/guide/rules.md), [Account Kit integration](../docs/guide/account-kit.md), [client payload](../docs/guide/client.md), [roles](../docs/guide/roles.md).
+- User docs: [scope/Bouncer](../docs/guide/bouncer.md), [memberships](../docs/guide/memberships.md), [management rules](../docs/guide/rules.md), [Account Kit integration](../docs/guide/account-kit.md), [client membership summary](../docs/guide/client.md), [roles](../docs/guide/roles.md).
 
 `Current` describes the source path subject to host authentication, role configuration and database setup; it is not a runtime test result. Team boundaries are application data and can have arbitrary configured key types.

@@ -24,7 +24,7 @@ export const sidebar = [
       { text: 'Memberships', link: '/guide/memberships' },
       { text: 'Scope middleware and Bouncer', link: '/guide/bouncer' },
       { text: 'Account Kit', link: '/guide/account-kit' },
-      { text: 'Client payload', link: '/guide/client' },
+      { text: 'Client membership summary', link: '/guide/client' },
       { text: 'Changing roles and the doctor', link: '/guide/changing-roles' },
       { text: 'Adopting an existing table', link: '/guide/adopting' },
     ],
