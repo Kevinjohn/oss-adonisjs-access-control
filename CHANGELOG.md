@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve existing Access Control migrations in Lucid-discoverable subdirectories on reruns.
+
 ## 0.3.0 - 2026-11-21
 
 - Require Account Kit 0.5.0.

@@ -1,13 +1,15 @@
+import { basename, extname } from 'node:path'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 
 /** Plan new files without changing the names of existing migrations. A missing predecessor
  * cannot safely be appended after an already-published successor. */
 export function planMigrations(files: string[], released: string[], now = Date.now()) {
   const existing = files.filter((file) => /\.([cm]?ts|[cm]?js)$/.test(file))
-  const prefixOf = (filename: string) => BigInt(/^(\d+)_/.exec(filename)?.[1] ?? '0')
+  const before = (left: string, right: string) =>
+    left < right && left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }) < 0
   let timestamp = BigInt(now) - 1n
   for (const filename of existing) {
-    const prefix = /^(\d+)_/.exec(filename)?.[1]
+    const prefix = /^(\d+)_/.exec(basename(filename))?.[1]
     if (prefix && BigInt(prefix) > timestamp) timestamp = BigInt(prefix)
   }
   const plan: { name: string; filename: string; existing: boolean }[] = []
@@ -19,15 +21,11 @@ export function planMigrations(files: string[], released: string[], now = Date.n
     )
   for (const name of released) {
     const suffix = `_${name}.ts`
-    const matches = existing.filter((file) => file.endsWith(suffix))
+    const matches = existing.filter((file) => basename(file, extname(file)).endsWith(`_${name}`))
     if (matches.length > 1) throw unsafe()
     const found = matches[0]
     if (found) {
-      if (
-        missing ||
-        (previous !== undefined && (found <= previous || prefixOf(found) < prefixOf(previous)))
-      )
-        throw unsafe()
+      if (missing || (previous !== undefined && !before(previous, found))) throw unsafe()
       plan.push({ name, filename: found, existing: true })
       previous = found
       continue
@@ -37,8 +35,8 @@ export function planMigrations(files: string[], released: string[], now = Date.n
     // Lucid also supports lexicographic filename sorting. Refuse non-conventional numeric
     // prefixes which would place a generated prerequisite before an existing migration.
     if (
-      existing.some((file) => /^\d+_/.test(file) && file >= filename) ||
-      (previous !== undefined && filename <= previous)
+      existing.some((file) => !before(file, filename)) ||
+      (previous !== undefined && !before(previous, filename))
     )
       throw unsafe()
     plan.push({ name, filename, existing: false })

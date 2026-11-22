@@ -1,5 +1,15 @@
 // Specification section 11: `node ace configure` on a fresh application with Account Kit.
-import { cp, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  rename,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -11,6 +21,7 @@ import { configureWith, manualSteps } from '../configure.js'
 import { stubsRoot } from '../stubs/main.js'
 import { renderMembershipsStub } from './helpers/schema.js'
 import { testDatabase } from './helpers/database.js'
+import { sourceFiles } from '@adonisjs/lucid/utils'
 import type { BaseSchema } from '@adonisjs/lucid/schema'
 import { planMigrations } from '../src/migration_order.js'
 
@@ -201,6 +212,39 @@ test.group('configure (spec 11)', (group) => {
     } finally {
       await prompted.cleanup()
       await flagged.cleanup()
+    }
+  })
+
+  test('preserves the Lucid identity of a nested membership migration on rerun', async ({
+    assert,
+  }) => {
+    const app = await freshApp()
+    const readInventory = async () => {
+      const { files } = await sourceFiles(
+        pathToFileURL(app.root + '/'),
+        'database/migrations',
+        false
+      )
+      return files.map(({ name }) => name)
+    }
+    try {
+      const flags = ['--scope-table=teams']
+      const first = await app.run(...flags)
+      assert.equal(first.exitCode, 0, first.logs.join('\n'))
+      const [original] = await app.migrations()
+      const directory = join(app.root, 'database/migrations')
+      const nested = `prior/${original}`
+      const originalSource = await app.read(`database/migrations/${original}`)
+      await mkdir(join(directory, 'prior'))
+      await rename(join(directory, original), join(directory, nested))
+      const before = await readInventory()
+      assert.deepEqual(before, [`database/migrations/${nested.slice(0, -3)}`])
+      const second = await app.run(...flags)
+      assert.equal(second.exitCode, 0, second.logs.join('\n'))
+      assert.deepEqual(await readInventory(), before)
+      assert.equal(await app.read(`database/migrations/${nested}`), originalSource)
+    } finally {
+      await app.cleanup()
     }
   })
 
