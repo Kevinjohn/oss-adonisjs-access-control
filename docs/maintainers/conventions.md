@@ -135,3 +135,6 @@ GitHub-visible text. Review complete outgoing content before publication.
   parents retain the supplied spelling. Serialized string invitation scopes must exactly match
   the stored scope spelling before acceptance locks the scope, so the kit's JavaScript code-unit
   order remains the package's scope lock order (specification 5.1).
+- Section 1.10 no longer requires a separate owner authorisation to merge: a pull request merges
+  once its review is complete and every check on its head has passed. Owner-approved on
+  2026-11-22.
