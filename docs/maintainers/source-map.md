@@ -9,15 +9,16 @@ The `exports` map in [package.json](../../package.json) defines supported import
 routes below are relative to the documentation site's base. Run `pnpm docs:api` to regenerate
 their Markdown sources under `docs/reference/api/`.
 
-| Public subpath              | Source                                 | Reference coverage                                      |
-| --------------------------- | -------------------------------------- | ------------------------------------------------------- |
-| package root                | `index.ts`                             | `reference/api/index/index`                             |
-| `./types`                   | `src/types.ts`                         | `reference/api/src/types/index`                         |
-| `./access_control_provider` | `providers/access_control_provider.ts` | `reference/api/providers/access_control_provider/index` |
-| `./services/main`           | `services/main.ts`                     | `reference/api/services/main/index`                     |
-| `./middleware`              | `middleware/main.ts`                   | `reference/api/middleware/main/index`                   |
-| `./account-kit`             | `account_kit/main.ts`                  | `reference/api/account_kit/main/index`                  |
-| `./commands`                | `commands/main.ts`                     | `reference/api/commands/main/index`                     |
+| Public subpath              | Source                                         | Reference coverage                                      |
+| --------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
+| package root                | `index.ts`                                     | `reference/api/index/index`                             |
+| `./types`                   | `src/types.ts`                                 | `reference/api/src/types/index`                         |
+| `./access_control_provider` | `providers/access_control_provider.ts`         | `reference/api/providers/access_control_provider/index` |
+| `./services/main`           | `services/main.ts`                             | `reference/api/services/main/index`                     |
+| `./middleware`              | `middleware/main.ts`                           | `reference/api/middleware/main/index`                   |
+| `./scope_middleware`        | `middleware/main.ts` (alias of `./middleware`) | `reference/api/middleware/main/index`                   |
+| `./account-kit`             | `account_kit/main.ts`                          | `reference/api/account_kit/main/index`                  |
+| `./commands`                | `commands/main.ts`                             | `reference/api/commands/main/index`                     |
 
 TypeDoc requires comments on classes, functions, interfaces, type aliases and variables. Comments
 should explain a contract, ordering or non-obvious constraint.
@@ -27,13 +28,14 @@ should explain a contract, ordering or non-obvious constraint.
 | Task                            | Module                                                                                                                 | Focused tests                                                                                                                                         | Specification      |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | Configure the package in an app | `configure.ts`, `stubs/config.stub`, `stubs/main.ts`, `src/package_root.ts`                                            | `tests/configure.spec.ts`                                                                                                                             | 11                 |
+| Order migrations for configure  | `src/migration_order.ts`                                                                                               | `tests/configure.spec.ts` (ordering refusals, future-dated parents, nested history)                                                                   | 11                 |
 | Validate the configuration      | `src/define.ts`                                                                                                        | `tests/define.spec.ts`, `tests/types/define.ts`                                                                                                       | 2                  |
 | Pure rules and truth tables     | `src/rules.ts`                                                                                                         | `tests/rules.spec.ts`                                                                                                                                 | 3                  |
 | Memberships table               | `stubs/migrations/access_control_create_memberships.stub`, `stubs/migrations/released.json`, `src/migration_schema.ts` | `tests/migration_stubs.spec.ts`, `tests/helpers/schema.ts`                                                                                            | 4.1, 17.1          |
 | Lock process and transactions   | `src/locks.ts`, `src/kit_transaction.ts`, `src/keys.ts`                                                                | `tests/locks.spec.ts`, `tests/kit_transaction.spec.ts`, `tests/memberships_concurrency.spec.ts`                                                       | 0.2, 4.2, 4.3, 5.1 |
 | Membership service              | `src/memberships.ts`, `src/pagination.ts`                                                                              | `tests/memberships.spec.ts`, `tests/memberships_trusted.spec.ts`, `tests/pagination.spec.ts`, `tests/membership_storage.spec.ts` (stored-row mapping) | 5                  |
 | Errors and responses            | `src/errors.ts`                                                                                                        | `tests/errors.spec.ts`                                                                                                                                | 6                  |
-| Scope middleware                | `middleware/main.ts`                                                                                                   | `tests/middleware.spec.ts`                                                                                                                            | 7                  |
+| Scope middleware                | `middleware/main.ts`                                                                                                   | `tests/middleware.spec.ts`; `./scope_middleware` alias: `tests/package_exports.spec.ts` · "loads every built public export"                           | 7                  |
 | Bouncer abilities               | `src/abilities.ts`                                                                                                     | `tests/abilities.spec.ts`, `tests/types/abilities.ts`                                                                                                 | 8                  |
 | Account Kit callbacks           | `account_kit/main.ts`                                                                                                  | `tests/account_kit.spec.ts`, `tests/types/account_kit.ts`                                                                                             | 9                  |
 | Client payload                  | `src/payload.ts`                                                                                                       | `tests/payload.spec.ts`                                                                                                                               | 10                 |
