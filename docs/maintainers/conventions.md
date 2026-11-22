@@ -23,7 +23,10 @@ tarball of the exact peer version, so a kit commit or another kit release never 
 declared peer.
 
 The archive's optional Assembler peer describes the configure-time source transformer.
-Runtime imports and services do not require Assembler. Public aliases resolve to the same
+Runtime imports and services do not require Assembler. Its floor is `^8.0.0`, the oldest 8.x the
+Core floor (7.0.0) and Lucid floor (22.4.2) accept: `tests/configure.spec.ts` passed against
+Assembler 8.0.0 with Core 7.0.0 and Lucid 22.4.2 on 2026-11-22. The dev dependency stays on
+the newer range to test against. Public aliases resolve to the same
 implementation and preserve the original imports; `./scope_middleware` is an alias of `./middleware`.
 
 The `luxon` peer floor is `^3.4.4`, the Luxon peer of Lucid `22.4.2`, which is the Lucid floor. The

@@ -10,6 +10,8 @@
 
 ### Changed
 
+- Lower the optional `@adonisjs/assembler` peer, used only by `configure`, from `^8.6.0` to
+  `^8.0.0`, matching the Core and Lucid floors.
 - Configure's migration-order refusal names the blocking file, says whether a released migration
   is duplicated, sorts before its prerequisite or is followed by an existing file, and points to
   `--migration-path`. A later released migration is published beside the last released migration

@@ -80,7 +80,7 @@ before writing application files.
 ## Source registration prerequisites
 
 Configure's provider, command and middleware edits use the framework's assembler transformer.
-Run configure in a development installation with `@adonisjs/assembler` 8.6 or later in the
+Run configure in a development installation with `@adonisjs/assembler` 8.0 or later in the
 8.x line available and check its
 warnings. If the framework skips a source edit, the printed next steps do not mean registration
 succeeded. Repair the development installation and rerun configure, or register these entries
