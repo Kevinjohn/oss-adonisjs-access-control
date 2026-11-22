@@ -238,11 +238,11 @@ changelog, packs, and publishes the prerelease with the SHA-256.
 - User-visible changes update docs and add a line under `## Unreleased` in `CHANGELOG.md`.
 - Public error codes are stable; changing one needs a breaking changelog entry.
 - Imperative commit messages, signed off (`git commit -s`). Work in a branch and worktree, never on
-  `main`; pull requests stay open until the owner authorises the merge.
+  `main`; a pull request merges once its review is complete and every check on its head has passed.
 - **Public contribution privacy:** no private planning metadata, assistant or provider attribution,
   tool traces or credentials, and not the word the sibling repositories forbid, in any GitHub-visible
   text. Review outgoing text before publishing.
-- Do not publish, tag, merge or rename as part of a task unless the owner authorises it.
+- Do not publish, tag or rename as part of a task unless the owner authorises it.
 
 ### 1.11 Releasing (copied from the siblings)
 

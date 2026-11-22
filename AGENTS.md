@@ -111,5 +111,5 @@ docs/                       user and maintainer documentation
 - The reserved keys `members:list`, `members:manage` and `invitations:manage` are always present.
 - Released migration stubs are immutable (specification section 17.1).
 - Error codes are `E_ACCESS_CONTROL_*` with the response shape from specification section 6.
-- Work in a branch and worktree, never on `main`. Pull requests stay open until the owner
-  authorises the merge. Sign commits off (`git commit -s`).
+- Work in a branch and worktree, never on `main`. A pull request merges once its review is
+  complete and every check on its head has passed. Sign commits off (`git commit -s`).
