@@ -13,8 +13,9 @@
    a new Account Kit release automatically.
 3. If the release adds a migration stub, add its `{ name, sha256 }` entry to
    `stubs/migrations/released.json` and a `### Migrations` subsection to the changelog.
-4. Merge the PR (owner-authorised).
-5. Actions → release → Run workflow (on `main`).
+4. Merge the PR once its review is complete and every check on its head has passed.
+5. The owner runs Actions → release → Run workflow (on `main`). Publishing and tagging stay owner
+   actions.
 
 Nothing else is manual. The release is a GitHub prerelease with the tarball attached; its notes
 carry the install command and the SHA-256. `bash bin/release_check.sh` runs the same gate locally.

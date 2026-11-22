@@ -112,8 +112,9 @@ workflow service). Replace the example credentials with those of your disposable
   shipped status. A test name is not a pass result; record the command and database outcome
   separately.
 - A database that is unavailable locally is reported as CI-only, never as passed.
-- Do not publish, tag, merge or rename as part of a task unless separately authorised by the
-  owner.
+- Do not publish, tag or rename as part of a task unless separately authorised by the owner. A
+  pull request, including a release pull request, merges once its review is complete and every
+  check on its head has passed.
 
 ## Public contribution privacy
 

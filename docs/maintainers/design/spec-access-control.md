@@ -249,8 +249,9 @@ changelog, packs, and publishes the prerelease with the SHA-256.
 1. On a branch: bump `version`, turn `## Unreleased` into `## <version> - <YYYY-MM-DD>` with a new
    empty `## Unreleased` above, update the README and `README-AGENTS.md` install commands to the exact
    version. When the pinned Account Kit archive changes, update its URL, version and checksum together.
-2. Merge the PR (owner-authorised).
-3. Actions → release → Run workflow on `main`.
+2. Merge the PR once its review is complete and every check on its head has passed (section 1.10).
+3. The owner runs Actions → release → Run workflow on `main`; publishing and tagging stay owner
+   actions.
 
 ### 1.12 Peer dependencies
 
