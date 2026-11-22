@@ -23,7 +23,10 @@ tarball of the exact peer version, so a kit commit or another kit release never 
 declared peer.
 
 The archive's optional Assembler peer describes the configure-time source transformer.
-Runtime imports and services do not require Assembler. Public aliases resolve to the same
+Runtime imports and services do not require Assembler. Its floor is `^8.0.0`, the oldest 8.x the
+Core floor (7.0.0) and Lucid floor (22.4.2) accept: `tests/configure.spec.ts` passed against
+Assembler 8.0.0 with Core 7.0.0 and Lucid 22.4.2 on 2026-11-22. The dev dependency stays on
+the newer range to test against. Public aliases resolve to the same
 implementation and preserve the original imports; `./scope_middleware` is an alias of `./middleware`.
 
 The `luxon` peer floor is `^3.4.4`, the Luxon peer of Lucid `22.4.2`, which is the Lucid floor. The
@@ -65,8 +68,10 @@ that tarball as given.
 
 The `c8` block in `package.json` has `check-coverage: true`. Each floor is the lower of the SQLite
 and PostgreSQL results at the membership service milestone, rounded down to a whole number and
-then lowered by two points so engine-specific branches do not fail a single-engine run:
-**FLOORS**. Lowering a floor afterwards is a reviewed change to the config and this paragraph
+then lowered by two points so engine-specific branches do not fail a single-engine run. The
+current floors are the `statements`, `lines`, `branches` and `functions` values of that block
+(92, 92, 95 and 91), set in commit `fe080e5` at the membership service milestone; the SQLite
+and PostgreSQL results they were derived from are not recorded. Lowering a floor afterwards is a reviewed change to the config and this paragraph
 together.
 
 ## SQLite writes

@@ -86,6 +86,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         'memberships_user_foreign_key',
         'unknown_role',
         'unknown_status',
+        'invalid_timestamp',
         'scope_without_owner',
         'scope_with_many_owners',
         'orphan_scope',
@@ -331,6 +332,62 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         report.checks.filter((entry) => !entry.ok).map((entry) => entry.count),
         [1, 1, 1, 2, 2]
       )
+    } finally {
+      await booted.db.connection().schema.dropTable(tableName)
+    }
+  })
+
+  test('app-owned rows with a NULL or unreadable timestamp are reported within the requested scope', async ({
+    assert,
+  }) => {
+    const tableName = `${booted.names.memberships}_loose_times`
+    await booted.db.connection().schema.createTable(tableName, (table) => {
+      table.increments('id')
+      table.integer('scope_id')
+      table.integer('user_id')
+      table.string('role', 32)
+      table.string('status', 16)
+      table.string('created_at', 40).nullable()
+      table.timestamp('updated_at').nullable()
+    })
+    try {
+      const [scope, otherScope] = await Promise.all([createScope(), createScope()])
+      const [owner, u1, u2, u3] = await Promise.all([
+        createUser(),
+        createUser(),
+        createUser(),
+        createUser(),
+      ])
+      const now = sqlTimestamp(booted.db)
+      const insert = async (userId: number, createdAt: string | null, updatedAt: string | null) =>
+        idOf(
+          await booted.db
+            .table(tableName)
+            .returning('id')
+            .insert({
+              scope_id: userId === u3 ? otherScope : scope,
+              user_id: userId,
+              role: 'owner',
+              status: userId === owner ? 'active' : 'suspended',
+              created_at: createdAt,
+              updated_at: updatedAt,
+            })
+        )
+      await insert(owner, now, now)
+      const noUpdatedAt = await insert(u1, now, null)
+      const unreadable = await insert(u2, 'not a timestamp', now)
+      await insert(u3, null, null)
+      const drifted = defineAccessControl({ ...access.config, membershipsTable: tableName })
+      const report = await runDoctor({ access: drifted as AccessControl, db: booted.db, scope })
+      const check = report.checks.find((entry) => entry.name === 'invalid_timestamp')
+      assert.deepEqual(check, {
+        name: 'invalid_timestamp',
+        ok: false,
+        count: 2,
+        sampleIds: [String(noUpdatedAt), String(unreadable)],
+      })
+      const unscoped = await runDoctor({ access: drifted as AccessControl, db: booted.db })
+      assert.equal(unscoped.checks.find((entry) => entry.name === 'invalid_timestamp')?.count, 3)
     } finally {
       await booted.db.connection().schema.dropTable(tableName)
     }

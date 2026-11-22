@@ -97,8 +97,11 @@ Doctor checks that the membership table has an unconditional unique key on the
 | `memberships_scope_foreign_key` | `scope_id` references the configured scope table's `id` with `RESTRICT` or `NO ACTION` on parent deletion. |
 | `memberships_user_foreign_key`  | `user_id` references the configured user table's `id` with the same deletion behaviour.                    |
 
-A clean doctor run means every copied row has a known role and status, a scope and a user, and
-one owner per scope. Then route the scoped requests through the `scope` middleware and the
+A clean doctor run means every copied row has a known role and status, readable `created_at` and
+`updated_at` timestamps, a scope and a user, and one owner per scope. Since 0.3.0 every read
+refuses a row with a null timestamp, so an app-owned table whose timestamp columns are nullable
+(the AdonisJS default for `table.timestamp`) needs them backfilled; the `invalid_timestamp` check
+lists those rows. Then route the scoped requests through the `scope` middleware and the
 generated abilities as the [Bouncer guide](bouncer.md) shows, and stop writing to the old table:
 every change goes through the membership service from now on, so `onMembershipChanged` sees it.
 Drop the old table in a later release once nothing reads it.

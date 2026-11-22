@@ -204,7 +204,7 @@ export class AccessControl<
 
   /** Management decision (3.1). */
   decideManagement(input: { actorRole: string; targetRole: string; isSelf: boolean }): RuleResult {
-    return rules.canManage(this.#matrix, input)
+    return rules.decideManagement(this.#matrix, input)
   }
 
   /** Alias of `decideManagement`, returning a decision record, not a boolean. */
@@ -219,7 +219,7 @@ export class AccessControl<
     nextRole: string
     isSelf: boolean
   }): RuleResult {
-    return rules.canAssign(this.#matrix, input)
+    return rules.decideAssignment(this.#matrix, input)
   }
 
   /** Alias of `decideAssignment`, returning a decision record, not a boolean. */

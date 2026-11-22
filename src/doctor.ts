@@ -5,6 +5,7 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { Database } from '@adonisjs/lucid/database'
 import type { AccessControl } from './define.js'
 import { requireValidKey } from './keys.js'
+import { readTimestamp } from './kit_transaction.js'
 import { inspectMembershipConstraints } from './membership_constraints.js'
 import { packageManifest } from './package_root.js'
 import { resolveStoredParentId } from './stored_keys.js'
@@ -34,6 +35,16 @@ export interface DoctorInput {
 }
 
 const sampleLimit = 20
+const timestampBatchSize = 1000
+
+/** Whether a stored timestamp is one the membership reads accept: present and readable. */
+function isReadableTimestamp(value: unknown): boolean {
+  try {
+    return readTimestamp(value)?.isValid === true
+  } catch {
+    return false
+  }
+}
 const expectedColumns = ['id', 'scope_id', 'user_id', 'role', 'status', 'created_at', 'updated_at']
 
 function buildDoctorCheck(name: string, ids: unknown[], findingCount = ids.length): DoctorCheck {
@@ -123,6 +134,29 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
       await countMatchingRows(unknownStatus)
     )
   )
+
+  // Reads refuse a NULL or unreadable timestamp. Values are read with the same reader as the
+  // membership service, in id order and in batches, because engines disagree on what a timestamp
+  // column may hold.
+  const invalidTimestampIds: unknown[] = []
+  let invalidTimestampCount = 0
+  let lastId: unknown
+  for (;;) {
+    const query = buildMembershipQuery()
+      .select('m.id', 'm.created_at', 'm.updated_at')
+      .orderBy('m.id', 'asc')
+      .limit(timestampBatchSize)
+    if (lastId !== undefined) query.where('m.id', '>', lastId as string | number)
+    const batch = await query
+    for (const row of batch) {
+      if (isReadableTimestamp(row.created_at) && isReadableTimestamp(row.updated_at)) continue
+      invalidTimestampCount++
+      if (invalidTimestampIds.length < sampleLimit) invalidTimestampIds.push(row.id)
+    }
+    if (batch.length < timestampBatchSize) break
+    lastId = batch[batch.length - 1].id
+  }
+  checks.push(buildDoctorCheck('invalid_timestamp', invalidTimestampIds, invalidTimestampCount))
 
   if (ownerRole !== undefined) {
     const owners = (comparison: '=' | '>') =>

@@ -1,13 +1,13 @@
 # Client membership summary
 
 A frontend needs to know what the current member may do without re-implementing the rules.
-`accessControl.clientPayload(ctx.membership)` builds that summary (`kitAccount` is the Account
+`accessControl.buildClientMembership(ctx.membership)` builds that summary (`kitAccount` is the Account
 Kit middleware from the [Bouncer guide](bouncer.md)):
 
 ```ts
 router
   .get('/teams/:scopeId/access', async ({ membership }) => {
-    return accessControl.clientPayload(membership)
+    return accessControl.buildClientMembership(membership)
   })
   .use([kitAccount, middleware.scope()])
 ```
@@ -25,11 +25,11 @@ router
 - `permissions` lists every key the role satisfies, in configuration order.
 - `assignableRoles` lists the roles the member may assign to others: empty without
   `members:manage`, otherwise every role of equal or lower rank except the owner role.
-- The standalone helper `clientPayload` returns `null` for no
+- The helper `buildClientMembership` returns `null` for no
   membership or a suspended membership. The protected example route instead refuses these
   requests with `E_ACCESS_CONTROL_FORBIDDEN` (403) in the scope middleware, before the handler.
 
-The next release also exposes `buildClientMembership` as an equivalent name for the helper.
+`clientPayload` remains a supported alias of `buildClientMembership`.
 
 The summary contains the scope, role, permissions and assignable roles. The illustrative URL
 describes access, not the authentication session; existing applications own compatibility for

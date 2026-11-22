@@ -124,7 +124,7 @@ what this spec requires. Anything not in the manifest is not brought over.
 - Account Kit is a dev dependency by **GitHub release tarball URL**, and the peer is the **exact**
   version of that release (Masquerade pins `"0.2.0"`). **[repo]**
 - `typescript` is an optional peer `^5.9.3 || ^6.0.3`.
-- `@adonisjs/assembler` is an optional peer `^8.6.0` for configure-time source transforms.
+- `@adonisjs/assembler` is an optional peer `^8.0.0` for configure-time source transforms.
 - `tsdown.entry`: `index.ts`, `configure.ts`, `stubs/main.ts`, `src/types.ts`,
   `providers/access_control_provider.ts`, `services/main.ts`, `middleware/main.ts`,
   `account_kit/main.ts`, `commands/main.ts`. `copy:templates` is Masquerade's

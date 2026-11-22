@@ -13,7 +13,7 @@ Import `services/main` only after AdonisJS creates its application. The live ser
 populated at boot: modules imported between creation and boot may import it, but must wait for
 boot before using it. A pre-creation import throws explicitly and stays failed in that ESM
 module graph; bootstrap the application in a fresh process instead. For standalone configuration
-and rules use `defineAccessControl` from the root export (`defineConfig` is an alias in the next release).
+and rules use `defineConfig` from the root export; `defineAccessControl` remains a supported alias.
 
 A membership is `{ scopeId, userId, role, status, createdAt, updatedAt }`. Keys are normalised to
 the configured key types on the way in: a numeric string becomes a number for `integer` keys, a
@@ -25,24 +25,26 @@ historical rows.
 
 ## Raw reads
 
-`find(scopeId, userId, trx?)` (also available as `getMembership` in the next release) and `listForUser(userId, trx?)`
+`getMembership(scopeId, userId, trx?)` (also available under its older name `find`) and `listForUser(userId, trx?)`
 return stored memberships without authorising a caller. Neither writes data or invokes the
 change callback. Keep them behind application checks;
 a request-supplied user ID does not
 prove the caller may read that user's memberships. `authorize` checks the supplied user's active
 membership and permission inside the required transaction; the application still chooses whose
-identity to pass. It returns the membership without writing data or emitting events.
+identity to pass. It returns the membership without writing data or calling the change callback.
 
 `findActive(scopeId, userId, trx?)` returns an active membership with a role narrowed to the
 configured role type. It returns `null` for an absent or suspended membership and throws
 `E_ACCESS_CONTROL_UNKNOWN_ROLE` for an active row with a role outside the configuration. Use
-`find` instead to inspect historical roles. The same caller authorization and transaction
+`getMembership` instead to inspect historical roles. The same caller authorization and transaction
 considerations apply to both reads.
 
-Rows with an unsupported status or a missing or unreadable `created_at` or `updated_at` fail
+Rows with a null or non-string role, an unsupported status, or a missing or unreadable
+`created_at` or `updated_at` fail
 with `AccessControlError` (`E_ACCESS_CONTROL_INVALID_CONFIG`, 500). This diagnostic also applies
-to Account Kit's membership data export. Historical role strings remain valid data for raw reads
-and exports; repair invalid stored values in application-owned data migrations.
+to Account Kit's membership data export. Historical role strings remain valid data for raw reads,
+client summaries and exports; the scope middleware still refuses them with
+`E_ACCESS_CONTROL_FORBIDDEN`; repair invalid stored values in application-owned data migrations.
 
 ## Actor-authorised operations
 
@@ -52,7 +54,7 @@ lock the rows in a fixed order, load the actor's own membership in the scope and
 `E_ACCESS_CONTROL_FORBIDDEN` before the target is looked at, so a non-manager cannot learn
 whether someone is a member from a 404 versus a 403.
 
-| Method              | Input                                       | Result     | Event                              |
+| Method              | Input                                       | Result     | Change record `type`               |
 | ------------------- | ------------------------------------------- | ---------- | ---------------------------------- |
 | `listForScope`      | `{ actor, scopeId, cursor?, limit?, trx? }` | a page     | none                               |
 | `add`               | `{ actor, scopeId, userId, role, trx? }`    | membership | `membership.added`                 |
@@ -65,7 +67,7 @@ whether someone is a member from a 404 versus a 403.
   and accepts a `limit` from 1 to 100 (default 25).
 - `add` requires the user row to exist (`USER_NOT_FOUND`) and no existing membership
   (`ALREADY_MEMBER`).
-- `changeRole` and `setStatus` skip the write and the event when nothing changes.
+- `changeRole` and `setStatus` skip the write and the change callback when nothing changes.
 - `transferOwnership` requires the owner role to be configured, the actor to be the active owner
   and the target to be an active member who is not the actor. The old owner is demoted to the
   highest non-owner role in the same transaction.
@@ -104,7 +106,7 @@ exists, `createFirstMember` refuses with `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY`. Kee
 initial grants in the same transaction when they form one operation. If grants already exist,
 repair ownership with an application-owned data migration, or remove the existing memberships
 through a trusted cleanup and bootstrap again only when discarding them is intended. Back up and
-account for membership events and other application data before recovery.
+account for membership change records and other application data before recovery.
 
 <a id="events"></a>
 
@@ -115,13 +117,15 @@ the row changes, with the same active `trx`. It is not a framework event or a po
 notification. Throwing rolls back a package-owned transaction. With a caller-owned transaction,
 the error propagates to the caller, who must roll back; do not catch the failure and commit the
 partial operation. Use it for audit rows written through `trx`, or to queue notifications that
-a commit hook sends afterwards.
+a commit hook sends afterwards. Anything the application emits after commit, such as an
+AdonisJS event fired from that hook, is the application's own and separate from this callback.
 
 Change types: `membership.added`, `membership.first_member`, `membership.invitation_accepted`,
 `membership.granted`, `membership.role_changed`, `membership.status_changed`, `membership.removed`
 (with `reason`: `removed`, `scope_deleted` or `account_deleted`), `membership.left` and
-`membership.ownership_transferred`. The `MembershipEvent<Role>` union in
-`@kevinjohn/adonisjs-access-control/types` describes each payload.
+`membership.ownership_transferred`. The callback receives one change record per write; the
+`MembershipEvent<Role>` union in `@kevinjohn/adonisjs-access-control/types` describes each
+record's fields.
 
 ## Transactions and locks
 

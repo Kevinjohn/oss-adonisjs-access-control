@@ -3,9 +3,9 @@
 The rules are pure functions on the configuration, exposed on the `AccessControl` instance and
 applied by the membership service inside its transactions. `O` is the owner role when set.
 
-`canManage` and `canAssign` return `RuleResult` decisions (`{ allowed: true }` or
-`{ allowed: false, code }`), not booleans. The next release exposes the equivalent names
-`decideManagement` and `decideAssignment` for new callers.
+`decideManagement` and `decideAssignment` return `RuleResult` decisions (`{ allowed: true }` or
+`{ allowed: false, code }`), not booleans. The older names `canManage` and `canAssign` remain
+supported aliases that return the same decisions.
 
 ## Vocabulary
 
@@ -18,7 +18,7 @@ applied by the membership service inside its transactions. `O` is the owner role
 
 ## Managing a member
 
-`canManage({ actorRole, targetRole, isSelf })` decides whether an actor may change a member's role,
+`decideManagement({ actorRole, targetRole, isSelf })` decides whether an actor may change a member's role,
 change their status or remove them. The first matching row wins.
 
 1. The actor's or the target's role is unknown: denied, `UNKNOWN_ROLE`.
@@ -30,7 +30,7 @@ change their status or remove them. The first matching row wins.
 
 ## Assigning a role
 
-`canAssign({ actorRole, targetRole, nextRole, isSelf })` runs `canManage` first, then checks the
+`decideAssignment({ actorRole, targetRole, nextRole, isSelf })` runs `decideManagement` first, then checks the
 role being assigned.
 
 1. The next role is unknown: denied, `UNKNOWN_ROLE`.
@@ -38,7 +38,7 @@ role being assigned.
 3. The next role ranks above the actor: denied, `RANK_TOO_LOW`.
 4. Otherwise allowed.
 
-Adding a member uses `canAssign` with the new role as the target role, so the rows about an
+Adding a member uses `decideAssignment` with the new role as the target role, so the rows about an
 existing target do not apply.
 
 ## Acting on yourself
@@ -59,7 +59,7 @@ target, suspended ones included.
 
 1. A target with no memberships: false.
 2. Acting on yourself: true.
-3. For every scope of the target, the actor must be a member of that scope and `canManage` must
+3. For every scope of the target, the actor must be a member of that scope and `decideManagement` must
    allow the actor's role over the target's role there. Any failure: false. A target who owns a
    scope can therefore be administered by nobody but themselves.
 4. Otherwise true.

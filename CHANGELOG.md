@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Added
+
+- Doctor reports memberships with a null or unreadable `created_at` or `updated_at` as
+  `invalid_timestamp`. Upgrade note for 0.3.0 and later: reads refuse such rows, so an app-owned
+  memberships table with nullable timestamp columns needs its null values backfilled.
+
+### Changed
+
+- Lower the optional `@adonisjs/assembler` peer, used only by `configure`, from `^8.6.0` to
+  `^8.0.0`, matching the Core and Lucid floors.
+- Configure's migration-order refusal names the blocking file, says whether a released migration
+  is duplicated, sorts before its prerequisite or is followed by an existing file, and points to
+  `--migration-path`. A later released migration is published beside the last released migration
+  already present, including one in a subdirectory.
+
+### Fixed
+
+- Configure's printed next steps name the application's own config and middleware paths instead
+  of `config/` and `app/middleware/`.
+- Reads, client summaries and exports refuse a stored membership whose role is null or not a
+  string with `E_ACCESS_CONTROL_INVALID_CONFIG` (500), as they do for an invalid status.
+  Historical role strings stay readable, and the scope middleware still refuses them with 403.
+- Configure reports a `--migration-path` that names a file with exit code 1 before writing
+  anything, instead of throwing.
+
 ## 0.3.1 - 2026-11-22
 
 - Require Account Kit 0.5.1.

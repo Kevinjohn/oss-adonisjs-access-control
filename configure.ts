@@ -35,18 +35,22 @@ function flagString(command: Configure, name: string, fallback: string): string 
   return value
 }
 
-/** The Bouncer and Account Kit changes `configure` prints instead of editing application files. */
-export const manualSteps = `Bouncer: in app/middleware/initialize_bouncer_middleware.ts merge the generated abilities:
-  import accessControl from '#config/access_control'
+/** The Bouncer and Account Kit changes `configure` prints instead of editing application files,
+ * with the application's own config and middleware paths. */
+export function manualSteps(app: Configure['app']): string {
+  const configFile = (name: string) => app.relativePath(app.configPath(name))
+  const bouncerMiddleware = app.relativePath(app.middlewarePath('initialize_bouncer_middleware.ts'))
+  return `Bouncer: in ${bouncerMiddleware} merge the generated abilities:
+  import accessControl from '#config/access_control' (the import alias of ${configFile('access_control.ts')})
   ctx.bouncer = new Bouncer(
     () => ctx.auth.user || null,
     { ...abilities, ...accessControl.abilities(() => ctx.membership) },
     policies
   ).setContainerResolver(ctx.containerResolver)
   and widen the HttpContext bouncer type with ReturnType<typeof accessControl.abilities>.
-  (config/access_control.ts carries the permission-key types; services/main is typed as a bare AccessControl.)
+  (${configFile('access_control.ts')} carries the permission-key types; services/main is typed as a bare AccessControl.)
 Routes: apply Account Kit's managedAccountMiddleware or admissionMiddleware before middleware.scope().
-Account Kit: in config/account_kit.ts pass the package callbacks:
+Account Kit: in ${configFile('account_kit.ts')} pass the package callbacks:
   import { accessControlKitCallbacks } from '${packageName}/account-kit'
   const kitCallbacks = accessControlKitCallbacks()
   authorize: kitCallbacks.authorize,
@@ -54,6 +58,13 @@ Account Kit: in config/account_kit.ts pass the package callbacks:
   onAccountDeletingTransaction: kitCallbacks.onAccountDeletingTransaction,
   exportAccountData: kitCallbacks.exportAccountData,
 Then run node ace migration:run and node ace access-control:doctor.`
+}
+
+/** Options of `configureWith`. */
+export interface ConfigureOptions {
+  /** Whether to prompt for a missing `--scope-table`; defaults to whether stdin and stdout are TTYs. */
+  interactive?: boolean
+}
 
 /**
  * The configure steps against a given stub directory: config file, released migrations,
@@ -62,7 +73,7 @@ Then run node ace migration:run and node ace access-control:doctor.`
 export async function configureWith(
   command: Configure,
   root: string,
-  interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY)
+  { interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) }: ConfigureOptions = {}
 ): Promise<void> {
   const accountKitPath = command.app.configPath('account_kit.ts')
   if (!existsSync(accountKitPath)) {
@@ -120,8 +131,13 @@ export async function configureWith(
   const info = await stat(destination).catch((error: unknown) => {
     if (!isMissing(error)) throw error
   })
-  if (info && !info.isDirectory())
-    throw new Error(`access-control: expected a migration directory at ${destination}`)
+  if (info && !info.isDirectory()) {
+    command.logger.error(
+      `access-control: the migration path ${migrationPath} is not a directory; pass --migration-path=<directory> relative to the application root`
+    )
+    command.exitCode = 1
+    return
+  }
   const { files } = await sourceFiles(pathToFileURL(destination + sep), '.', false)
   const migrationFiles = files.map((file) => relative(destination, file.absPath))
   let plan: ReturnType<typeof planMigrations>
@@ -176,14 +192,25 @@ export async function configureWith(
     rcFile.addCommand(`${packageName}/commands`)
   })
   await codemods.registerMiddleware('named', [{ name: 'scope', path: `${packageName}/middleware` }])
-  command.logger.info(manualSteps)
+  command.logger.info(manualSteps(command.app))
 }
 
 /**
- * Runs on `node ace configure @kevinjohn/adonisjs-access-control --scope-table=<table>`
- * (`--scope-id-type`, `--users-table`, `--user-id-type` and `--memberships-table` are optional):
- * writes `config/access_control.ts`, publishes the released migrations, registers the provider,
- * the commands and the named `scope` middleware, and prints the Bouncer and Account Kit changes.
+ * Runs on `node ace configure @kevinjohn/adonisjs-access-control`. Flags:
+ * - `--scope-table=<table>`: the table the scope rows live in. Required without a terminal; in an
+ *   interactive terminal configure prompts for it when the flag is absent.
+ * - `--scope-id-type=<integer|string|uuid>` (default `integer`)
+ * - `--users-table=<table>` (default `users`)
+ * - `--user-id-type=<integer|string|uuid>` (default `integer`)
+ * - `--memberships-table=<table>` (default `memberships`)
+ * - `--migration-path=<directory>`: relative to the application root; defaults to the
+ *   application's migrations directory.
+ *
+ * Requires the application's `account_kit.ts` config. Writes `access_control.ts` in the
+ * application's config directory, publishes the released migrations not yet present, registers
+ * the provider, the commands and the named `scope` middleware, and prints the Bouncer and Account
+ * Kit changes. Existing files are skipped, never rewritten. Sets exit code 1 and writes nothing
+ * when a flag is invalid or the migration order cannot be kept.
  */
 export async function configure(command: Configure): Promise<void> {
   await configureWith(command, stubsRoot)
