@@ -19,6 +19,7 @@ uses the stored spelling, just as a membership lookup does. `--json` prints `{ "
 | `memberships_table`      | A missing table, or missing columns (listed in `sampleIds`).                           |
 | `unknown_role`           | Memberships whose role is null or not in `roles`.                                      |
 | `unknown_status`         | Memberships whose status is null, or neither `active` nor `suspended`.                 |
+| `invalid_timestamp`      | Memberships whose `created_at` or `updated_at` is null or unreadable.                  |
 | `scope_without_owner`    | With `ownerRole` set: scopes that have members but no active owner.                    |
 | `scope_with_many_owners` | With `ownerRole` set: scopes with more than one active owner.                          |
 | `orphan_scope`           | Memberships whose scope row is gone (possible only without the foreign keys).          |

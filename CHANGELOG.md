@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Doctor reports memberships with a null or unreadable `created_at` or `updated_at` as
+  `invalid_timestamp`. Upgrade note for 0.3.0 and later: reads refuse such rows, so an app-owned
+  memberships table with nullable timestamp columns needs its null values backfilled.
+
 ## 0.3.1 - 2026-11-22
 
 - Require Account Kit 0.5.1.
