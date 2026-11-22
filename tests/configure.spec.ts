@@ -248,6 +248,75 @@ test.group('configure (spec 11)', (group) => {
     }
   })
 
+  test('a first install blocked by a nested migration names the file and --migration-path', async ({
+    assert,
+  }) => {
+    const app = await freshApp()
+    try {
+      const directory = join(app.root, 'database/migrations')
+      const users = '1795000000000_create_users_table.ts'
+      const tenant = 'tenant/1795000000001_create_tenant_things.ts'
+      await mkdir(join(directory, 'tenant'), { recursive: true })
+      await writeFile(join(directory, users), '// app-owned\n')
+      await writeFile(join(directory, tenant), '// app-owned\n')
+      const refused = await app.run('--scope-table=teams')
+      assert.equal(refused.exitCode, 1, refused.logs.join('\n'))
+      const message = refused.logs.join('\n')
+      assert.include(message, `${tenant} sorts after the new`)
+      assert.include(message, '--migration-path')
+      assert.deepEqual(await app.migrations(), [users, 'tenant'])
+      assert.deepEqual(await readdir(join(directory, 'tenant')), [tenant.slice('tenant/'.length)])
+      assert.deepEqual(await readdir(join(app.root, 'config')), ['account_kit.ts'])
+      const nested = await app.run(
+        '--scope-table=teams',
+        '--migration-path=database/migrations/tenant'
+      )
+      assert.equal(nested.exitCode, 0, nested.logs.join('\n'))
+      const written = await readdir(join(directory, 'tenant'))
+      assert.lengthOf(written, 2)
+      assert.match(written.sort()[1], /^\d+_access_control_create_memberships\.ts$/)
+    } finally {
+      await app.cleanup()
+    }
+  })
+
+  test('publishes a later released migration beside a nested existing one', async ({ assert }) => {
+    const extended = await mkdtemp(join(tmpdir(), 'access_control_stubs_'))
+    const app = await freshApp({ stubs: extended })
+    try {
+      await cp(stubsRoot, extended, { recursive: true })
+      const first = await app.run('--scope-table=teams')
+      assert.equal(first.exitCode, 0, first.logs.join('\n'))
+      const [original] = await app.migrations()
+      const directory = join(app.root, 'database/migrations')
+      await mkdir(join(directory, 'prior'))
+      await rename(join(directory, original), join(directory, 'prior', original))
+      await writeFile(join(directory, '1795000000000_create_users_table.ts'), '// app-owned\n')
+      await writeFile(
+        join(extended, 'migrations', 'released.json'),
+        JSON.stringify([
+          { name: 'access_control_create_memberships' },
+          { name: 'add_membership_notes' },
+        ])
+      )
+      await writeFile(
+        join(extended, 'migrations', 'add_membership_notes.stub'),
+        '{{{ exports({ to: migration.destination }) }}}\n// notes for {{ membershipsTable }}\n'
+      )
+      const second = await app.run('--scope-table=teams')
+      assert.equal(second.exitCode, 0, second.logs.join('\n'))
+      const prior = await readdir(join(directory, 'prior'))
+      prior.sort()
+      assert.lengthOf(prior, 2)
+      assert.equal(prior[0], original)
+      assert.match(prior[1], /^\d+_add_membership_notes\.ts$/)
+      assert.deepEqual(await app.migrations(), ['1795000000000_create_users_table.ts', 'prior'])
+    } finally {
+      await app.cleanup()
+      await rm(extended, { recursive: true, force: true })
+    }
+  })
+
   test('uses the host config and migrations directories and leaves existing files intact', async ({
     assert,
   }) => {
@@ -391,6 +460,30 @@ test.group('configure (spec 11)', (group) => {
           ['previous', 'next']
         ),
       /migration history cannot be ordered safely/
+    )
+  })
+
+  test('each refusal names the blocking file and its cause', ({ assert }) => {
+    assert.throws(
+      () =>
+        planMigrations(['1_membership.ts', 'prior/2_membership.ts'], ['membership'], 1000000000000),
+      /1_membership\.ts and prior\/2_membership\.ts both publish the released migration membership.*--migration-path/
+    )
+    assert.throws(
+      () =>
+        planMigrations(
+          ['2999999999999_next.ts', '3000000000000_previous.ts'],
+          ['previous', 'next']
+        ),
+      /2999999999999_next\.ts sorts before 3000000000000_previous\.ts, which it depends on.*--migration-path/
+    )
+    assert.throws(
+      () => planMigrations(['2999999999999_next.ts'], ['previous', 'next']),
+      /2999999999999_next\.ts exists but the released migration previous it depends on does not.*--migration-path/
+    )
+    assert.throws(
+      () => planMigrations(['helpers.ts'], ['membership'], 1000000000000),
+      /helpers\.ts sorts after the new 1000000000000_membership\.ts.*--migration-path/
     )
   })
 

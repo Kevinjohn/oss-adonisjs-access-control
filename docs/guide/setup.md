@@ -46,9 +46,25 @@ an explicit `migrations.paths` override for the intended connection, pass `--mig
 with the appropriate directory and keep that choice on reruns. Configure does not load the
 application database or choose a connection for you. It places newly published migrations after
 the greatest existing numeric prefix in that directory, including future-dated parent
-migrations, in released dependency order. Existing files are never renamed. If an already
-published successor has a missing predecessor or the package migration order cannot safely
-be extended, configure stops before publishing and asks you to review that history. Do not
+migrations, in released dependency order. Existing files are never renamed. Configure finds
+existing migrations in subdirectories as Lucid does, and publishes a later released migration
+beside the last released one already present, so a membership migration you moved into
+`database/migrations/prior/` receives its successors there.
+
+Configure stops before writing anything when the order cannot be kept, and names the file and
+the cause:
+
+| Cause                                                                    | Example message fragment                                                                                 |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| A released migration exists twice                                        | `a.ts and prior/b.ts both publish the released migration …`                                              |
+| A released migration sorts before its prerequisite, or exists without it | `… sorts before …, which it depends on` / `… exists but the released migration … it depends on does not` |
+| An existing file sorts after the new one                                 | `tenant/1795000000001_create_tenant_things.ts sorts after the new …`                                     |
+
+Lucid sorts a directory's files by their relative path, so a file in a subdirectory such as
+`tenant/` or a file without a numeric prefix such as `helpers.ts` sorts after every timestamped
+file at the root, and a new root migration would run before it. Move that file, or pass
+`--migration-path=<directory>` to publish into a directory where the new migrations sort after
+every existing one (for example `--migration-path=database/migrations/tenant`), and keep the flag on reruns. Do not
 rename applied migrations. In multiple-directory configurations, Lucid runs sources in the
 configured directory order; a later timestamp in one source cannot reorder another source.
 Ensure the users and scope parent migrations run before the membership migration.

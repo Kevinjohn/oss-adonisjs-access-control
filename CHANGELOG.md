@@ -8,6 +8,13 @@
   `invalid_timestamp`. Upgrade note for 0.3.0 and later: reads refuse such rows, so an app-owned
   memberships table with nullable timestamp columns needs its null values backfilled.
 
+### Changed
+
+- Configure's migration-order refusal names the blocking file, says whether a released migration
+  is duplicated, sorts before its prerequisite or is followed by an existing file, and points to
+  `--migration-path`. A later released migration is published beside the last released migration
+  already present, including one in a subdirectory.
+
 ## 0.3.1 - 2026-11-22
 
 - Require Account Kit 0.5.1.
