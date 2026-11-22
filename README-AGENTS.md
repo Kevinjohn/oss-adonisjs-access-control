@@ -34,7 +34,7 @@ Account Kit config changes to apply by hand. Flags: `--scope-id-type`, `--users-
   role allowed.
 - Memberships per scope with `active` or `suspended` status, actor-authorised management, owner
   transfer, and trusted operations for first members and accepted invitations.
-- Scope middleware, generated Bouncer abilities, Account Kit callbacks and a client payload.
+- Scope middleware, generated Bouncer abilities, Account Kit callbacks and a client membership summary.
 
 ## Invariants: do not break these
 
@@ -60,7 +60,7 @@ database; every service method accepts a caller `trx` started by the kit's `tran
 - [Getting started](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/guide/getting-started.md):
   install to a first scoped route.
 - [Guides](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/README.md#guides):
-  setup, roles, rules, memberships, Bouncer, Account Kit, client payload, changing roles, adoption.
+  setup, roles, rules, memberships, Bouncer, Account Kit, client membership summary, changing roles, adoption.
 - [Recipes](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/recipes/index.md)
   and [troubleshooting](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/guide/troubleshooting.md).
 - [Technical contract](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/maintainers/design/spec-access-control.md).

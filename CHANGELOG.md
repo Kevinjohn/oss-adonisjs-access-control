@@ -27,6 +27,26 @@
 - Configure reports a `--migration-path` that names a file with exit code 1 before writing
   anything, instead of throwing.
 
+### Omitted from the 0.3.0 entry
+
+These changes first shipped in 0.3.0 and were missing from its entry. They are recorded here
+because published entries are not rewritten; they are not new in the next release.
+
+- `configure` accepts `--migration-path=<directory>`, relative to the application root, to publish
+  the migrations somewhere other than the application's migrations directory.
+- `configure` without `--scope-table` asks `Which table holds the scope rows?` when stdin and
+  stdout are terminals. Unattended runs still stop with `--scope-table=<table> is required`.
+- `@adonisjs/assembler` became an optional peer (`^8.6.0` in 0.3.0 and 0.3.1), used only by
+  `configure`.
+- `./types` exports `ScopeMiddlewareOptions`, `AccessControlKitCallbackOptions`,
+  `AccessControlKitCallbacks`, `DoctorCheck`, `DoctorReport` and `DoctorInput`.
+- **Breaking:** a stored membership whose status is not `active` or `suspended` now fails every
+  read with `E_ACCESS_CONTROL_INVALID_CONFIG` (500,
+  `access-control: stored membership has an unsupported status`). Before 0.3.0 the row was
+  returned as stored and the scope middleware answered `E_ACCESS_CONTROL_FORBIDDEN` (403). Upgrade
+  note: run `node ace access-control:doctor` before upgrading from 0.2.x and repair any
+  `unknown_status` rows with a data migration.
+
 ## 0.3.1 - 2026-11-22
 
 - Require Account Kit 0.5.1.

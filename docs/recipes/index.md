@@ -192,11 +192,13 @@ The browser imports only the shared module, never the package's root import, whi
 server code. Boot validation still applies to the shared object, so a missing reserved key fails
 the server at start.
 
-Both this and the package's [client payload](../guide/client.md) are valid; neither authorises.
+Both this and the package's [client membership summary](../guide/client.md) are valid; neither
+authorises.
 
-- Use the client payload when the frontend lives in another repository, when a user belongs to
-  several scopes with different roles, or when the role thresholds should stay on the server. The
-  payload lists the current member's keys and assignable roles and is fetched per scope.
+- Use the client membership summary when the frontend lives in another repository, when a user
+  belongs to several scopes with different roles, or when the role thresholds should stay on the
+  server. The summary lists the current member's keys and assignable roles and is fetched per
+  scope.
 - Use a shared declaration when the browser already knows the member's role and both sides build
   from one workspace. It needs no extra endpoint and a renamed key fails both builds at once; the
   whole matrix ships in the bundle.

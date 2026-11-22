@@ -127,6 +127,6 @@ says why. The creator can now call `PUT /teams/<id>/projects/<id>`. Further memb
 ## Next steps
 
 - [Management rules](rules.md): who may change, suspend, remove or leave.
-- [Client payload](client.md): what the frontend receives about the current member.
+- [Client membership summary](client.md): what the frontend receives about the current member.
 - [Recipes](../recipes/index.md): members pages, team deletion, error mapping and more.
 - [Troubleshooting](troubleshooting.md): symptoms, causes and fixes.

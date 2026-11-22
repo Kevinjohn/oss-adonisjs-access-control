@@ -80,7 +80,7 @@ initializer and the Account Kit callbacks) and `node ace access-control:doctor`.
 
 - [Getting started](docs/guide/getting-started.md): install and protect a first scoped route.
 - [Guides](docs/README.md#guides): setup, roles, rules, memberships, Bouncer, Account Kit, the
-  client payload, changing roles and adoption.
+  client membership summary, changing roles and adoption.
 - [Recipes](docs/recipes/index.md): team creation and deletion, members pages, error mapping,
   single-scope applications and more.
 - [API reference](docs/reference/README.md): supported imports and generated signatures.

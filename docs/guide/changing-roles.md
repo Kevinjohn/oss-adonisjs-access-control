@@ -89,7 +89,7 @@ renamed as above. Owner protection and ownership transfer stop applying.
 ## Rename a permission key
 
 Keys are not stored, so this is a code change. Every client reading the
-[payload](client.md) must change in the same deployment.
+[membership summary](client.md) must change in the same deployment.
 
 ## Upgrading the package
 
