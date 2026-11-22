@@ -17,6 +17,11 @@
   `--migration-path`. A later released migration is published beside the last released migration
   already present, including one in a subdirectory.
 
+### Fixed
+
+- Configure's printed next steps name the application's own config and middleware paths instead
+  of `config/` and `app/middleware/`.
+
 ## 0.3.1 - 2026-11-22
 
 - Require Account Kit 0.5.1.

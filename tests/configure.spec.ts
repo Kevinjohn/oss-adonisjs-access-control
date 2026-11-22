@@ -17,7 +17,7 @@ import { test } from '@japa/runner'
 import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import Configure from '@adonisjs/core/commands/configure'
 import { IgnitorFactory } from '@adonisjs/core/factories'
-import { configureWith, manualSteps } from '../configure.js'
+import { configureWith } from '../configure.js'
 import { stubsRoot } from '../stubs/main.js'
 import { renderMembershipsStub } from './helpers/schema.js'
 import { testDatabase } from './helpers/database.js'
@@ -76,7 +76,7 @@ async function freshApp(
     specifier === packageName
       ? Promise.resolve({
           configure: (command: Configure) =>
-            configureWith(command, stubs, options.interactive ?? false),
+            configureWith(command, stubs, { interactive: options.interactive ?? false }),
         })
       : import(specifier)
   const ignitor = new IgnitorFactory()
@@ -152,7 +152,13 @@ test.group('configure (spec 11)', (group) => {
       const kernel = await app.read('start/kernel.ts')
       assert.include(kernel, `scope: () => import('${packageName}/middleware')`)
       assert.include(kernel, "auth: () => import('#middleware/auth_middleware')")
-      assert.isTrue(first.logs.some((line) => line.includes(manualSteps.split('\n')[0])))
+      assert.isTrue(
+        first.logs.some((line) =>
+          line.includes(
+            'Bouncer: in app/middleware/initialize_bouncer_middleware.ts merge the generated abilities:'
+          )
+        )
+      )
 
       await writeFile(join(app.root, 'config', 'access_control.ts'), '// app-owned\n')
       const second = await app.run('--scope-table=teams')
@@ -325,6 +331,10 @@ test.group('configure (spec 11)', (group) => {
       const first = await app.run('--scope-table=teams')
       assert.equal(first.exitCode, 0, first.logs.join('\n'))
       assert.include(await app.read('settings/access_control.ts'), "scope: { table: 'teams'")
+      const steps = first.logs.find((line) => line.includes('Bouncer:')) ?? ''
+      assert.include(steps, 'in settings/account_kit.ts pass the package callbacks')
+      assert.include(steps, '(settings/access_control.ts carries the permission-key types')
+      assert.notMatch(steps, /[\s(]config\//)
       const files = await app.migrations()
       assert.lengthOf(files, 1)
       const second = await app.run('--scope-table=teams')
