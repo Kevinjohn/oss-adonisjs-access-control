@@ -5,22 +5,23 @@ show symbol signatures; those source paths are documentation locations, not supp
 
 ## Supported package imports
 
-This reference describes the `0.2.0` pre-release. Its provider entry is
+This reference describes the current release. Its provider entry is
 `@kevinjohn/adonisjs-access-control/access_control_provider`; `configure` registers that path.
 
-| Import path                                                  | Use                                                                                                   | Public reference                                                                                               |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `@kevinjohn/adonisjs-access-control`                         | Configuration (`defineAccessControl`), the `AccessControl` class, errors, `configure` and `stubsRoot` | <a href="/oss-adonisjs-access-control/reference/api/index/index">Core package</a>                              |
-| `@kevinjohn/adonisjs-access-control/types`                   | Type-only imports for public contracts                                                                | <a href="/oss-adonisjs-access-control/reference/api/src/types/">Exported type reference</a>                    |
-| `@kevinjohn/adonisjs-access-control/access_control_provider` | AdonisJS provider registered by `configure`                                                           | <a href="/oss-adonisjs-access-control/reference/api/providers/access_control_provider/">Provider reference</a> |
-| `@kevinjohn/adonisjs-access-control/services/main`           | Container-resolved `AccessControl` singleton                                                          | <a href="/oss-adonisjs-access-control/reference/api/services/main/">Service reference</a>                      |
-| `@kevinjohn/adonisjs-access-control/middleware`              | Scope middleware: resolves the current request's membership                                           | <a href="/oss-adonisjs-access-control/reference/api/middleware/main/">Middleware reference</a>                 |
-| `@kevinjohn/adonisjs-access-control/account-kit`             | Account Kit callbacks: invitations, acceptance, account deletion and export                           | <a href="/oss-adonisjs-access-control/reference/api/account_kit/main/">Account Kit reference</a>               |
-| `@kevinjohn/adonisjs-access-control/commands`                | Ace command discovery loader                                                                          | <a href="/oss-adonisjs-access-control/reference/api/commands/main/">Commands reference</a>                     |
+| Import path                                                  | Use                                                                                                                         | Public reference                                                                                               |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `@kevinjohn/adonisjs-access-control`                         | Configuration (`defineConfig`, alias `defineAccessControl`), the `AccessControl` class, errors, `configure` and `stubsRoot` | <a href="/oss-adonisjs-access-control/reference/api/index/index">Core package</a>                              |
+| `@kevinjohn/adonisjs-access-control/types`                   | Type-only imports for public contracts                                                                                      | <a href="/oss-adonisjs-access-control/reference/api/src/types/">Exported type reference</a>                    |
+| `@kevinjohn/adonisjs-access-control/access_control_provider` | AdonisJS provider registered by `configure`                                                                                 | <a href="/oss-adonisjs-access-control/reference/api/providers/access_control_provider/">Provider reference</a> |
+| `@kevinjohn/adonisjs-access-control/services/main`           | Container-resolved `AccessControl` singleton                                                                                | <a href="/oss-adonisjs-access-control/reference/api/services/main/">Service reference</a>                      |
+| `@kevinjohn/adonisjs-access-control/middleware`              | Scope middleware: resolves the current request's membership                                                                 | <a href="/oss-adonisjs-access-control/reference/api/middleware/main/">Middleware reference</a>                 |
+| `@kevinjohn/adonisjs-access-control/scope_middleware`        | Alias of the `middleware` subpath: the same class and factory                                                               | <a href="/oss-adonisjs-access-control/reference/api/middleware/main/">Middleware reference</a>                 |
+| `@kevinjohn/adonisjs-access-control/account-kit`             | Account Kit callbacks: invitations, acceptance, account deletion and export                                                 | <a href="/oss-adonisjs-access-control/reference/api/account_kit/main/">Account Kit reference</a>               |
+| `@kevinjohn/adonisjs-access-control/commands`                | Ace command discovery loader                                                                                                | <a href="/oss-adonisjs-access-control/reference/api/commands/main/">Commands reference</a>                     |
 
-The exports above are the complete supported surface. The root exports `defineAccessControl`,
-`AccessControl`, `AccessControlError`, the `errors` namespace, `configure` and `stubsRoot`; the
-subpath entries fill in milestone by milestone, as recorded in the changelog.
+The exports above are the complete supported surface. The root exports `defineConfig` and its
+alias `defineAccessControl`, `AccessControl`, `AccessControlError`, `errorTable`, the `errors`
+namespace, `configure` and `stubsRoot`.
 
 Every error code, status and message is listed in [Errors](errors.md).
 

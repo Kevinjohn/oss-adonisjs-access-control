@@ -16,10 +16,10 @@ As an application integrator, I want to audit or react to membership changes so 
 | `change` | Callback argument `MembershipEvent` | `change.type` is one of `membership.added`, `membership.first_member`, `membership.invitation_accepted`, `membership.granted`, `membership.role_changed`, `membership.status_changed`, `membership.removed` (reason `removed`, `scope_deleted` or `account_deleted`), `membership.left`, `membership.ownership_transferred`. |
 | `trx`    | Callback argument                   | The transaction of the write: the caller's when one was supplied, otherwise the runner's own.                                                                                                                                                                                                                                |
 
-- The hook is optional; without it writes emit nothing.
+- The hook is optional; without it writes call nothing.
 - It runs inside the write transaction after the row changes. A throw propagates out of the write method. When `trx` was omitted, the runner rolls the write back; when the caller supplied `trx`, the caller must let the error escape or roll back, because catching it and committing keeps the membership write.
 - It must not lock or write other users' rows or Account Kit tables, which sit earlier in the lock order; writing application tables is allowed.
-- A role or status update that changes nothing writes no row and emits no event.
+- A role or status update that changes nothing writes no row and makes no callback.
 
 ## User flow
 

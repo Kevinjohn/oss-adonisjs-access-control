@@ -68,8 +68,10 @@ that tarball as given.
 
 The `c8` block in `package.json` has `check-coverage: true`. Each floor is the lower of the SQLite
 and PostgreSQL results at the membership service milestone, rounded down to a whole number and
-then lowered by two points so engine-specific branches do not fail a single-engine run:
-**FLOORS**. Lowering a floor afterwards is a reviewed change to the config and this paragraph
+then lowered by two points so engine-specific branches do not fail a single-engine run. The
+current floors are the `statements`, `lines`, `branches` and `functions` values of that block
+(92, 92, 95 and 91), set in commit `fe080e5` at the membership service milestone; the SQLite
+and PostgreSQL results they were derived from are not recorded. Lowering a floor afterwards is a reviewed change to the config and this paragraph
 together.
 
 ## SQLite writes

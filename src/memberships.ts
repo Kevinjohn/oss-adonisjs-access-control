@@ -148,7 +148,7 @@ interface Row {
   id: number
   scope_id: unknown
   user_id: unknown
-  role: string
+  role: unknown
   status: string
   created_at: unknown
   updated_at: unknown
@@ -221,6 +221,9 @@ export class MembershipService<Role extends string = string> {
   }
 
   #toMembership(row: Row): Membership {
+    // Any stored string stays readable, so a renamed role can still be found and migrated.
+    if (typeof row.role !== 'string')
+      throw error('E_ACCESS_CONTROL_INVALID_CONFIG', 'stored membership has an invalid role')
     if (!statuses.includes(row.status as MembershipStatus))
       throw error('E_ACCESS_CONTROL_INVALID_CONFIG', 'stored membership has an unsupported status')
     return {
@@ -509,7 +512,7 @@ export class MembershipService<Role extends string = string> {
       const actor = await this.#requireManager(trx, scopeId, actorId)
       // The role rows depend on the actor and the input alone, so they come before the user lookup.
       allow(
-        this.#access.canAssign({
+        this.#access.decideAssignment({
           actorRole: actor.role,
           targetRole: role,
           nextRole: role,
@@ -543,7 +546,7 @@ export class MembershipService<Role extends string = string> {
       const actor = await this.#requireManager(trx, scopeId, actorId)
       const target = await this.#requireTarget(trx, scopeId, userId)
       allow(
-        this.#access.canAssign({
+        this.#access.decideAssignment({
           actorRole: actor.role,
           targetRole: target.role,
           nextRole: role,
@@ -583,7 +586,7 @@ export class MembershipService<Role extends string = string> {
       const actor = await this.#requireManager(trx, scopeId, actorId)
       const target = await this.#requireTarget(trx, scopeId, userId)
       allow(
-        this.#access.canManage({
+        this.#access.decideManagement({
           actorRole: actor.role,
           targetRole: target.role,
           isSelf: actorId === userId,
@@ -619,7 +622,7 @@ export class MembershipService<Role extends string = string> {
       const actor = await this.#requireManager(trx, scopeId, actorId)
       const target = await this.#requireTarget(trx, scopeId, userId)
       allow(
-        this.#access.canManage({
+        this.#access.decideManagement({
           actorRole: actor.role,
           targetRole: target.role,
           isSelf: actorId === userId,

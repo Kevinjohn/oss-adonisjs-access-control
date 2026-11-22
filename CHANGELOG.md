@@ -21,6 +21,11 @@
 
 - Configure's printed next steps name the application's own config and middleware paths instead
   of `config/` and `app/middleware/`.
+- Reads, client summaries and exports refuse a stored membership whose role is null or not a
+  string with `E_ACCESS_CONTROL_INVALID_CONFIG` (500), as they do for an invalid status.
+  Historical role strings stay readable, and the scope middleware still refuses them with 403.
+- Configure reports a `--migration-path` that names a file with exit code 1 before writing
+  anything, instead of throwing.
 
 ## 0.3.1 - 2026-11-22
 

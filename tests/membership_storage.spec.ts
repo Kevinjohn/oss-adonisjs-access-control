@@ -58,6 +58,7 @@ test('app-owned membership rows reject invalid status and required timestamps, i
       ],
     })
     for (const [patch, message] of [
+      [{ role: null }, 'invalid role'],
       [{ status: 'unknown' }, 'unsupported status'],
       [{ status: null }, 'unsupported status'],
       [{ created_at: null }, 'invalid created_at timestamp'],

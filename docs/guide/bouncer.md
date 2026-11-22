@@ -48,8 +48,8 @@ router
   .use(scopeMiddleware({ resolveScope: (ctx) => ctx.request.header('x-team') }))
 ```
 
-The next release also exports the same class and factory through the `scope_middleware`
-subpath. The existing `middleware` subpath remains supported.
+The `scope_middleware` subpath exports the same class and factory. The existing `middleware`
+subpath remains supported.
 
 The kit middleware leaves the authenticated user on `ctx.auth.user`, which is all the scope
 middleware and the Bouncer initializer read; the example consumer's scoped routes run that way.

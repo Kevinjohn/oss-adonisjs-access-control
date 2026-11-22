@@ -131,8 +131,13 @@ export async function configureWith(
   const info = await stat(destination).catch((error: unknown) => {
     if (!isMissing(error)) throw error
   })
-  if (info && !info.isDirectory())
-    throw new Error(`access-control: expected a migration directory at ${destination}`)
+  if (info && !info.isDirectory()) {
+    command.logger.error(
+      `access-control: the migration path ${migrationPath} is not a directory; pass --migration-path=<directory> relative to the application root`
+    )
+    command.exitCode = 1
+    return
+  }
   const { files } = await sourceFiles(pathToFileURL(destination + sep), '.', false)
   const migrationFiles = files.map((file) => relative(destination, file.absPath))
   let plan: ReturnType<typeof planMigrations>

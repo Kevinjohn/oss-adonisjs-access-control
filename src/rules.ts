@@ -42,7 +42,7 @@ export function assignableRoles(matrix: RoleMatrix, actorRole: string): string[]
 }
 
 /** Management truth table (3.1): first matching row wins. */
-export function canManage(
+export function decideManagement(
   matrix: RoleMatrix,
   input: { actorRole: string; targetRole: string; isSelf: boolean }
 ): RuleResult {
@@ -57,12 +57,12 @@ export function canManage(
   return { allowed: true }
 }
 
-/** Assignment (3.2): `canManage` first, then the next role's own rows. */
-export function canAssign(
+/** Assignment (3.2): `decideManagement` first, then the next role's own rows. */
+export function decideAssignment(
   matrix: RoleMatrix,
   input: { actorRole: string; targetRole: string; nextRole: string; isSelf: boolean }
 ): RuleResult {
-  const manage = canManage(matrix, input)
+  const manage = decideManagement(matrix, input)
   if (!manage.allowed) return manage
   const nextRank = rank(matrix, input.nextRole)
   if (nextRank < 0) return deny('UNKNOWN_ROLE')
@@ -87,7 +87,7 @@ export function canAdministerIdentity(
   for (const [scope, targetRole] of targetRoles) {
     const actorRole = actorRoles.get(scope)
     if (actorRole === undefined) return false
-    if (!canManage(matrix, { actorRole, targetRole, isSelf: false }).allowed) return false
+    if (!decideManagement(matrix, { actorRole, targetRole, isSelf: false }).allowed) return false
   }
   return true
 }

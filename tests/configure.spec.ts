@@ -364,6 +364,31 @@ test.group('configure (spec 11)', (group) => {
     }
   })
 
+  test('a migration path that names a file is refused before anything is written', async ({
+    assert,
+  }) => {
+    const app = await freshApp()
+    try {
+      await mkdir(join(app.root, 'database'), { recursive: true })
+      await writeFile(join(app.root, 'database/migrations.ts'), '// app-owned\n')
+      const result = await app.run('--scope-table=teams', '--migration-path=database/migrations.ts')
+      assert.equal(result.exitCode, 1, result.logs.join('\n'))
+      assert.isTrue(
+        result.logs.some((line) =>
+          line.includes(
+            'access-control: the migration path database/migrations.ts is not a directory'
+          )
+        ),
+        result.logs.join('\n')
+      )
+      assert.equal(await app.read('database/migrations.ts'), '// app-owned\n')
+      assert.deepEqual(await readdir(join(app.root, 'config')), ['account_kit.ts'])
+      assert.notInclude(await app.read('adonisrc.ts'), 'access_control_provider')
+    } finally {
+      await app.cleanup()
+    }
+  })
+
   test('generates after future-dated parents and runs the generated sequence on the test database', async ({
     assert,
   }) => {
