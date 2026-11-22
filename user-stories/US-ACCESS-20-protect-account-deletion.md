@@ -34,7 +34,7 @@ flowchart TD
     B --> C["read memberships and lock involved scopes"]
     C --> D{"Owner role configured and any active owner membership?"}
     D -->|Yes| E["throw LAST_OWNER; Kit transaction rolls back"]
-    D -->|No| F["delete memberships and emit account_deleted events"]
+    D -->|No| F["delete memberships and emit membership.removed with reason account_deleted"]
     F --> G["Kit deletes account rows and user in same trx; commits"]
 ```
 

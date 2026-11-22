@@ -1,6 +1,8 @@
-import { readdir, readFile } from 'node:fs/promises'
+import { lstat, readFile, stat } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { sourceFiles } from '@adonisjs/lucid/utils'
 import type Configure from '@adonisjs/core/commands/configure'
 import { stubsRoot } from './stubs/main.js'
 import { membershipsMigrationSchema } from './src/migration_schema.js'
@@ -115,12 +117,13 @@ export async function configureWith(
   }
 
   const destination = command.app.makePath(migrationPath)
-  let migrationFiles: string[] = []
-  try {
-    migrationFiles = await readdir(destination)
-  } catch (error) {
+  const info = await stat(destination).catch((error: unknown) => {
     if (!isMissing(error)) throw error
-  }
+  })
+  if (info && !info.isDirectory())
+    throw new Error(`access-control: expected a migration directory at ${destination}`)
+  const { files } = await sourceFiles(pathToFileURL(destination + sep), '.', false)
+  const migrationFiles = files.map((file) => relative(destination, file.absPath))
   let plan: ReturnType<typeof planMigrations>
   try {
     plan = planMigrations(migrationFiles, await releasedMigrations(root))
@@ -128,6 +131,20 @@ export async function configureWith(
     command.logger.error((error as Error).message)
     command.exitCode = 1
     return
+  }
+  for (const { existing, filename } of plan) {
+    if (existing) continue
+    const path = join(destination, filename)
+    const entry = await lstat(path).catch((error: unknown) => {
+      if (!isMissing(error)) throw error
+    })
+    if (entry) {
+      command.logger.error(
+        `access-control: move ${path} out of the migration destination and rerun configure`
+      )
+      command.exitCode = 1
+      return
+    }
   }
 
   const codemods = await command.createCodemods()

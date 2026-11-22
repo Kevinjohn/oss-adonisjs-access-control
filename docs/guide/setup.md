@@ -11,8 +11,8 @@ node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 node ace migration:run
 ```
 
-The flags and behaviour below include the next release's interactive prompt, custom host paths
-and safe migration ordering. The command above remains valid on the current release.
+Version 0.3.0 introduced the interactive prompt, custom host paths and safe migration ordering
+described below.
 
 ## What configure does
 
