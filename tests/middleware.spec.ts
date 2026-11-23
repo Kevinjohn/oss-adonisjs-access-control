@@ -112,6 +112,20 @@ test.group('scope middleware (spec 7)', (group) => {
     })
   })
 
+  test('a membership read failure propagates without reaching the handler', async ({ assert }) => {
+    const failure = new Error('Membership storage unavailable')
+    const ctx = context(f, { id: owner }, scope)
+    f.config.memberships.findActive = async () => {
+      throw failure
+    }
+
+    const received = await named(ctx, async () => assert.fail('The handler ran')).catch(
+      (error: unknown) => error
+    )
+    assert.strictEqual(received, failure)
+    assert.isUndefined(ctx.membership)
+  })
+
   test('the named class and scopeMiddleware() behave the same, including resolveScope', async ({
     assert,
   }) => {

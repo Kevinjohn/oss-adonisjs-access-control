@@ -38,14 +38,17 @@ export default class ScopeMiddleware {
     const scopeId = options.resolveScope ? options.resolveScope(ctx) : ctx.params?.scopeId
     let membership: Membership | null
     try {
-      membership = await access.memberships.find(scopeId as never, user.id as never)
+      membership = await access.memberships.findActive(scopeId as never, user.id as never)
     } catch (error) {
-      if (error instanceof AccessControlError && error.code === 'E_ACCESS_CONTROL_INVALID_INPUT')
+      if (
+        error instanceof AccessControlError &&
+        (error.code === 'E_ACCESS_CONTROL_INVALID_INPUT' ||
+          error.code === 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
+      )
         throw new AccessControlError('E_ACCESS_CONTROL_FORBIDDEN', { cause: error })
       throw error
     }
-    if (!membership || membership.status !== 'active' || access.rank(membership.role) < 0)
-      throw new AccessControlError('E_ACCESS_CONTROL_FORBIDDEN')
+    if (!membership) throw new AccessControlError('E_ACCESS_CONTROL_FORBIDDEN')
     ctx.membership = membership
     return next()
   }

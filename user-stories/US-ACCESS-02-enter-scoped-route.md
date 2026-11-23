@@ -42,15 +42,14 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 ```mermaid
 flowchart TD
     A["Account Kit managed-account or admission middleware"] --> B["ctx.auth.user is effective guard identity"]
-    B --> C["ScopeMiddleware.handle resolves scope and calls memberships.find if user present"]
-    C --> X["Storage validation error propagates; invalid input becomes FORBIDDEN"]
-    C --> D{"active membership and configured role?"}
-    D -->|No| E["AccessControlError FORBIDDEN"]
-    D -->|Yes| F["set ctx.membership; call next"]
+    B --> C["ScopeMiddleware.handle resolves scope and calls memberships.findActive if a user is present"]
+    C -->|Unexpected failure| X["Propagate the membership read failure"]
+    C -->|Missing user, invalid key, no active member or unknown role| E["AccessControlError FORBIDDEN"]
+    C -->|Active member with configured role| F["Set ctx.membership and call next"]
     F --> G["AccessControl.abilities resolver reads ctx.membership"]
     G --> H{"Active membership matches subject and satisfies permission?"}
     H -->|No| I["Bouncer denies"]
     H -->|Yes| J["App policy checks record"]
 ```
 
-**Code references:** [scope middleware](../middleware/main.ts), [abilities](../src/abilities.ts), [guide](../docs/guide/bouncer.md)
+**Code references:** [scope middleware](../middleware/main.ts), [active membership lookup](../src/memberships.ts#L408), [abilities](../src/abilities.ts), [guide](../docs/guide/bouncer.md)
