@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.3 - 2026-11-23
+
+- Require Account Kit 0.6.0 exactly.
+
 ## 0.3.2 - 2026-11-23
 
 - Require Account Kit 0.5.2.
