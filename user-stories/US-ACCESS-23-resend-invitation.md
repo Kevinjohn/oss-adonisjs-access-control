@@ -40,4 +40,4 @@ flowchart TD
     P -->|No| F["Kit updates token and expiry, commits, then sends invitation provision"]
 ```
 
-**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), Account Kit 0.5.1 `resendInvitation`, `lockManagedInvitation` and `lockResendable` (invitation management service).
+**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), Account Kit 0.5.2 `resendInvitation`, `lockManagedInvitation` and `lockResendable` (invitation management service).
