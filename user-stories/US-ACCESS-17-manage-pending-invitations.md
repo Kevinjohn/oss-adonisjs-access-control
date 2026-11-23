@@ -2,7 +2,7 @@
 
 As an active member allowed to manage invitations, I want to list pending invitations so that I can review invitations for my scope.
 
-**Status:** Current when Account Kit callback integration is configured
+**Status:** Current when Account Kit invitations are enabled and the relevant Access Control callback is wired
 **Access:** Actor must be admitted when admission checks are on, active in the canonical current scope, and have `invitations:manage`.
 **Entry:** Account Kit `invitations.list({ actorId, scope, limit?, cursor? })` invokes `accessControlKitCallbacks().authorize.listInvitations`.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
@@ -13,7 +13,7 @@ As an active member allowed to manage invitations, I want to list pending invita
 
 - Listing requires an active membership in the canonical current scope with `invitations:manage`; admission is also checked when enabled.
 - A scope is required for authorization: a list call without `scope` reaches the callback with an empty context and is refused.
-- The callback returns authorization only; Account Kit performs listing and the host owns page rendering.
+- Account Kit returns unexpired invitations for the authorized scope, ordered by creation time and ID. `limit` defaults to 25 and accepts integers from 1 to 100. An optional `cursor` resumes the page. The result contains `items` and `nextCursor` (null at the end). The host owns page rendering.
 
 ## User flow
 
@@ -30,12 +30,12 @@ Scope: the package callback authorizes; Account Kit performs the invitation quer
 
 ```mermaid
 flowchart TD
-    A["Account Kit invitations.list"] --> B["authorize.listInvitations"]
+    A["Account Kit invitations.list validates page arguments and loads actor"] --> B["authorize.listInvitations(actor, context)"]
     B --> C["resolve active membership and canonical scope"]
     C --> D["check invitations:manage, then optional admission"]
     D --> E{"Allowed?"}
     E -->|No| F["return false; Kit refuses"]
-    E -->|Yes| G["Kit returns invitation page"]
+    E -->|Yes| G["Kit queries unexpired scoped rows and returns items and nextCursor"]
 ```
 
-**Code references:** [callbacks](../account_kit/main.ts), [membership rules](../docs/guide/rules.md)
+**Code references:** [callbacks](../account_kit/main.ts), [membership rules](../docs/guide/rules.md), [Account Kit invitation listing](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitation_management.ts#L159-L198).

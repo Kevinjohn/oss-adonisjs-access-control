@@ -2,7 +2,7 @@
 
 As an active member authorized to manage invitations, I want to resend a pending invitation so that authorized teammates can remind invitees without widening invitation authority.
 
-**Status:** Current when Account Kit callback integration is configured
+**Status:** Current when Account Kit invitations are enabled and the relevant Access Control callback is wired
 **Access:** Inviter must be admitted if enabled, active in canonical invitation scope, have `invitations:manage`, and be permitted to manage the invitation’s role.
 **Entry:** Account Kit `invitations.resend` invokes `authorize.manageInvitation` and then `authorize.invite` for the invitation's role and scope, from the Access Control callbacks. Kit runs both in a preflight and again inside the write transaction.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
@@ -11,9 +11,10 @@ As an active member authorized to manage invitations, I want to resend a pending
 
 ## Acceptance criteria
 
+- Call `invitations.resend({ actorId, invitationId })` with a positive safe integer invitation ID. Account Kit refuses a recipient address that is already registered. A retained expired invitation can also be renewed by this action.
 - Callback checks the invitation’s own canonical scope and role, not a client-selected replacement.
 - Unknown role, owner role, role above actor, missing membership/permission or failed admission denies resend.
-- Access Control authorizes only; Account Kit replaces the token and expiry in the write transaction, then sends the replacement invitation notification after commit.
+- Access Control authorizes only; Account Kit replaces the token and expiry in the write transaction, then sends the replacement invitation notification after commit. Delivery can fail after the old link has been invalidated.
 - Account Kit reports a denial from either callback as a not-found error (`E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED`, status 404).
 
 ## User flow
@@ -37,7 +38,9 @@ flowchart TD
     D -->|No| E["return false; Kit refuses with not-found error"]
     D -->|Yes| P{"Preflight?"}
     P -->|Yes| A
-    P -->|No| F["Kit updates token and expiry, commits, then sends invitation provision"]
+    P -->|No| R{"Recipient address already registered?"}
+    R -->|Yes| X["Kit refuses before rotation"]
+    R -->|No| F["Kit updates token and expiry, commits, then sends invitation provision"]
 ```
 
-**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), Account Kit 0.6.0 `resendInvitation`, `lockManagedInvitation` and `lockResendable` (invitation management service).
+**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit resend](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitation_management.ts#L36-L133).

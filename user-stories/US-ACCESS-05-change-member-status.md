@@ -42,7 +42,7 @@ Scope: package behaviour; the runner commits when `input.trx` is omitted; otherw
 ```mermaid
 flowchart TD
     A["MembershipService.setStatus"] --> B["normalize keys and validate status; reuse or open trx; resolve stored keys and lock users then scope"]
-    B --> C["require known active manager; load target; apply canManage"]
+    B --> C["require known active manager; load target; apply decideManagement"]
     C --> D{"Allowed?"}
     D -->|No| E["throw rule error"]
     D -->|Yes| F{"Status changed?"}

@@ -39,7 +39,7 @@ Scope: package behaviour; the runner commits when `input.trx` is omitted; suppli
 flowchart TD
     A["MembershipService.remove"] --> B["transaction; lock users then scope row (missing scope: SCOPE_NOT_FOUND)"]
     B --> C["require known active manager with members:manage; load target (not a member: NOT_A_MEMBER)"]
-    C --> D["canManage checks self, owner and rank"]
+    C --> D["decideManagement checks self, owner and rank"]
     D --> E{"Allowed?"}
     E -->|No| F["throw rule error"]
     E -->|Yes| G["delete membership; emit removed event; runner commits only if trx omitted"]

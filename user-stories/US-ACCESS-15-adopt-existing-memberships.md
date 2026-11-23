@@ -37,7 +37,7 @@ flowchart TD
     H --> I{"Host copy reconciliation clean?"}
     I -->|No| F["Host corrects migration/data before cutover"]
     I -->|Yes| D["AccessControlDoctor.run invokes runDoctor"]
-    D --> E{"Table/columns, unique pair, restrictive foreign keys, row and version checks clean?"}
+    D --> E{"Table/columns, unique pair, restrictive foreign keys, row, timestamp and version checks clean?"}
     E -->|No| F
     E -->|Yes| G["Host routes through scope/abilities and stops old-table writes"]
 ```

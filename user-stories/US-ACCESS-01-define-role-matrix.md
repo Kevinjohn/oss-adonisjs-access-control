@@ -2,9 +2,9 @@
 
 As an application developer, I want to declare ordered roles and permission keys so that permission names and role rules stay consistent across the application.
 
-**Status:** Current after provider/configuration setup
+**Status:** Current
 **Access:** Application config author declares a non-empty ordered role list and maps permission keys to roles.
-**Entry:** `config/access_control.ts` calls `defineAccessControl`; provider attaches database runner at boot.
+**Entry:** `config/access_control.ts` calls `defineAccessControl`; pure rule methods are available immediately. Provider boot or manual attachment enables membership operations.
 **Documentation:** [roles.md](../docs/guide/roles.md)
 **Source:** [src/define.ts](../src/define.ts)
 **Coverage:** [`tests/define.spec.ts`](../tests/define.spec.ts)
@@ -37,7 +37,8 @@ flowchart TD
     B --> C{"Valid?"}
     C -->|No| D["AccessControlError invalid config"]
     C -->|Yes| E["freeze config and expose rule methods"]
-    E --> F["provider attaches database and transaction runner"]
+    E --> F["Use pure rule methods"]
+    E --> G["Attach database and runner through provider or host call for membership operations"]
 ```
 
 **Code references:** [configuration](../src/define.ts), [rules](../src/rules.ts), [types](../src/types.ts)

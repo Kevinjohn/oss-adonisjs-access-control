@@ -14,13 +14,14 @@ As an application operator, I want to remove memberships when deleting a scope s
 - The method snapshots current member IDs, locks user rows then scope, and checks the set did not change.
 - Concurrent membership-set change raises `E_ACCESS_CONTROL_CONFLICT`; host retries the whole deletion transaction.
 - Membership rows and `membership.removed` events with reason `scope_deleted` share the host transaction. Optional actor is recorded in events only, not authorized by this method.
-- The method does not touch the scope's pending Account Kit invitations. Revoke them ([US-ACCESS-24](US-ACCESS-24-revoke-invitation.md)) when deleting the scope: a matched invitation to a deleted scope makes the invitee's activation or confirming password reset fail on every retry ([US-ACCESS-10](US-ACCESS-10-accept-invitation.md)).
+- The method does not touch the scope's pending Account Kit invitations. Revoke them before deleting the scope or removing the memberships needed to authorize revocation ([US-ACCESS-24](US-ACCESS-24-revoke-invitation.md)). Otherwise, a matched invitation to a deleted scope makes the invitee's activation or confirming password reset fail on every retry ([US-ACCESS-10](US-ACCESS-10-accept-invitation.md)).
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    A["Application starts scope deletion"] --> B["Remove scope memberships before deleting scope row"]
+    A["Application plans scope deletion"] --> P["Revoke pending invitations while the scope and authorizing membership still exist"]
+    P --> B["Remove scope memberships before deleting scope row"]
     B --> C{"Membership set remained stable?"}
     C -->|No| D["Retry deletion transaction"]
     C -->|Yes| E["Delete scope and commit together"]

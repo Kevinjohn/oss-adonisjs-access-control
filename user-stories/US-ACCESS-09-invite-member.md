@@ -2,7 +2,7 @@
 
 As an active team member allowed to invite, I want to invite a person to a scope so that a permitted teammate can bring another person into the scope.
 
-**Status:** Current when Account Kit callbacks are wired
+**Status:** Current when Account Kit invitations are enabled and the relevant Access Control callback is wired
 **Access:** Inviter is admitted if admission is active, has active canonical-scope membership and `invitations:manage`; role must be valid, non-owner, and at/below inviter rank.
 **Entry:** Account Kit `invitations.send` invokes `accessControlKitCallbacks().authorize.invite`; app owns invitation entry/UI.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
@@ -11,10 +11,10 @@ As an active team member allowed to invite, I want to invite a person to a scope
 
 ## Acceptance criteria
 
-- Invite/manage/list authorization uses active membership and canonical configured scope.
+- `invitations.send({ actorId, email, role, scope })` requires an existing actor, a recipient email, a role and a canonical scope for this integration. The Access Control callback receives the actor, role and scope, plus the transaction on the recheck. Account Kit validates the email and handles recipient eligibility.
 - Optional admission check applies unless callback option sets `admission: false`.
 - Role above inviter, unknown role, owner role, noncanonical scope or missing permission is denied.
-- Account Kit checks invite permission in preflight and again in the write transaction; delivery follows commit and may fail separately.
+- Account Kit checks invite permission in preflight and again in the write transaction; delivery follows commit. If delivery fails, the invitation remains pending.
 
 ## User flow
 
@@ -41,4 +41,4 @@ flowchart TD
     G -->|Allowed and committed| H["Kit delivers provision"]
 ```
 
-**Code references:** [callback factory](../account_kit/main.ts), [Kit guide](../docs/guide/account-kit.md)
+**Code references:** [callback factory](../account_kit/main.ts), [Kit guide](../docs/guide/account-kit.md), [Account Kit sendInvitation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitations.ts#L141-L261).

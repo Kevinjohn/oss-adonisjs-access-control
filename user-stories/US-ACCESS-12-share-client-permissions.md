@@ -35,10 +35,13 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 
 ```mermaid
 flowchart TD
-    A["AccessControl.clientPayload(membership)"] --> B["payload helper checks active membership"]
+    R["Scoped request runs ScopeMiddleware.handle"] -->|Refused| X["Return forbidden for missing or ineligible membership"]
+    R -->|Allowed| A["AccessControl.buildClientMembership or clientPayload"]
+    S["Standalone host supplies a membership or null"] --> A
+    A --> B["buildClientPayload checks active membership"]
     B --> C{"Present and active?"}
     C -->|No| D["return null"]
-    C -->|Yes| E["return scopeId, role, permissionsFor(role) and assignableRoles(role)"]
+    C -->|Yes| E["return string scopeId, stored role, permissionsFor(role) and assignableRoles(role)"]
 ```
 
-**Code references:** [payload](../src/payload.ts), [client guide](../docs/guide/client.md)
+**Code references:** [scope route](US-ACCESS-02-enter-scoped-route.md), [instance methods](../src/define.ts), [payload](../src/payload.ts), [client guide](../docs/guide/client.md)

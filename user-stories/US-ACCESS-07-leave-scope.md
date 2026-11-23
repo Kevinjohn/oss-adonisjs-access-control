@@ -4,7 +4,7 @@ As a scope member, I want to leave a scope so that members can leave without nee
 
 **Status:** Current
 **Access:** Member can leave whether active or suspended; owner role is protected until ownership transfers.
-**Entry:** Host leave route calls `memberships.leave({ scopeId, userId })` without scope middleware so suspended member can reach it.
+**Entry:** Host leave route calls `memberships.leave({ scopeId, userId, trx? })` without scope middleware so suspended member can reach it.
 **Documentation:** [memberships.md](../docs/guide/memberships.md)
 **Source:** [src/memberships.ts](../src/memberships.ts)
 **Coverage:** [`tests/memberships.spec.ts`](../tests/memberships.spec.ts)

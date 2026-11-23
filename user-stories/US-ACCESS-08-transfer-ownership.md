@@ -4,7 +4,7 @@ As an active scope owner, I want to transfer scope ownership so that a scope con
 
 **Status:** Current when an owner role is configured
 **Access:** Only active owner can transfer to a different active member; actor's owner role and target membership status are checked under locks.
-**Entry:** Owner route calls `memberships.transferOwnership({ actor, scopeId, toUserId })`.
+**Entry:** Owner route calls `memberships.transferOwnership({ actor, scopeId, toUserId, trx? })`.
 **Documentation:** [memberships.md](../docs/guide/memberships.md)
 **Source:** [src/memberships.ts](../src/memberships.ts)
 **Coverage:** [`tests/memberships.spec.ts`](../tests/memberships.spec.ts)
