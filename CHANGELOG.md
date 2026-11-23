@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.2 - 2026-11-23
+
+- Require Account Kit 0.5.2.
+
 ### Added
 
 - Doctor reports memberships with a null or unreadable `created_at` or `updated_at` as
