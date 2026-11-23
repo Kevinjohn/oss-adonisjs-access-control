@@ -2,18 +2,19 @@
 
 As an invitee, I want to accept a scoped invitation so that acceptance creates the access promised by the invitation.
 
-**Status:** Current when Account Kit acceptance callback is wired
+**Status:** Current when Account Kit invitations are enabled and the relevant Access Control callback is wired
 **Access:** Invitation token/recipient validation is owned by Account Kit; acceptance creates the account and is refused for an already registered email. Scoped membership is created only for a canonical configured scope.
-**Entry:** Account Kit `invitations.accept` looks up the token, checks the email, creates the account, consumes the token and other matching invitations, confirms the email, then calls `onInvitationAccepted` for each. The callback also runs for each pending invitation matched to a newly confirmed address: social sign-up with a provider-verified email, account activation, and a password reset that confirms a never-confirmed account.
+**Entry:** Account Kit `invitations.accept` looks up the token, checks the email, creates the account, consumes the token and other matching invitations, confirms the email, then calls `onInvitationAccepted` for each. Direct acceptance uses `{ token, password, registrationData? }` and the address stored on the invitation. The callback also runs for each pending invitation matched to a newly confirmed address: social sign-up with a provider-verified email, account activation, and a password reset that confirms a never-confirmed account.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
 **Source:** [account_kit/main.ts](../account_kit/main.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
 
 ## Acceptance criteria
 
-- Accepting by token creates the account; a token for an already registered email is refused and no account is created. Matched invitations (social sign-up, activation, confirming password reset) run the same callback for an account that already exists.
+- The host can call `invitations.inspect({ token })` to display the intended email and role before acceptance. An invalid or expired token yields null. Preview leaves a valid invitation available.
+- Accepting by token creates the account; a token for an already registered email is refused and no account is created. Matched invitations (social sign-up, activation, confirming password reset) run the same callback after the user row exists, including the new row created by social sign-up.
 - For a scoped invitation, scope must use canonical configured key spelling; invalid scope is refused.
-- For scoped invitations, trusted `acceptInvitation` refuses unknown/owner roles, a deleted scope (`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`) and existing membership, otherwise creates membership inside the Account Kit transaction. Any refusal rolls back the whole acceptance: token acceptance and social sign-up leave no new account behind, while activation and a confirming password reset roll back only that step and the existing account stays. The rollback restores the matched invitation, so every retry of that activation or reset fails the same way until the invitation expires or is revoked ([US-ACCESS-24](US-ACCESS-24-revoke-invitation.md)). The optional host callback runs for both scoped and global invitations in that transaction.
+- For scoped invitations, trusted `acceptInvitation` refuses unknown/owner roles, a deleted scope (`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`) and existing membership, otherwise creates membership inside the Account Kit transaction. Any refusal rolls back the whole acceptance: token acceptance and social sign-up leave no new account behind, while activation and a confirming password reset roll back only that step and the existing account stays. The rollback restores the matched invitation, so every retry of that activation or reset fails the same way while the invalid invitation remains pending. Expiry or operator cleanup can clear that condition. Revocation through [US-ACCESS-24](US-ACCESS-24-revoke-invitation.md) requires authorization while the scope and role still qualify. The optional host callback runs for both scoped and global invitations in that transaction.
 - Global invitation (`scope: null`) does not create team membership.
 
 - When Account Kit accepts a batch, it calls the integration in stored scope order. A later scope with a non-canonical spelling rolls back earlier membership and transactional event writes. See [batch acceptance integration](../tests/invitation_batch.spec.ts).
@@ -46,8 +47,11 @@ Scope: package behaviour, entered from Account Kit acceptance and matched-invita
 
 ```mermaid
 flowchart TD
+    P["Optional Kit invitations.inspect reads valid token and returns email and role or null"] -.-> K1
     K1["Kit invitations.accept: check token and email, create account, consume matching invitations and confirm email"] --> A
-    K2["Kit matchInvitation: social sign-up, activation, confirming reset"] --> A
+    K2["Kit matchInvitation: social sign-up, activation, confirming reset"] --> M{"Invitations enabled and pending matches?"}
+    M -->|No| L["Kit continues without calling the hook"]
+    M -->|Yes| A
     A["onInvitationAccepted(user, invitation, trx)"] --> B{"Non-null invitation scope?"}
     B -->|No| C["skip membership creation"]
     C --> F
@@ -62,4 +66,4 @@ flowchart TD
     N -->|No| G["Account Kit commits acceptance"]
 ```
 
-**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), Account Kit 0.6.0 `acceptInvitation`, `applyInvitations` and `matchInvitation` (invitation services).
+**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), [Kit acceptance and inspection](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitations.ts#L44-L138), [Kit invitation matching](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitation_match.ts#L17-L52).

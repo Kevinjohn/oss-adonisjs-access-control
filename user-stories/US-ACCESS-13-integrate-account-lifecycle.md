@@ -3,8 +3,8 @@
 As an application integrator, I want to export membership data with account records so that people can receive a complete account export.
 
 **Status:** Current when Access Control callbacks are included in Account Kit config
-**Access:** Account Kit owns export; Access Control callback adds the user’s membership rows using the supplied Kit transaction.
-**Entry:** Host spreads `accessControlKitCallbacks()` into `config/account_kit.ts`.
+**Access:** Account Kit data export must be enabled and the account holder must satisfy its proof check. Access Control callback adds the user’s membership rows using the supplied Kit transaction.
+**Entry:** Host wires `exportAccountData` from `accessControlKitCallbacks()` into Account Kit and calls `accountData.export({ actorId, currentPassword?, recentProof? })`.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
 **Source:** [account_kit/main.ts](../account_kit/main.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
@@ -13,7 +13,7 @@ As an application integrator, I want to export membership data with account reco
 
 - Exporting a stored row with an invalid status or a missing or unreadable required timestamp raises `E_ACCESS_CONTROL_INVALID_CONFIG` (500). The host receives the failure instead of a partially sanitised export. See [storage and export tests](../tests/membership_storage.spec.ts).
 
-- Account export adds the user’s memberships with ISO timestamps.
+- Account export includes `application.memberships` with `scopeId`, `role`, `status`, `createdAt` and `updatedAt`. Both timestamps are ISO strings in UTC.
 - Export is a plain read through the supplied transaction; host owns the surrounding export route, proof and response.
 
 ## User flow
@@ -31,9 +31,9 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 
 ```mermaid
 flowchart TD
-    A["Account Kit exportAccountData callback"] --> B["memberships.exportFor({ userId, trx })"]
-    B --> C["return memberships with ISO timestamps"]
+    A0["Kit accountData.export checks feature and confirms actor"] --> A["Kit calls configured exportAccountData(user, trx)"] --> B["memberships.exportFor({ userId, trx })"]
+    B --> C["Return memberships with ISO timestamps to Kit export’s application section"]
     B --> X["Invalid stored status or timestamps: INVALID_CONFIG"]
 ```
 
-**Code references:** [callbacks](../account_kit/main.ts), [lifecycle methods](../src/memberships.ts)
+**Code references:** [callbacks](../account_kit/main.ts), [lifecycle methods](../src/memberships.ts), [Account Kit export](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/account_export.ts#L85-L154).

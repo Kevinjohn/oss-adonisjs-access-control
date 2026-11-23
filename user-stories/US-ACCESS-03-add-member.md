@@ -4,7 +4,7 @@ As an active scope manager, I want to add a member to a scope so that the added 
 
 **Status:** Current
 **Access:** Active actor membership with `members:manage`; actor can assign the requested known non-owner role at or below own rank; target user row must exist.
-**Entry:** Host member-management route calls `memberships.add({ actor, scopeId, userId, role })`.
+**Entry:** Host member-management route calls `memberships.add({ actor, scopeId, userId, role, trx? })`.
 **Documentation:** [memberships.md](../docs/guide/memberships.md)
 **Source:** [src/memberships.ts](../src/memberships.ts)
 **Coverage:** [`tests/memberships.spec.ts`](../tests/memberships.spec.ts)
@@ -34,7 +34,7 @@ Scope: package behaviour; the runner commits when `input.trx` is omitted; suppli
 flowchart TD
     A["MembershipService.add"] --> B["normalize keys; enter transaction; lock users then scope row (missing scope: SCOPE_NOT_FOUND)"]
     B --> C["load and require actor membership"]
-    C --> D{"canAssign allows proposed role as target and next role?"}
+    C --> D{"decideAssignment allows proposed role as target and next role?"}
     D -->|No| F
     D -->|Yes| E{"User exists and no membership?"}
     E -->|No| F["throw domain error"]

@@ -4,7 +4,7 @@ As a host developer, I want to require a scoped permission inside my transaction
 
 **Status:** Current
 **Access:** Host holds a transaction.
-**Entry:** Call memberships.authorize with scopeId, userId, permission and trx.
+**Entry:** Call `memberships.authorize({ scopeId, userId, permission, trx })`.
 **Documentation:** [Guide](../docs/guide/memberships.md)
 **Source:** [src/memberships.ts](../src/memberships.ts), [src/rules.ts](../src/rules.ts)
 **Coverage:** [memberships.spec.ts](../tests/memberships.spec.ts), [locks.spec.ts](../tests/locks.spec.ts)
@@ -37,3 +37,5 @@ flowchart TD
     C -->|Yes| D["Return membership"]
     C -->|No| E["Raise forbidden"]
 ```
+
+**Code references:** [authorize](../src/memberships.ts#L450), [permission threshold](../src/rules.ts#L25).

@@ -19,8 +19,8 @@ As an application administrator, I want to apply cross-scope identity administra
 
 ```mermaid
 flowchart TD
-    A["Actor requests password or session action for another account"] --> B["Application checks every target scope"]
-    B --> C{"Manage target in every scope?"}
+    A["Actor requests an identity-wide password or session action"] --> B["Application checks every target scope"]
+    B --> C{"Target belongs to a scope and action is self-service or allowed across all target scopes?"}
     C -->|No| D["Action is refused"]
     C -->|Yes| E["Host proceeds with Account Kit operation"]
 ```
@@ -32,7 +32,7 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 ```mermaid
 flowchart TD
     A["assertCanAdministerIdentity({ actorId, targetId, trx? })"] --> B["Reuse or open trx; resolve stored user IDs; identityRoles locks users, reads memberships, locks union of scopes, builds role maps"]
-    B --> C["canAdministerIdentity evaluates every target scope"]
+    B --> C["canAdministerIdentity refuses empty target map, allows self with memberships, and otherwise checks every target scope"]
     C --> D{"Allowed?"}
     D -->|No| E["throw FORBIDDEN"]
     D -->|Yes| F["return to host for separate Kit operation"]

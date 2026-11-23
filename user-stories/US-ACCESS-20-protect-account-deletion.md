@@ -2,9 +2,9 @@
 
 As an application integrator, I want to protect scope ownership during account deletion so that account deletion removes its memberships without leaving an ownerless scope.
 
-**Status:** Current when Account Kit lifecycle callbacks are wired
+**Status:** Current when Account Kit account deletion is enabled and the Access Control deletion hook is wired
 **Access:** Account Kit owns deletion; Access Control callback refuses deletion while account has active owner membership.
-**Entry:** Account Kit `onAccountDeletingTransaction` callback calls `memberships.prepareAccountDeletion` in Kit transaction.
+**Entry:** Account Kit `accountData.delete({ actorId, currentPassword?, recentProof? })` invokes the `onAccountDeletingTransaction` callback, which calls `memberships.prepareAccountDeletion` in the Kit transaction.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
 **Source:** [account_kit/main.ts](../account_kit/main.ts)
 **Coverage:** [`tests/memberships_trusted.spec.ts`](../tests/memberships_trusted.spec.ts)
@@ -35,7 +35,8 @@ flowchart TD
     C --> D{"Owner role configured and any active owner membership?"}
     D -->|Yes| E["throw LAST_OWNER; Kit transaction rolls back"]
     D -->|No| F["delete memberships and emit membership.removed with reason account_deleted"]
-    F --> G["Kit deletes account rows and user in same trx; commits"]
+    F --> G["Kit deletes account rows and user in same trx and commits"]
+    G --> H["Kit sends deletion notice and lifecycle event after commit"]
 ```
 
-**Code references:** [callback](../account_kit/main.ts), [prepareAccountDeletion](../src/memberships.ts)
+**Code references:** [callback](../account_kit/main.ts), [prepareAccountDeletion](../src/memberships.ts), [Account Kit deletion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/account_deletion.ts#L11-L39).

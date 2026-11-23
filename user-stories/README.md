@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `9f1068f79aabb1e15a01823d54056900113957bf` (origin/main, 2026-11-21). Scope: exported configuration/rules/membership API, provider and setup, scope middleware, Bouncer abilities, client membership summary, and Account Kit callbacks. The November 2026 review ran 103 focused tests covering abilities, configuration, diagnostics, invitation batches, membership storage and operations, middleware, payloads, provider resolution and rules. Host application browser journeys were outside that run.
+Source baseline: `b274d6bd1e703c6d5e6ece943edd25c49fd7f35b` (origin/main). This refresh traces 31 existing actions across configuration, membership and role APIs, provider services, middleware, diagnostics, client membership summaries and the Account Kit 0.6.0 integration. The earlier November 2026 review ran 103 focused tests. The current catalogue refresh used source review.
 
 ## Index
 

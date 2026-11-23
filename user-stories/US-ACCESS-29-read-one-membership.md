@@ -4,7 +4,7 @@ As a host application developer, I want to distinguish a stored membership from 
 
 **Status:** Current
 **Access:** Host supplies scope and user keys.
-**Entry:** Call getMembership, find or findActive on access.memberships.
+**Entry:** Call `getMembership(scopeId, userId, trx?)`, `find(scopeId, userId, trx?)` or `findActive(scopeId, userId, trx?)` on `access.memberships`.
 **Documentation:** [Guide](../docs/guide/memberships.md)
 **Source:** [src/memberships.ts](../src/memberships.ts)
 **Coverage:** [memberships.spec.ts](../tests/memberships.spec.ts), [membership_storage.spec.ts](../tests/membership_storage.spec.ts)
@@ -28,7 +28,9 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["findActive or find"] --> B["find delegates to getMembership: normalize and resolve keys, read row without lock"]
+    A["findActive or find"] --> G["find delegates to getMembership"]
+    G --> B["getMembership normalizes and resolves keys, then reads without locks"]
+    B0["Direct getMembership call"] --> B
     B --> X["Invalid key or stored data: error propagates"]
     B --> H{"findActive caller?"}
     H -->|No| J["Return stored row or null"]
@@ -36,3 +38,5 @@ flowchart TD
     C -->|No| D["Return null"]
     C -->|Yes| E["Return configured role or raise unknown role"]
 ```
+
+**Code references:** [getMembership, find and findActive](../src/memberships.ts#L392), [stored key resolution](../src/stored_keys.ts).
