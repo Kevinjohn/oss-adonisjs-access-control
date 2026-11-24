@@ -23,6 +23,7 @@ flowchart TD
     A["Member chooses to revoke a pending invitation"] --> B{"Can manage this invitation?"}
     B -->|No| C["Revocation is refused"]
     B -->|Yes| D["Invitation can no longer be accepted"]
+    D -->|Follow-up fails| E["Host handles error; invitation remains deleted"]
 ```
 
 ## Code flow
@@ -35,7 +36,9 @@ flowchart TD
     B --> C["check invitations:manage, optional admission, then role rank"]
     C --> D{"Allowed?"}
     D -->|No| E["return false; Kit refuses"]
-    D -->|Yes| F["Kit deletes invitation, commits, then runs follow-up event"]
+    D -->|Yes| F["Kit deletes invitation and commits"]
+    F --> G["Kit runs lifecycle follow-up"]
+    G -->|Follow-up fails| H["Error propagates; deletion remains committed"]
 ```
 
-**Code references:** [manageInvitation callback](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit revoke](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitation_management.ts#L135-L157).
+**Code references:** [manageInvitation callback](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit revoke](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).

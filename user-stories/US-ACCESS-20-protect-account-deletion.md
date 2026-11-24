@@ -13,7 +13,7 @@ As an application integrator, I want to protect scope ownership during account d
 
 - Membership rows are removed in the Kit deletion transaction when no active owner rule blocks it.
 - If account owns any scope as an active member, deletion raises `E_ACCESS_CONTROL_LAST_OWNER`; host transfers ownership first.
-- The callback does not delete host scope or business records.
+- The callback does not delete host scope or business records. Deletion notice or lifecycle follow-up failure is reported after commit and does not restore the account or memberships.
 
 ## User flow
 
@@ -36,7 +36,8 @@ flowchart TD
     D -->|Yes| E["throw LAST_OWNER; Kit transaction rolls back"]
     D -->|No| F["delete memberships and emit membership.removed with reason account_deleted"]
     F --> G["Kit deletes account rows and user in same trx and commits"]
-    G --> H["Kit sends deletion notice and lifecycle event after commit"]
+    G --> H["Kit attempts deletion notice and lifecycle event"]
+    H -->|Follow-up fails| I["Error propagates; account remains deleted"]
 ```
 
-**Code references:** [callback](../account_kit/main.ts), [prepareAccountDeletion](../src/memberships.ts), [Account Kit deletion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/account_deletion.ts#L11-L39).
+**Code references:** [callback](../account_kit/main.ts), [prepareAccountDeletion](../src/memberships.ts), [Account Kit deletion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/account_deletion.ts).

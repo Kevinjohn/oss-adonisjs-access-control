@@ -48,8 +48,9 @@ flowchart TD
     D -->|Yes| F{"Status changed?"}
     F -->|No| H["Return existing membership without write or event"]
     F -->|Yes| I["Update and emit membership.status_changed"]
-    H --> G["After commit, scope middleware also requires active status"]
+    H --> G["Runner commits if trx omitted; otherwise caller owns commit"]
     I --> G
+    G --> J["After commit, scope middleware requires active status on later requests"]
 ```
 
 **Code references:** [setStatus](../src/memberships.ts), [scope middleware](../middleware/main.ts)

@@ -11,7 +11,7 @@ As a scope member, I want to review a paginated scope member list so that scope 
 
 ## Acceptance criteria
 
-- Results are ordered by `created_at` then `id` using an opaque cursor.
+- `actor: { id }` and `scopeId` are required; `cursor`, `limit` and `trx` are optional. Omit `cursor` for the first page. Results contain `items` and `nextCursor`, null on the last page, ordered by `created_at` then `id`.
 - `limit` defaults to 25 and must be from 1 to 100.
 - Missing/suspended actor or missing `members:list` permission is refused; listing is not restricted to members with `members:manage`.
 

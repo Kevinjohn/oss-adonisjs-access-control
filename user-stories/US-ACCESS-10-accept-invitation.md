@@ -15,7 +15,7 @@ As an invitee, I want to accept a scoped invitation so that acceptance creates t
 - Accepting by token creates the account; a token for an already registered email is refused and no account is created. Matched invitations (social sign-up, activation, confirming password reset) run the same callback after the user row exists, including the new row created by social sign-up.
 - For a scoped invitation, scope must use canonical configured key spelling; invalid scope is refused.
 - For scoped invitations, trusted `acceptInvitation` refuses unknown/owner roles, a deleted scope (`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`) and existing membership, otherwise creates membership inside the Account Kit transaction. Any refusal rolls back the whole acceptance: token acceptance and social sign-up leave no new account behind, while activation and a confirming password reset roll back only that step and the existing account stays. The rollback restores the matched invitation, so every retry of that activation or reset fails the same way while the invalid invitation remains pending. Expiry or operator cleanup can clear that condition. Revocation through [US-ACCESS-24](US-ACCESS-24-revoke-invitation.md) requires authorization while the scope and role still qualify. The optional host callback runs for both scoped and global invitations in that transaction.
-- Global invitation (`scope: null`) does not create team membership.
+- Global invitation (`scope: null`) does not create team membership. Direct token acceptance returns the account after commit; an acceptance lifecycle follow-up failure can be reported after the account and memberships have committed.
 
 - When Account Kit accepts a batch, it calls the integration in stored scope order. A later scope with a non-canonical spelling rolls back earlier membership and transactional event writes. See [batch acceptance integration](../tests/invitation_batch.spec.ts).
 
@@ -63,7 +63,11 @@ flowchart TD
     F -->|Callback throws| X
     F --> N{"More invitations in stored scope order?"}
     N -->|Yes| A
-    N -->|No| G["Account Kit commits acceptance"]
+    N -->|No| G["Return to calling Kit transaction"]
+    G --> J{"Direct token acceptance?"}
+    J -->|Yes| H["Kit commits then runs acceptance lifecycle follow-ups"]
+    H -->|Follow-up fails| Y["Error propagates; acceptance remains committed"]
+    J -->|No| Z["Matching caller owns commit and follow-ups"]
 ```
 
-**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), [Kit acceptance and inspection](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitations.ts#L44-L138), [Kit invitation matching](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitation_match.ts#L17-L52).
+**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), [Kit acceptance and inspection](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitations.ts), [Kit invitation matching](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_match.ts), [activation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/activation_claim.ts), [password reset](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/password_reset.ts), [social account creation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/social_account_creation.ts).

@@ -38,4 +38,4 @@ flowchart TD
     E -->|Yes| G["Kit queries unexpired scoped rows and returns items and nextCursor"]
 ```
 
-**Code references:** [callbacks](../account_kit/main.ts), [membership rules](../docs/guide/rules.md), [Account Kit invitation listing](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitation_management.ts#L159-L198).
+**Code references:** [callbacks](../account_kit/main.ts), [membership rules](../docs/guide/rules.md), [Account Kit invitation listing](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).

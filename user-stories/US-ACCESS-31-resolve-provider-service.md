@@ -36,7 +36,7 @@ flowchart TD
     B -->|Present| C["container.make(AccessControl)"]
     D["Host resolves class or alias"] --> C
     S["Host imports services/main"] --> T{"AdonisJS application exists?"}
-    T -->|No| N["Raise InvalidArgumentsException"]
+    T -->|No| Q["Raise RuntimeException"]
     T -->|Yes| U["app.booted callback resolves AccessControl"]
     U --> C
     C --> V{"Singleton already resolved?"}

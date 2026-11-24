@@ -60,7 +60,7 @@ flowchart TD
 
 ## Actions without input fields
 
-Replace the field table with a short list of controls and their visible results. Do not create empty or artificial field rows. For API/package actions with no UI, list the actual inputs and returned values instead. Include confirmation controls and relevant cancellation or failure outcomes. Example: `- **Today** returns the timeline to the start of the current week in the configured time zone.` Replace that sample with a control that exists in the repository.
+Replace the field table with a short list of controls and their visible results. Do not create empty or artificial field rows. For API/package actions with no UI, list the actual inputs and returned values instead. Include confirmation controls and relevant cancellation or failure outcomes. Example: `- listForUser(userId, trx?) returns the user’s memberships in creation order without authorizing the caller.` Adapt the example to the action being documented.
 
 ## Writing and maintenance rules
 

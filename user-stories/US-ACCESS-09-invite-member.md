@@ -11,7 +11,7 @@ As an active team member allowed to invite, I want to invite a person to a scope
 
 ## Acceptance criteria
 
-- `invitations.send({ actorId, email, role, scope })` requires an existing actor, a recipient email, a role and a canonical scope for this integration. The Access Control callback receives the actor, role and scope, plus the transaction on the recheck. Account Kit validates the email and handles recipient eligibility.
+- `invitations.send({ actorId, email, role, scope })` requires an existing actor, a recipient email, a role and a canonical scope for this integration. The Access Control callback receives the actor, role and scope, plus the transaction on the recheck. Account Kit validates the email and handles recipient eligibility; its role input is a string of 1–64 characters.
 - Optional admission check applies unless callback option sets `admission: false`.
 - Role above inviter, unknown role, owner role, noncanonical scope or missing permission is denied.
 - Account Kit checks invite permission in preflight and again in the write transaction; delivery follows commit. If delivery fails, the invitation remains pending.
@@ -22,7 +22,8 @@ As an active team member allowed to invite, I want to invite a person to a scope
 flowchart TD
     A["Member asks to invite a person with a role"] --> B{"Admission, scope, permission and role allowed?"}
     B -->|No| C["Account Kit refuses invitation"]
-    B -->|Yes| D["Account Kit stores invitation and sends notice"]
+    B -->|Yes| D["Account Kit stores invitation and attempts notice"]
+    D -->|Delivery fails| E["Invitation remains pending; host handles delivery failure"]
 ```
 
 ## Code flow
@@ -38,7 +39,8 @@ flowchart TD
     E -->|No| F["return false; Kit denies"]
     E -->|Yes| G["Kit repeats callback in write transaction before creating invitation"]
     G -->|Denied| F
-    G -->|Allowed and committed| H["Kit delivers provision"]
+    G -->|Allowed and committed| H["Kit attempts delivery and lifecycle follow-up"]
+    H -->|Follow-up fails| I["Error propagates; invitation remains committed"]
 ```
 
-**Code references:** [callback factory](../account_kit/main.ts), [Kit guide](../docs/guide/account-kit.md), [Account Kit sendInvitation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitations.ts#L141-L261).
+**Code references:** [callback factory](../account_kit/main.ts), [Kit guide](../docs/guide/account-kit.md), [Account Kit sendInvitation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitations.ts).

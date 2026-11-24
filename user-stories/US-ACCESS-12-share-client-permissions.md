@@ -20,12 +20,13 @@ As a client application using team-aware controls, I want to send effective memb
 
 ```mermaid
 flowchart TD
-    A["Client requests current membership permissions"] --> B["Application loads effective account membership"]
-    B --> C{"Membership active?"}
-    C -->|No| D["Scope middleware refuses with 403; a standalone helper returns null"]
-    C -->|Yes| G{"Scoped route with unknown role?"}
-    G -->|Yes| H["Scope middleware refuses with 403"]
-    G -->|No| E["Client receives scope ID, role, permissions and assignable roles"]
+    A["Host prepares membership data for a client"] --> B{"Scoped route or standalone helper?"}
+    B -->|Scoped route| C{"Active membership with configured role?"}
+    C -->|No| D["Scope middleware refuses with 403"]
+    C -->|Yes| E["Host sends membership summary"]
+    B -->|Standalone| G{"Membership present and active?"}
+    G -->|No| H["Helper returns null"]
+    G -->|Yes| E
     E --> F["Each server request is authorized again"]
 ```
 
