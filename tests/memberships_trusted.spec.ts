@@ -1,3 +1,4 @@
+import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
 import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
 
@@ -69,16 +70,14 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     const [o, u] = await Promise.all([f.createUser(), f.createUser()])
     await f.memberships.createFirstMember({ scopeId: scope, userId: o })
     f.events.length = 0
-    assert.equal(
-      await codeOf(
-        f.memberships.acceptInvitation({
-          scopeId: scope,
-          userId: u,
-          role: 'editor',
-          invitationId: 1,
-        } as never)
-      ),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+    await rejects(
+      f.memberships.acceptInvitation({
+        scopeId: scope,
+        userId: u,
+        role: 'editor',
+        invitationId: 1,
+      } as never),
+      { name: 'InvalidArgumentsException', message: /acceptInvitation requires a transaction/ }
     )
     const accepted = await f.runner.transaction(f.db, (trx) =>
       f.memberships.acceptInvitation({
@@ -135,10 +134,10 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     const [o, u] = await Promise.all([f.createUser(), f.createUser()])
     await f.memberships.createFirstMember({ scopeId: scope, userId: o })
     f.events.length = 0
-    assert.equal(
-      await codeOf(f.memberships.grant({ scopeId: scope, userId: u, role: 'editor' } as never)),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
-    )
+    await rejects(f.memberships.grant({ scopeId: scope, userId: u, role: 'editor' } as never), {
+      name: 'InvalidArgumentsException',
+      message: /grant requires a transaction/,
+    })
     const inTrx = (input: Record<string, unknown>) =>
       codeOf(f.runner.transaction(f.db, (trx) => f.memberships.grant({ ...input, trx } as never)))
     assert.equal(
@@ -367,10 +366,10 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
       },
     ])
     assert.isNotOk(await f.db.from(f.names.users).where('id', u).first())
-    assert.equal(
-      await codeOf(f.memberships.prepareAccountDeletion({ userId: o } as never)),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
-    )
+    await rejects(f.memberships.prepareAccountDeletion({ userId: o } as never), {
+      name: 'InvalidArgumentsException',
+      message: /prepareAccountDeletion requires a transaction/,
+    })
     const nobody = await f.createUser()
     await f.runner.transaction(f.db, (trx) =>
       f.memberships.prepareAccountDeletion({ userId: nobody, trx })
@@ -416,10 +415,10 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
         ['membership.removed', b, 'scope_deleted', o],
       ]
     )
-    assert.equal(
-      await codeOf(f.memberships.removeAllForScope({ scopeId: s } as never)),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
-    )
+    await rejects(f.memberships.removeAllForScope({ scopeId: s } as never), {
+      name: 'InvalidArgumentsException',
+      message: /removeAllForScope requires a transaction/,
+    })
     assert.equal(
       await codeOf(
         f.runner.transaction(f.db, (trx) => f.memberships.removeAllForScope({ scopeId: s, trx }))

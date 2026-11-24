@@ -1,5 +1,6 @@
+import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
-import { AccessControlError } from '../index.js'
+import { errors } from '../index.js'
 import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
 
 test.group('memberships: ordinary operations (spec 5.2)', (group) => {
@@ -95,15 +96,13 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     await f.db.from(f.names.memberships).where('user_id', admin).update({ role: 'intern' })
     assert.equal(await codeOf(check(admin, 'project:read')), 'E_ACCESS_CONTROL_FORBIDDEN')
     // The check needs the transaction of the work it authorizes.
-    assert.equal(
-      await codeOf(
-        f.memberships.authorize({
-          scopeId: scope,
-          userId: owner,
-          permission: 'project:read',
-        } as never)
-      ),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+    await rejects(
+      f.memberships.authorize({
+        scopeId: scope,
+        userId: owner,
+        permission: 'project:read',
+      } as never),
+      { name: 'InvalidArgumentsException', message: /authorize requires a transaction/ }
     )
     assert.deepEqual(
       f.events.map((event) => event.type),
@@ -505,7 +504,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     const failing = await membershipFixture({
       async onMembershipChanged(event) {
         if (event.type === 'membership.added')
-          throw new AccessControlError('E_ACCESS_CONTROL_INVALID_INPUT', { message: 'nope' })
+          throw new errors.E_ACCESS_CONTROL_INVALID_INPUT('nope')
       },
     })
     try {
@@ -626,7 +625,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
           trx,
         })
         assert.deepInclude(await f.memberships.find(scope, outsider, trx), { role: 'viewer' })
-        throw new AccessControlError('E_ACCESS_CONTROL_CONFLICT')
+        throw new errors.E_ACCESS_CONTROL_CONFLICT()
       })
       .catch(() => {})
     assert.isNull(await f.memberships.find(scope, outsider))

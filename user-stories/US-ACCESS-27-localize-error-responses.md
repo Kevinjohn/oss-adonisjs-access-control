@@ -3,8 +3,8 @@
 As an application integrator, I want Access Control errors to be translated so that API clients see messages in their own language.
 
 **Status:** Current; translation is opt-in and needs `ctx.i18n` (for example from `@adonisjs/i18n`)
-**Access:** Any request whose handler lets an `AccessControlError` reach the AdonisJS exception handler; the application supplies the translations.
-**Entry:** `AccessControlError.handle(error, ctx)`, called by the AdonisJS exception handler.
+**Access:** Any request whose handler lets an Access Control exception reach the AdonisJS exception handler; the application supplies the translations.
+**Entry:** The exception's `handle(error, ctx)` method, called by the AdonisJS exception handler.
 **Documentation:** [errors reference](../docs/reference/errors.md)
 **Source:** [src/errors.ts](../src/errors.ts)
 **Coverage:** [`tests/errors.spec.ts`](../tests/errors.spec.ts)
@@ -16,7 +16,7 @@ As an application integrator, I want Access Control errors to be translated so t
 | `errors.<code>` translation | Host i18n key, one per error code | Optional; for example `errors.E_ACCESS_CONTROL_FORBIDDEN`. Missing keys return the English fallback. The package ships no translations. |
 | `ctx.i18n`                  | Request context property          | Optional; without it the English message is sent.                                                                                       |
 
-- The response status comes from `errorTable` for the code (for example 403 for `E_ACCESS_CONTROL_FORBIDDEN`, 404 for `E_ACCESS_CONTROL_NOT_A_MEMBER`).
+- The response status comes from the exception class (for example 403 for `E_ACCESS_CONTROL_FORBIDDEN`, 404 for `E_ACCESS_CONTROL_NOT_A_MEMBER`).
 - The body is `{ errors: [{ code, message }] }` with `Cache-Control: no-store`.
 - With `ctx.i18n` the message is `ctx.i18n.t('errors.<code>', {}, <fallback>)`. The fallback is the error's own message: the table's English text, or a custom detail message where the package raised one.
 
@@ -39,12 +39,12 @@ Scope: package error class and response handler; locale detection, translation f
 
 ```mermaid
 flowchart TD
-    A["AccessControlError thrown"] --> B["AdonisJS exception handler calls error.handle(error, ctx)"]
+    A["Access Control exception thrown"] --> B["AdonisJS exception handler calls error.handle(error, ctx)"]
     B --> C{"ctx.i18n exists?"}
     C -->|No| D["message = error.message"]
     C -->|Yes| E["message = i18n.t(errors.CODE, {}, error.message)"]
-    D --> F["status from errorTable; Cache-Control no-store; JSON errors array"]
+    D --> F["status from exception class; Cache-Control no-store; JSON errors array"]
     E --> F
 ```
 
-**Code references:** [errorTable](../src/errors.ts), [handle](../src/errors.ts), [errors reference](../docs/reference/errors.md)
+**Code references:** [exception classes](../src/errors.ts), [handle](../src/errors.ts), [errors reference](../docs/reference/errors.md)

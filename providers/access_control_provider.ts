@@ -1,6 +1,6 @@
 import type { ApplicationService } from '@adonisjs/core/types'
 import { AccessControl } from '../src/define.js'
-import { AccessControlError } from '../src/errors.js'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { loadRunner } from '../src/kit_transaction.js'
 
 /**
@@ -15,10 +15,9 @@ export default class AccessControlProvider {
     this.app.container.singleton(AccessControl, async (resolver) => {
       const config = this.app.config.get<unknown>('access_control')
       if (!(config instanceof AccessControl))
-        throw new AccessControlError('E_ACCESS_CONTROL_INVALID_CONFIG', {
-          message:
-            'access-control: config/access_control.ts must export the result of defineAccessControl()',
-        })
+        throw new InvalidArgumentsException(
+          'access-control: config/access_control.ts must export the result of defineAccessControl()'
+        )
       const db = await resolver.make('lucid.db')
       return config.attach(db, await loadRunner())
     })

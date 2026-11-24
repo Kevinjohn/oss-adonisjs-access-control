@@ -1,7 +1,9 @@
 # Errors
 
-Every error the package raises is an `AccessControlError` from the root import. Its `code` is one
-of the codes below, its `status` the HTTP status, and its default `message` the English text. When
+Each Access Control failure below has its own AdonisJS exception class in the root `errors`
+namespace. Catch a specific cause with `instanceof errors.E_ACCESS_CONTROL_FORBIDDEN` or match
+its stable `code`. Read the default HTTP status and English message from the class's static
+`status` and `message` properties. When
 the error reaches the HTTP layer, the package's handler sets the status, `Cache-Control: no-store`
 and responds with:
 
@@ -16,30 +18,36 @@ and responds with:
 With `@adonisjs/i18n` installed, the message is `ctx.i18n.t('errors.<code>', {}, <English message>)`;
 the package ships no translations.
 
-| Code                               | HTTP | Message                                                                                 | Raised when                                                                                                                                                              |
-| ---------------------------------- | ---- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `E_ACCESS_CONTROL_FORBIDDEN`       | 403  | You do not have permission to do that.                                                  | the actor has no active membership, lacks the key, or is not the owner for a transfer                                                                                    |
-| `E_ACCESS_CONTROL_NOT_A_MEMBER`    | 404  | That person is not a member of this team.                                               | the target membership is missing                                                                                                                                         |
-| `E_ACCESS_CONTROL_USER_NOT_FOUND`  | 404  | That person does not exist.                                                             | `add` or `grant` names a user row that does not exist                                                                                                                    |
-| `E_ACCESS_CONTROL_ALREADY_MEMBER`  | 409  | That person is already a member of this team.                                           | `add`, `acceptInvitation` or `grant` on an existing membership                                                                                                           |
-| `E_ACCESS_CONTROL_UNKNOWN_ROLE`    | 422  | That role does not exist.                                                               | a role outside the configured tuple, including one stored before a config change                                                                                         |
-| `E_ACCESS_CONTROL_RANK_TOO_LOW`    | 403  | You cannot manage someone with a higher role.                                           | the target or the next role ranks above the actor                                                                                                                        |
-| `E_ACCESS_CONTROL_OWNER_PROTECTED` | 409  | The owner cannot be changed, suspended or removed except through an ownership transfer. | the owner is targeted, assigned or tries to leave                                                                                                                        |
-| `E_ACCESS_CONTROL_SELF_MANAGEMENT` | 409  | You cannot change your own role or status.                                              | an actor targets their own membership, or transfers ownership to themselves                                                                                              |
-| `E_ACCESS_CONTROL_OWNER_DISABLED`  | 409  | This application has no owner role.                                                     | `transferOwnership` without `ownerRole`                                                                                                                                  |
-| `E_ACCESS_CONTROL_LAST_OWNER`      | 409  | Transfer ownership before deleting this account.                                        | `prepareAccountDeletion` for an active owner                                                                                                                             |
-| `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY` | 409  | This team already has members.                                                          | `createFirstMember` on a scope with members                                                                                                                              |
-| `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` | 404  | That team does not exist.                                                               | the scope row is missing when the package locks it (`leave` answers `NOT_A_MEMBER` instead)                                                                              |
-| `E_ACCESS_CONTROL_INVALID_INPUT`   | 422  | The request is not valid.                                                               | malformed keys, limits or cursors; bad trusted-operation input; transfer to a suspended member                                                                           |
-| `E_ACCESS_CONTROL_INVALID_CONFIG`  | 500  | (names the problem)                                                                     | boot validation, a config file without `defineAccessControl()`, no database attached, pre-creation service import or invalid stored membership role, status or timestamp |
-| `E_ACCESS_CONTROL_CONFLICT`        | 409  | The team changed while it was being deleted. Try again.                                 | `removeAllForScope` saw the member set change between its read and its locks                                                                                             |
+| Code                               | HTTP | Message                                                                                 | Raised when                                                                                    |
+| ---------------------------------- | ---- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `E_ACCESS_CONTROL_FORBIDDEN`       | 403  | You do not have permission to do that.                                                  | the actor has no active membership, lacks the key, or is not the owner for a transfer          |
+| `E_ACCESS_CONTROL_NOT_A_MEMBER`    | 404  | That person is not a member of this team.                                               | the target membership is missing                                                               |
+| `E_ACCESS_CONTROL_USER_NOT_FOUND`  | 404  | That person does not exist.                                                             | `add` or `grant` names a user row that does not exist                                          |
+| `E_ACCESS_CONTROL_ALREADY_MEMBER`  | 409  | That person is already a member of this team.                                           | `add`, `acceptInvitation` or `grant` on an existing membership                                 |
+| `E_ACCESS_CONTROL_UNKNOWN_ROLE`    | 422  | That role does not exist.                                                               | a role outside the configured tuple, including one stored before a config change               |
+| `E_ACCESS_CONTROL_RANK_TOO_LOW`    | 403  | You cannot manage someone with a higher role.                                           | the target or the next role ranks above the actor                                              |
+| `E_ACCESS_CONTROL_OWNER_PROTECTED` | 409  | The owner cannot be changed, suspended or removed except through an ownership transfer. | the owner is targeted, assigned or tries to leave                                              |
+| `E_ACCESS_CONTROL_SELF_MANAGEMENT` | 409  | You cannot change your own role or status.                                              | an actor targets their own membership, or transfers ownership to themselves                    |
+| `E_ACCESS_CONTROL_OWNER_DISABLED`  | 409  | This application has no owner role.                                                     | `transferOwnership` without `ownerRole`                                                        |
+| `E_ACCESS_CONTROL_LAST_OWNER`      | 409  | Transfer ownership before deleting this account.                                        | `prepareAccountDeletion` for an active owner                                                   |
+| `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY` | 409  | This team already has members.                                                          | `createFirstMember` on a scope with members                                                    |
+| `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` | 404  | That team does not exist.                                                               | the scope row is missing when the package locks it (`leave` answers `NOT_A_MEMBER` instead)    |
+| `E_ACCESS_CONTROL_INVALID_INPUT`   | 422  | The request is not valid.                                                               | malformed keys, limits or cursors; bad trusted-operation input; transfer to a suspended member |
+| `E_ACCESS_CONTROL_INVALID_CONFIG`  | 500  | The access-control configuration is not valid.                                          | the stored membership role, status or timestamp is invalid                                     |
+| `E_ACCESS_CONTROL_CONFLICT`        | 409  | The team changed while it was being deleted. Try again.                                 | `removeAllForScope` saw the member set change between its read and its locks                   |
 
 On SQLite, Account Kit's runner throws a plain `Error`, not a package error, when its
 `account_transaction_lock` table or row is missing; see
 [troubleshooting](../guide/troubleshooting.md#account-kit-transaction-errors).
 
-Construct one with `new AccessControlError(code, { message?, cause? })`; the `errors` namespace
-export also carries `errorTable`, the code-to-status-and-message map.
+Use the constructor matching the cause, for example `new errors.E_ACCESS_CONTROL_FORBIDDEN()`.
+An exception can carry a more specific detail and an underlying cause. For example,
+`new errors.E_ACCESS_CONTROL_INVALID_INPUT('Invalid membership cursor', { cause })`.
+
+Configuration errors and calls that omit a required transaction raise
+`InvalidArgumentsException` from `@adonisjs/core/exceptions`. Reading the membership service
+before attaching a database or importing it before the application exists raises
+`RuntimeException`. AdonisJS handles those developer errors.
 
 ## Refusals and faults
 
@@ -57,16 +65,15 @@ A user can reach these through a request, even when the application validates it
 
 These mean a programming, configuration or deployment fault:
 
-- `INVALID_CONFIG`: the declaration, the provider wiring, or a stored membership row with an
-  invalid role, an unsupported status or an unreadable timestamp. The last is raised on every read
+- `INVALID_CONFIG`: a stored membership row with an invalid role, an unsupported status or an
+  unreadable timestamp. This exception is raised on every read
   of that row, so it reaches users through ordinary requests, the scope middleware included, until
   the row is repaired ([troubleshooting](../guide/troubleshooting.md#stored-membership-rows)).
 - `OWNER_DISABLED`: `transferOwnership` called without `ownerRole`.
 - `SCOPE_NOT_EMPTY`: `createFirstMember` called for a scope that already has members.
 - `UNKNOWN_ROLE`: a stored role outside `roles` after a configuration change, or an unvalidated
   role passed in.
-- `INVALID_INPUT`: input the application did not validate, or a trusted operation called without
-  `trx`. Two cases reach it from ordinary use:
+- `INVALID_INPUT`: input the application did not validate. Two cases reach it from ordinary use:
   - `transferOwnership` to a member who is not active answers `INVALID_INPUT` (`ownership can
 only go to an active member`). Check that the target is an active member before the call and
     answer with your own refusal.

@@ -240,7 +240,7 @@ codes a user can reach to 4xx and leaves the rest as reported server faults:
 
 ```ts
 // app/services/access_refusal.ts
-import { AccessControlError } from '@kevinjohn/adonisjs-access-control'
+import { errors } from '@kevinjohn/adonisjs-access-control'
 import type { AccessControlErrorCode } from '@kevinjohn/adonisjs-access-control/types'
 
 // Unlisted codes (INVALID_INPUT, INVALID_CONFIG, UNKNOWN_ROLE, OWNER_DISABLED, SCOPE_NOT_EMPTY)
@@ -258,8 +258,14 @@ const refusals: Partial<Record<AccessControlErrorCode, { status: number; code: s
   E_ACCESS_CONTROL_CONFLICT: { status: 409, code: 'CONFLICT' },
 }
 
+type AccessControlException = InstanceType<(typeof errors)[keyof typeof errors]>
+
+export function isAccessControlException(error: unknown): error is AccessControlException {
+  return Object.values(errors).some((Cause) => error instanceof Cause)
+}
+
 export function accessRefusal(error: unknown) {
-  return error instanceof AccessControlError ? refusals[error.code] : undefined
+  return isAccessControlException(error) ? refusals[error.code] : undefined
 }
 ```
 
@@ -271,7 +277,7 @@ async handle(error: unknown, ctx: HttpContext) {
     ctx.response.header('Cache-Control', 'no-store')
     return ctx.response.status(refusal.status).send({ code: refusal.code })
   }
-  if (error instanceof AccessControlError) {
+  if (isAccessControlException(error)) {
     return ctx.response.internalServerError({ code: 'SERVER_ERROR' })
   }
   return super.handle(error, ctx)
@@ -279,7 +285,7 @@ async handle(error: unknown, ctx: HttpContext) {
 
 async report(error: unknown, ctx: HttpContext) {
   if (accessRefusal(error)) return
-  if (error instanceof AccessControlError) {
+  if (isAccessControlException(error)) {
     // The base handler skips 422, so INVALID_INPUT would otherwise go unlogged.
     return ctx.logger.error({ err: error }, error.message)
   }
@@ -312,7 +318,7 @@ router
         limit: 50,
       })
     } catch (error) {
-      if (error instanceof AccessControlError && error.code === 'E_ACCESS_CONTROL_INVALID_INPUT') {
+      if (error instanceof errors.E_ACCESS_CONTROL_INVALID_INPUT) {
         return response.badRequest({ code: 'INVALID_CURSOR' })
       }
       throw error

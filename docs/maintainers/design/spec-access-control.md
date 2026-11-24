@@ -183,7 +183,7 @@ services/main.ts
 middleware/main.ts             scope middleware (exported subpath)
 account_kit/main.ts            Account Kit callbacks (exported subpath)
 src/types.ts                   public types
-src/errors.ts                  AccessControlError and codes
+src/errors.ts                  Exception classes and shared response handler
 src/define.ts                  defineAccessControl and config validation
 src/rules.ts                   pure rules
 src/memberships.ts             membership service
@@ -359,8 +359,7 @@ export type PermissionKeyOf<P> = {
 
 ### 2.3 Boot validation
 
-`defineAccessControl` throws `AccessControlError` with code `E_ACCESS_CONTROL_INVALID_CONFIG` (status
-500; the message names the problem; never a bare `Error`, per 1.3) when:
+`defineAccessControl` throws AdonisJS's `InvalidArgumentsException` (status 500), with a message that names the problem, when:
 
 1. `roles` is empty or has duplicates, or a role name fails the pattern.
 2. A permission value is not in `roles`.
@@ -720,15 +719,12 @@ timestamps.
 
 ## 6. Errors (`src/errors.ts`)
 
-```ts
-import { Exception } from '@adonisjs/core/exceptions'
+Each code identifies a concrete AdonisJS exception class with static code, status and fallback
+message. Throw the class exported by `src/errors.ts` under that code. Applications import the
+`errors` namespace from the root package and check the class or the code.
 
-export class AccessControlError extends Exception {
-  // `code` is one of the codes below; `status` and the default message come from the table.
-}
-```
-
-Codes follow Account Kit's `E_ACCOUNT_KIT_*` convention. **[repo]** `src/errors.ts`.
+Invalid application configuration or a missing required transaction raises AdonisJS
+`InvalidArgumentsException`. A service accessed before initialization raises `RuntimeException`.
 
 | Code                               | HTTP | Message                                                                                 | Thrown when                                                                             |
 | ---------------------------------- | ---- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -745,16 +741,15 @@ Codes follow Account Kit's `E_ACCOUNT_KIT_*` convention. **[repo]** `src/errors.
 | `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY` | 409  | This team already has members.                                                          | `createFirstMember` on a non-empty scope                                                |
 | `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` | 404  | That team does not exist.                                                               | scope row missing during lock                                                           |
 | `E_ACCESS_CONTROL_INVALID_INPUT`   | 422  | The request is not valid.                                                               | malformed keys, bad trusted-op input, transfer to a suspended member                    |
-
-| `E_ACCESS_CONTROL_INVALID_CONFIG` | 500 | (names the problem) | boot validation (2.3) |
-| `E_ACCESS_CONTROL_CONFLICT` | 409 | The team changed while it was being deleted. Try again. | `removeAllForScope`: the member set changed between read and lock |
+| `E_ACCESS_CONTROL_INVALID_CONFIG`  | 500  | The access-control configuration is not valid.                                          | invalid stored membership role, status or timestamp                                     |
+| `E_ACCESS_CONTROL_CONFLICT`        | 409  | The team changed while it was being deleted. Try again.                                 | `removeAllForScope`: the member set changed between read and lock                       |
 
 Elsewhere in this spec, codes are written without the `E_ACCESS_CONTROL_` prefix for brevity. The
 scope middleware's refusals use `FORBIDDEN`.
 
-**Language (1.2):** `AccessControlError` implements `handle(error, ctx)`: the message is
+**Language (1.2):** Each package exception implements `handle(error, ctx)`: the message is
 `ctx.i18n.t('errors.<code>', {}, <English message>)` when `ctx.i18n` exists, otherwise the English
-message. It sets the table's status and `Cache-Control: no-store`, then
+message. It sets the exception's status and `Cache-Control: no-store`, then
 `ctx.response.json({ errors: [{ code, message }] })` (Masquerade's shape; no content negotiation). The
 package ships no translations. `docs/reference/errors.md` lists every code with its English message.
 

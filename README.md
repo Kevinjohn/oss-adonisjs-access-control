@@ -89,6 +89,25 @@ initializer and the Account Kit callbacks) and `node ace access-control:doctor`.
 - [Technical contract](docs/maintainers/design/spec-access-control.md)
 - [Notes for coding agents](README-AGENTS.md)
 
+## Errors
+
+The exception API below is part of the Unreleased changes. For `0.3.4`, use the
+[versioned error reference](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/v0.3.4/docs/reference/errors.md).
+
+Handle a specific refusal through the root `errors` namespace.
+
+```ts
+import { errors } from '@kevinjohn/adonisjs-access-control'
+
+if (error instanceof errors.E_ACCESS_CONTROL_FORBIDDEN) {
+  // Render the application's permission-denied response.
+}
+```
+
+AdonisJS renders uncaught package exceptions with their HTTP status and
+`{ errors: [{ code, message }] }`. See the [error reference](docs/reference/errors.md) for codes
+and translation keys.
+
 ## User stories
 
 See the [user story catalogue](user-stories/README.md) for source-reviewed roles, scope enforcement, membership lifecycle, Account Kit callbacks and operator setup.

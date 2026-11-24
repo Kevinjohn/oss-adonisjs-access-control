@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Breaking: replace the root and `errors` namespace `AccessControlError` exports with the
+  individual constructors under `errors.E_ACCESS_CONTROL_*`. Catch the specific class with
+  `instanceof` or inspect its stable `code`. Constructors take an optional detail and
+  `{ cause }`, with the code, status and fallback message defined on the class.
+- Breaking: replace the root and `errors` namespace `errorTable` exports with the constructors'
+  static `status` and `message` properties.
+- Invalid developer configuration and missing required transactions raise AdonisJS
+  `InvalidArgumentsException` (500, previously 422 for a missing transaction). Access to the
+  service before initialization raises
+  `RuntimeException`. Invalid stored membership data still raises
+  `errors.E_ACCESS_CONTROL_INVALID_CONFIG`.
+- Add TypeScript usage examples to configuration, role rules, membership services, scope
+  middleware and Account Kit callbacks in the API reference.
+
 ## 0.3.4 - 2026-11-24
 
 - Use `decideManagement` and `decideAssignment` in guidance and clarify the decision records and membership page returned by the existing APIs.

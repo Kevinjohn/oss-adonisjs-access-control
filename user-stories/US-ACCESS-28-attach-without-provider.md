@@ -17,7 +17,7 @@ As an application operator, I want to attach the database and transaction runner
 | `runner` | `TransactionRunner` | Required; `{ source: 'account-kit', transaction, lockRow, sqlTimestamp, readTimestamp }`. The four functions are Account Kit's `@kevinjohn/adonisjs-account-kit/transaction` exports (0.6.1); `source: 'account-kit'` is added by Access Control, which builds the runner in [`kit_transaction.ts`](../src/kit_transaction.ts). |
 
 - `attach` returns the same `AccessControl` instance, now with `memberships` available.
-- Reading `memberships` before any attach throws `E_ACCESS_CONTROL_INVALID_CONFIG` with a message that names `attach(db, runner)`.
+- Reading `memberships` before any attach throws `RuntimeException` with a message that names `attach(db, runner)`.
 - The provider path is unchanged: it attaches `lucid.db` and Account Kit's runner at boot.
 
 ## User flow
@@ -39,7 +39,7 @@ flowchart TD
     B --> C["store in private field; instance stays frozen"]
     C --> D["return this"]
     E["access.memberships"] --> F{"Service attached?"}
-    F -->|No| G["throw INVALID_CONFIG naming attach(db, runner)"]
+    F -->|No| G["throw RuntimeException naming attach(db, runner)"]
     F -->|Yes| H["return MembershipService"]
 ```
 

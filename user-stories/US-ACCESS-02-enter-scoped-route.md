@@ -44,7 +44,7 @@ flowchart TD
     A["Account Kit managed-account or admission middleware"] --> B["ctx.auth.user is effective guard identity"]
     B --> C["ScopeMiddleware.handle resolves scope and calls memberships.findActive if a user is present"]
     C -->|Unexpected failure| X["Propagate the membership read failure"]
-    C -->|Missing user, invalid key, no active member or unknown role| E["AccessControlError FORBIDDEN"]
+    C -->|Missing user, invalid key, no active member or unknown role| E["E_ACCESS_CONTROL_FORBIDDEN"]
     C -->|Active member with configured role| F["Set ctx.membership and call next"]
     F --> G["AccessControl.abilities resolver reads ctx.membership"]
     G --> H{"Active membership matches subject and satisfies permission?"}

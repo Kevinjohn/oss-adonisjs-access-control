@@ -71,7 +71,7 @@ export default defineAccessControl({
 
 Roles run lowest first; each key names the lowest role allowed. `members:list`, `members:manage`
 and `invitations:manage` are required, and the application refuses to boot with
-`E_ACCESS_CONTROL_INVALID_CONFIG` when the declaration is invalid. The
+AdonisJS's `InvalidArgumentsException` when the declaration is invalid. The
 [roles guide](roles.md) has the full rules.
 
 ## 5. Protect a route

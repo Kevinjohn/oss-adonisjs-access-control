@@ -12,8 +12,8 @@ As an application developer, I want to obtain the configured Access Control sing
 ## Acceptance criteria
 
 - The provider registers a lazy singleton and an alias. With a configured instance, boot resolves it, attaches lucid.db and the Account Kit runner, and returns the same instance to subsequent callers.
-- If the config is absent, provider boot skips resolution. Explicit resolution still requires valid config. A supplied config of the wrong type raises E_ACCESS_CONTROL_INVALID_CONFIG.
-- Import the service after app creation and use it after boot. Import without an AdonisJS app raises E_ACCESS_CONTROL_INVALID_CONFIG. For manual attachment see [US-ACCESS-28](US-ACCESS-28-attach-without-provider.md).
+- If the config is absent, provider boot skips resolution. Explicit resolution still requires valid config. A supplied config of the wrong type raises `InvalidArgumentsException`.
+- Import the service after app creation and use it after boot. Import without an AdonisJS app raises `RuntimeException`. For manual attachment see [US-ACCESS-28](US-ACCESS-28-attach-without-provider.md).
 
 ## User flow
 
@@ -36,7 +36,7 @@ flowchart TD
     B -->|Present| C["container.make(AccessControl)"]
     D["Host resolves class or alias"] --> C
     S["Host imports services/main"] --> T{"AdonisJS application exists?"}
-    T -->|No| N["Raise INVALID_CONFIG"]
+    T -->|No| N["Raise InvalidArgumentsException"]
     T -->|Yes| U["app.booted callback resolves AccessControl"]
     U --> C
     C --> V{"Singleton already resolved?"}

@@ -4,14 +4,12 @@
  */
 import app from '@adonisjs/core/services/app'
 import { AccessControl } from '../src/define.js'
-import { AccessControlError } from '../src/errors.js'
+import { RuntimeException } from '@adonisjs/core/exceptions'
 
 /** The booted application's `AccessControl` instance. */
 let accessControl: AccessControl
 if (app === undefined)
-  throw new AccessControlError('E_ACCESS_CONTROL_INVALID_CONFIG', {
-    message: 'access-control: services/main requires an AdonisJS application',
-  })
+  throw new RuntimeException('access-control: services/main requires an AdonisJS application')
 await app.booted(async () => {
   accessControl = await app.container.make(AccessControl)
 })
