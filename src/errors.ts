@@ -43,12 +43,7 @@ abstract class AccessControlException extends Exception {
    * The message is `ctx.i18n.t('errors.<code>', {}, <English>)` when `ctx.i18n` exists.
    */
   async handle(error: this, ctx: HttpContext): Promise<void> {
-    // A shared response prevents a caller from probing scope or membership existence.
-    const {
-      code,
-      status,
-      message: fallback,
-    } = error.#concealedResponse ? concealedResponses[error.#concealedResponse] : error
+    const { code, status, message: fallback } = error.getHttpResponse()
     const i18n = (ctx as { i18n?: Translator }).i18n
     const message = i18n ? i18n.t(`errors.${code}`, {}, fallback) : fallback
     ctx.response
