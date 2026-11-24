@@ -2,7 +2,12 @@
 
 ## Unreleased
 
+## 0.3.4 - 2026-11-24
+
 - Use `decideManagement` and `decideAssignment` in guidance and clarify the decision records and membership page returned by the existing APIs.
+- Use the active membership lookup in scope middleware.
+- Verify which invitation membership errors become refusals and which propagate, and document the assignment call path.
+- Require the exact Account Kit 0.6.1 release and update the consumer fixture to exercise it.
 
 ## 0.3.3 - 2026-11-23
 
