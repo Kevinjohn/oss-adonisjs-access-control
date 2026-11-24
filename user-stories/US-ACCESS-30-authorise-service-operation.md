@@ -31,11 +31,11 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["Require transaction"] --> B["Read membership through find in transaction without locking"]
-    A --> X["Missing trx: INVALID_INPUT"]
+    A --> X["Missing trx: InvalidArgumentsException"]
     B --> Y["Invalid key or stored data: validation error propagates"]
     B --> C{"Active and role satisfies permission?"}
     C -->|Yes| D["Return membership"]
     C -->|No| E["Raise forbidden"]
 ```
 
-**Code references:** [authorize](../src/memberships.ts#L450), [permission threshold](../src/rules.ts#L25).
+**Code references:** [authorize](../src/memberships.ts#L524), [permission threshold](../src/rules.ts#L25).

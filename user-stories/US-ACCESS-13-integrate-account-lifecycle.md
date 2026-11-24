@@ -36,4 +36,4 @@ flowchart TD
     B --> X["Invalid stored status or timestamps: INVALID_CONFIG"]
 ```
 
-**Code references:** [callbacks](../account_kit/main.ts), [lifecycle methods](../src/memberships.ts), [Account Kit export](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/account_export.ts#L85-L154).
+**Code references:** [callbacks](../account_kit/main.ts), [lifecycle methods](../src/memberships.ts), [Account Kit export](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/account_export.ts).

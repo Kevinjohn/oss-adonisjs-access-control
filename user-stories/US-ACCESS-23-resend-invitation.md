@@ -23,7 +23,8 @@ As an active member authorized to manage invitations, I want to resend a pending
 flowchart TD
     A["Member requests invitation resend"] --> B{"Can manage this invitation in its scope?"}
     B -->|No| C["Account Kit refuses resend"]
-    B -->|Yes| D["Invitee receives a new invitation notice"]
+    B -->|Yes| D["Account Kit rotates the link and attempts notice"]
+    D -->|Delivery fails| E["Old link remains invalid; host handles delivery failure"]
 ```
 
 ## Code flow
@@ -32,15 +33,20 @@ Scope: package behaviour and host callback boundary; the application owns its sc
 
 ```mermaid
 flowchart TD
-    A["Kit preflight or write transaction invokes authorize.manageInvitation then, if allowed, authorize.invite"] --> B["Each callback rejects unknown or owner role; resolves canonical scope and active membership"]
-    B --> C["check invitations:manage, optional admission, then role rank"]
-    C --> D{"Both callbacks allow?"}
-    D -->|No| E["return false; Kit refuses with not-found error"]
-    D -->|Yes| P{"Preflight?"}
-    P -->|Yes| A
+    A["Kit preflight or write transaction invokes authorize.manageInvitation"] --> B["Check role, canonical scope, active membership, permission, optional admission and rank"]
+    B --> D{"Allowed?"}
+    D -->|No| E["Return false; Kit refuses with not-found error"]
+    D -->|Yes| C["Kit invokes authorize.invite; repeat the checks with invitation role and scope"]
+    C --> Q{"Allowed?"}
+    Q -->|No| E
+    Q -->|Yes| P{"Preflight?"}
+    P -->|Yes| W["Commit preflight; consume throttles; start write transaction and recheck"]
+    W --> A
     P -->|No| R{"Recipient address already registered?"}
     R -->|Yes| X["Kit refuses before rotation"]
-    R -->|No| F["Kit updates token and expiry, commits, then sends invitation provision"]
+    R -->|No| F["Kit updates token and expiry and commits"]
+    F --> G["Kit attempts provision and lifecycle follow-up"]
+    G -->|Follow-up fails| H["Error propagates; rotation remains committed"]
 ```
 
-**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit resend](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/invitation_management.ts#L36-L133).
+**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit resend](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).
