@@ -36,7 +36,7 @@ flowchart TD
     H -->|No| J["Return stored row or null"]
     H -->|Yes| C{"Present and active?"}
     C -->|No| D["Return null"]
-    C -->|Yes| E["Return configured role or raise unknown role"]
+    C -->|Yes| E["Return typed active membership or raise unknown role"]
 ```
 
 **Code references:** [getMembership, find and findActive](../src/memberships.ts#L428), [stored key resolution](../src/stored_keys.ts).
