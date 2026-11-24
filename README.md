@@ -21,17 +21,17 @@ policies).
 
 ## Install
 
-Access Control requires Node.js 24+, AdonisJS 7 and Account Kit 0.6.1 (exact), the release with
+Access Control requires Node.js 24+, AdonisJS 7 and Account Kit 0.7.0 (exact), the release with
 the `./transaction` export, scoped invitations and `ctx.auth.user` left set by its middleware.
-Install the `0.3.4` release from GitHub:
+Install the `0.4.0` release from GitHub:
 
 ```sh
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.3.4/kevinjohn-adonisjs-access-control-0.3.4.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.4.0/kevinjohn-adonisjs-access-control-0.4.0.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 ```
 
-The release asset is `kevinjohn-adonisjs-access-control-0.3.4.tgz`; verify it against the SHA-256
-in the [release notes](https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/tag/v0.3.4).
+The release asset is `kevinjohn-adonisjs-access-control-0.4.0.tgz`; verify it against the SHA-256
+in the [release notes](https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/tag/v0.4.0).
 
 ## Quick start
 
@@ -90,9 +90,6 @@ initializer and the Account Kit callbacks) and `node ace access-control:doctor`.
 - [Notes for coding agents](README-AGENTS.md)
 
 ## Errors
-
-The exception API below is part of the Unreleased changes. For `0.3.4`, use the
-[versioned error reference](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/v0.3.4/docs/reference/errors.md).
 
 Handle a specific refusal through the root `errors` namespace.
 
