@@ -170,7 +170,7 @@ test('Kit accepts canonical batches in stored scope order and rolls back a late 
     await invite(aliasEmail, 'b')
     assert.equal(
       await codeOf(kit.invitations.accept({ token: aliasFirst, password: 'strong-password' })),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE'
     )
     assert.deepEqual(sequence, ['a', 'b'])
     assert.deepEqual(locks, ['a'])
@@ -186,7 +186,7 @@ test('Kit accepts canonical batches in stored scope order and rolls back a late 
     await invite(earlyEmail, 'B')
     assert.equal(
       await codeOf(kit.invitations.accept({ token: early, password: 'strong-password' })),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE'
     )
     assert.deepEqual(sequence, ['A'])
     assert.deepEqual(locks, [])

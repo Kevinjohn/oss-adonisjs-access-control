@@ -30,7 +30,7 @@ const denied = (code: string) => ({ allowed: false, code: `E_ACCESS_CONTROL_${co
 test('decision-oriented names preserve allowed and refused rule records', ({ assert }) => {
   for (const [actorRole, expected] of [
     ['admin', ALLOWED],
-    ['viewer', denied('FORBIDDEN')],
+    ['viewer', denied('PERMISSION_DENIED')],
   ] as const) {
     const input = { actorRole, targetRole: 'viewer', isSelf: false }
     assert.deepEqual(withOwner.decideManagement(input), expected)
@@ -148,16 +148,16 @@ test.group('rules: canManage truth table (spec 3.1)', () => {
     )
   })
 
-  test('row 3: an actor without members:manage is FORBIDDEN before the owner check', ({
+  test('row 3: an actor without members:manage is PERMISSION_DENIED before the owner check', ({
     assert,
   }) => {
     assert.deepEqual(
       withOwner.canManage({ actorRole: 'editor', targetRole: 'viewer', isSelf: false }),
-      denied('FORBIDDEN')
+      denied('PERMISSION_DENIED')
     )
     assert.deepEqual(
       withOwner.canManage({ actorRole: 'editor', targetRole: 'owner', isSelf: false }),
-      denied('FORBIDDEN')
+      denied('PERMISSION_DENIED')
     )
   })
 
@@ -238,7 +238,7 @@ test.group('rules: canAssign (spec 3.2)', () => {
         nextRole: 'editor',
         isSelf: false,
       }),
-      denied('FORBIDDEN')
+      denied('PERMISSION_DENIED')
     )
     assert.deepEqual(
       withOwner.canAssign({

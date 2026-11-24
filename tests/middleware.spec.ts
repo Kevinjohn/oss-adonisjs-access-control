@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { Bouncer } from '@adonisjs/bouncer'
 import { HttpContextFactory } from '@adonisjs/core/factories/http'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccessControl } from '../index.js'
+import { AccessControl, errors } from '../index.js'
 import ScopeMiddleware, { scopeMiddleware } from '../middleware/main.js'
 import { membershipFixture, type MembershipFixture } from './helpers/fixture.js'
 
@@ -87,17 +87,32 @@ test.group('scope middleware (spec 7)', (group) => {
   test('non-member, suspended, malformed scope, unknown scope and no user are all 403', async ({
     assert,
   }) => {
-    const forbidden = { next: false, code: 'E_ACCESS_CONTROL_FORBIDDEN', status: 403 }
-    assert.deepEqual(await run(named, context(f, { id: outsider }, scope)), forbidden)
-    assert.deepEqual(await run(named, context(f, { id: suspended }, scope)), forbidden)
-    assert.deepEqual(await run(named, context(f, { id: owner }, 'abc')), forbidden)
-    assert.deepEqual(await run(named, context(f, { id: owner }, undefined)), forbidden)
-    assert.deepEqual(await run(named, context(f, { id: owner }, 999_999)), forbidden)
-    assert.deepEqual(await run(named, context(f, null, scope)), forbidden)
-    assert.deepEqual(await run(named, context(f, { id: 'nope' }, scope)), forbidden)
     const noAuth = context(f, null, scope)
     delete (noAuth as { auth?: unknown }).auth
-    assert.deepEqual(await run(named, noAuth), forbidden)
+    for (const [ctx, Cause] of [
+      [context(f, { id: outsider }, scope), errors.E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED],
+      [context(f, { id: suspended }, scope), errors.E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED],
+      [context(f, { id: owner }, 'abc'), errors.E_ACCESS_CONTROL_INVALID_KEY],
+      [context(f, { id: owner }, undefined), errors.E_ACCESS_CONTROL_INVALID_KEY],
+      [context(f, { id: owner }, 999_999), errors.E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED],
+      [context(f, null, scope), errors.E_ACCESS_CONTROL_AUTHENTICATION_REQUIRED],
+      [context(f, { id: 'nope' }, scope), errors.E_ACCESS_CONTROL_INVALID_KEY],
+      [noAuth, errors.E_ACCESS_CONTROL_AUTHENTICATION_REQUIRED],
+    ] as const) {
+      const error = await named(ctx, async () => assert.fail('The handler ran')).catch(
+        (failure: unknown) => failure
+      )
+      assert.instanceOf(error, Cause)
+      const refusal = error as InstanceType<typeof Cause>
+      assert.equal(refusal.code, Cause.code)
+      await refusal.handle(refusal, ctx)
+      assert.equal(ctx.response.getStatus(), 403)
+      assert.deepEqual(ctx.response.getBody(), {
+        errors: [
+          { code: 'E_ACCESS_CONTROL_FORBIDDEN', message: 'You do not have permission to do that.' },
+        ],
+      })
+    }
   })
 
   test('a stored role outside the tuple is 403', async ({ assert }) => {
@@ -105,17 +120,21 @@ test.group('scope middleware (spec 7)', (group) => {
       .from(f.names.memberships)
       .where({ scope_id: scope, user_id: owner })
       .update({ role: 'ghost' })
-    assert.deepEqual(await run(named, context(f, { id: owner }, scope)), {
-      next: false,
-      code: 'E_ACCESS_CONTROL_FORBIDDEN',
-      status: 403,
-    })
+    const ctx = context(f, { id: owner }, scope)
+    const error = await named(ctx, async () => assert.fail('The handler ran')).catch(
+      (failure: unknown) => failure
+    )
+    assert.instanceOf(error, errors.E_ACCESS_CONTROL_UNKNOWN_ROLE)
+    const refusal = error as InstanceType<typeof errors.E_ACCESS_CONTROL_UNKNOWN_ROLE>
+    await refusal.handle(refusal, ctx)
+    assert.equal(ctx.response.getStatus(), 403)
+    assert.deepInclude(ctx.response.getBody().errors[0], { code: 'E_ACCESS_CONTROL_FORBIDDEN' })
   })
 
   test('a membership read failure propagates without reaching the handler', async ({ assert }) => {
     const failure = new Error('Membership storage unavailable')
     const ctx = context(f, { id: owner }, scope)
-    f.config.memberships.findActive = async () => {
+    f.config.memberships.find = async () => {
       throw failure
     }
 
@@ -135,7 +154,7 @@ test.group('scope middleware (spec 7)', (group) => {
     assert.equal(member.membership?.role, 'owner')
     assert.deepEqual(await run(functional, context(f, { id: outsider }, scope)), {
       next: false,
-      code: 'E_ACCESS_CONTROL_FORBIDDEN',
+      code: 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED',
       status: 403,
     })
     const fromHeader = context(f, { id: owner }, 'ignored')

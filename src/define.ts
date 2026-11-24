@@ -382,7 +382,7 @@ export class AccessControl<
     targetRoles: ReadonlyMap<ScopeKey, string>,
     isSelf: boolean
   ): boolean {
-    return rules.canAdministerIdentity(this.#matrix, actorRoles, targetRoles, isSelf)
+    return rules.decideIdentity(this, actorRoles, targetRoles, isSelf).allowed
   }
 }
 

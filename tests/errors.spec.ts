@@ -25,7 +25,6 @@ function fakeContext(i18n?: { t(key: string, data: unknown, fallback: string): s
 test.group('errors: public exception classes (spec 6)', () => {
   test('every exported cause has its own class and stable metadata', ({ assert }) => {
     const expected: Record<AccessControlErrorCode, readonly [number, string]> = {
-      E_ACCESS_CONTROL_FORBIDDEN: [403, 'You do not have permission to do that.'],
       E_ACCESS_CONTROL_NOT_A_MEMBER: [404, 'That person is not a member of this team.'],
       E_ACCESS_CONTROL_USER_NOT_FOUND: [404, 'That person does not exist.'],
       E_ACCESS_CONTROL_ALREADY_MEMBER: [409, 'That person is already a member of this team.'],
@@ -40,9 +39,66 @@ test.group('errors: public exception classes (spec 6)', () => {
       E_ACCESS_CONTROL_LAST_OWNER: [409, 'Transfer ownership before deleting this account.'],
       E_ACCESS_CONTROL_SCOPE_NOT_EMPTY: [409, 'This team already has members.'],
       E_ACCESS_CONTROL_SCOPE_NOT_FOUND: [404, 'That team does not exist.'],
-      E_ACCESS_CONTROL_INVALID_INPUT: [422, 'The request is not valid.'],
-      E_ACCESS_CONTROL_INVALID_CONFIG: [500, 'The access-control configuration is not valid.'],
       E_ACCESS_CONTROL_CONFLICT: [409, 'The team changed while it was being deleted. Try again.'],
+      E_ACCESS_CONTROL_INVALID_KEY: [422, 'The identifier is not valid.'],
+      E_ACCESS_CONTROL_INVALID_CURSOR: [422, 'Invalid membership cursor'],
+      E_ACCESS_CONTROL_INVALID_PAGE_LIMIT: [
+        422,
+        'access-control: limit must be an integer from 1 to 100',
+      ],
+      E_ACCESS_CONTROL_INVALID_MEMBERSHIP_STATUS: [
+        422,
+        'access-control: status must be active or suspended',
+      ],
+      E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE: [
+        422,
+        'The invitation scope must use the canonical spelling.',
+      ],
+      E_ACCESS_CONTROL_FIRST_MEMBER_MUST_BE_OWNER: [
+        422,
+        'access-control: the first member takes the owner role',
+      ],
+      E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_REQUIRED: [
+        422,
+        'access-control: the first member needs a role with members:manage',
+      ],
+      E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_CANNOT_MANAGE: [
+        422,
+        'access-control: the first member needs a role with members:manage',
+      ],
+      E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE: [
+        422,
+        'The owner role cannot be granted directly or through an invitation.',
+      ],
+      E_ACCESS_CONTROL_OWNERSHIP_TARGET_SUSPENDED: [
+        422,
+        'access-control: ownership can only go to an active member',
+      ],
+      E_ACCESS_CONTROL_INVALID_STORED_ROLE: [
+        500,
+        'access-control: stored membership has an invalid role',
+      ],
+      E_ACCESS_CONTROL_INVALID_STORED_STATUS: [
+        500,
+        'access-control: stored membership has an unsupported status',
+      ],
+      E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP: [
+        500,
+        'A stored membership timestamp is not valid.',
+      ],
+      E_ACCESS_CONTROL_AUTHENTICATION_REQUIRED: [
+        403,
+        'Authentication is required to enter this scope.',
+      ],
+      E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED: [403, 'A membership is required to do that.'],
+      E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED: [403, 'A suspended membership cannot do that.'],
+      E_ACCESS_CONTROL_PERMISSION_DENIED: [403, 'You do not have permission to do that.'],
+      E_ACCESS_CONTROL_UNKNOWN_PERMISSION: [403, 'That permission does not exist.'],
+      E_ACCESS_CONTROL_OWNER_REQUIRED: [403, 'Only the active owner can transfer ownership.'],
+      E_ACCESS_CONTROL_IDENTITY_TARGET_HAS_NO_MEMBERSHIPS: [
+        403,
+        'The target account has no memberships.',
+      ],
     }
 
     assert.sameMembers(Object.keys(errors), Object.keys(expected))
@@ -68,10 +124,10 @@ test.group('errors: public exception classes (spec 6)', () => {
   }) => {
     const cause = new Error('inner')
     const options = { cause, code: 'OTHER', status: 200 }
-    const error = new errors.E_ACCESS_CONTROL_INVALID_INPUT('Bad cursor', options)
+    const error = new errors.E_ACCESS_CONTROL_INVALID_CURSOR('Bad cursor', options)
     assert.equal(error.message, 'Bad cursor')
     assert.equal(error.cause, cause)
-    assert.equal(error.code, 'E_ACCESS_CONTROL_INVALID_INPUT')
+    assert.equal(error.code, 'E_ACCESS_CONTROL_INVALID_CURSOR')
     assert.equal(error.status, 422)
   })
 
@@ -99,8 +155,13 @@ test.group('errors: public exception classes (spec 6)', () => {
         return key === 'errors.E_ACCESS_CONTROL_FORBIDDEN' ? 'Interdit.' : fallback
       },
     })
-    const forbidden = new errors.E_ACCESS_CONTROL_FORBIDDEN()
+    const forbidden = new errors.E_ACCESS_CONTROL_INVALID_KEY(
+      'Private scope key'
+    ).concealScopeFailure('access')
     await forbidden.handle(forbidden, ctx as never)
+    assert.equal(forbidden.code, 'E_ACCESS_CONTROL_INVALID_KEY')
+    assert.equal(forbidden.status, 422)
+    assert.equal(sent.status, 403)
     assert.deepEqual(sent.body, {
       errors: [{ code: 'E_ACCESS_CONTROL_FORBIDDEN', message: 'Interdit.' }],
     })

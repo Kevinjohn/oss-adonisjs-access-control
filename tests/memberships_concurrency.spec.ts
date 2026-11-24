@@ -40,7 +40,7 @@ test.group('memberships: concurrent operations serialise on the locks (spec 4.2)
       results.filter((result) => result === 'resolved'),
       1
     )
-    assert.include(results, 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.include(results, 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED')
     assert.lengthOf(await f.rows(s), 2)
   })
 
@@ -56,7 +56,7 @@ test.group('memberships: concurrent operations serialise on the locks (spec 4.2)
       codeOf(f.memberships.transferOwnership({ actor: actor(o), scopeId: s, toUserId: a })),
       codeOf(f.memberships.transferOwnership({ actor: actor(o), scopeId: s, toUserId: b })),
     ])
-    assert.sameMembers(twice, ['resolved', 'E_ACCESS_CONTROL_FORBIDDEN'])
+    assert.sameMembers(twice, ['resolved', 'E_ACCESS_CONTROL_OWNER_REQUIRED'])
     const owners = async () => f.rows(s).where({ role: 'owner', status: 'active' })
     assert.lengthOf(await owners(), 1)
     const [ownerRow] = await owners()

@@ -3,8 +3,10 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import { AccessControl } from '../src/define.js'
 import {
-  E_ACCESS_CONTROL_FORBIDDEN,
-  E_ACCESS_CONTROL_INVALID_INPUT,
+  E_ACCESS_CONTROL_AUTHENTICATION_REQUIRED,
+  E_ACCESS_CONTROL_INVALID_KEY,
+  E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED,
+  E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED,
   E_ACCESS_CONTROL_UNKNOWN_ROLE,
 } from '../src/errors.js'
 import type { Membership } from '../src/types.js'
@@ -48,20 +50,21 @@ export default class ScopeMiddleware {
   async handle(ctx: HttpContext, next: NextFn, options: ScopeMiddlewareOptions = {}) {
     const access = await ctx.containerResolver.make(AccessControl)
     const user = readAuthenticatedUser(ctx)
-    if (!user) throw new E_ACCESS_CONTROL_FORBIDDEN()
+    // Conceal scope existence and membership details on HTTP responses.
+    if (!user) throw new E_ACCESS_CONTROL_AUTHENTICATION_REQUIRED().concealScopeFailure('access')
     const scopeId = options.resolveScope ? options.resolveScope(ctx) : ctx.params?.scopeId
     let membership: Membership | null
     try {
-      membership = await access.memberships.findActive(scopeId as never, user.id as never)
+      membership = await access.memberships.find(scopeId as never, user.id as never)
     } catch (error) {
-      if (
-        error instanceof E_ACCESS_CONTROL_INVALID_INPUT ||
-        error instanceof E_ACCESS_CONTROL_UNKNOWN_ROLE
-      )
-        throw new E_ACCESS_CONTROL_FORBIDDEN(undefined, { cause: error })
+      if (error instanceof E_ACCESS_CONTROL_INVALID_KEY) throw error.concealScopeFailure('access')
       throw error
     }
-    if (!membership) throw new E_ACCESS_CONTROL_FORBIDDEN()
+    if (!membership) throw new E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED().concealScopeFailure('access')
+    if (membership.status !== 'active')
+      throw new E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED().concealScopeFailure('access')
+    if (access.rank(membership.role) < 0)
+      throw new E_ACCESS_CONTROL_UNKNOWN_ROLE().concealScopeFailure('access')
     ctx.membership = membership
     return next()
   }

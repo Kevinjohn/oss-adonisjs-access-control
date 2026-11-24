@@ -22,7 +22,7 @@ status and message. For setup, see [getting started](getting-started.md) and the
 `defineAccessControl` validates the declaration when `config/access_control.ts` loads, without
 reading the database. An invalid declaration raises AdonisJS's `InvalidArgumentsException` and
 names the problem after `access-control: invalid configuration:`. Invalid stored membership rows
-raise `E_ACCESS_CONTROL_INVALID_CONFIG` at read time.
+raise a stored-role, status or timestamp exception at read time.
 
 | Message names                                                    | Fix                                                                                |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -38,7 +38,7 @@ raise `E_ACCESS_CONTROL_INVALID_CONFIG` at read time.
 ## Stored membership rows
 
 Every read of a membership row checks it, so a row the package cannot read fails each request that
-reads it with `E_ACCESS_CONTROL_INVALID_CONFIG` (500), the scope middleware included, rather than
+reads it with the corresponding stored-data exception (500), the scope middleware included, rather than
 a 403. Account Kit's membership data export fails the same way. The message names the problem
 after `access-control:`.
 
@@ -97,12 +97,12 @@ A generated ability returns false, and `bouncer.authorize` throws `E_AUTHORIZATI
 A key that is not declared compiles only when the Bouncer is built from the `services/main`
 singleton, which is typed as a bare `AccessControl`; build it from `#config/access_control`.
 
-## `E_ACCESS_CONTROL_INVALID_INPUT` shows up as a 500
+## Invalid input shows up as a 500
 
 With AdonisJS's default exception handler the error renders itself as a 422. An application whose
 handler maps package errors to its own response shape, and treats unmapped codes as server faults,
 answers 500 instead: that is deliberate when every request input is validated before the package,
-because then `INVALID_INPUT` means a programming fault. When it does reach users, find the input
+because an unlisted validation exception means a programming fault. When it does reach users, find the input
 the application passed through unchecked:
 
 - A route parameter longer than the key limit. String keys are 1 to 254 characters; bound the
@@ -110,7 +110,7 @@ the application passed through unchecked:
   ([recipe](../recipes/index.md#map-package-errors-to-your-api)).
 - An unvalidated role, status or `limit` (1 to 100).
 - A paging `cursor` the client altered. It is opaque and cannot be validated in advance; catch
-  `INVALID_INPUT` around `listForScope` and answer 400
+  `INVALID_CURSOR` around `listForScope` and answer 400
   ([recipe](../recipes/index.md#map-package-errors-to-your-api)).
 - `transferOwnership` to a member who is not active. Check the target first and answer with your
   own refusal.

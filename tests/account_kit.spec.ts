@@ -322,11 +322,11 @@ test.group('Account Kit callbacks: acceptance, deletion and export (spec 9)', (g
     )
     assert.equal(
       await accept(invited, { scope: String(scope), role: 'ceo' }),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_UNKNOWN_ROLE'
     )
     assert.equal(
       await accept(invited, { scope: String(scope), role: 'owner' }),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE'
     )
     assert.equal(
       await accept(member, { scope: String(scope), role: 'admin' }),
@@ -604,7 +604,7 @@ test.group('Account Kit callbacks: canonical scope keys (spec 5.1)', (group) => 
           )
         )
       ),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE'
     )
     assert.isNull(await access.memberships.find(scope, invited))
     await booted.db.transaction((trx) =>
@@ -651,12 +651,12 @@ test('string invitation authorization uses exact stored scope spelling on both c
     assert.isFalse(await callbacks.authorize.invite(user(outsider), 'editor', canonical))
     assert.equal(
       await codeOf(access.memberships.getMembershipInRequiredInvitationScope('', owner)),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_KEY'
     )
     assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', { scope: '' }))
     assert.equal(
       await codeOf(access.memberships.getMembershipInRequiredInvitationScope(scope, 0)),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_KEY'
     )
     assert.isFalse(await callbacks.authorize.invite(user(0), 'editor', canonical))
     assert.equal(
@@ -680,7 +680,7 @@ test('string invitation authorization uses exact stored scope spelling on both c
     if (booted.db.connection().dialect.name !== 'postgres') {
       assert.equal(
         await codeOf(access.memberships.getMembershipInRequiredInvitationScope(alias.scope, owner)),
-        'E_ACCESS_CONTROL_INVALID_INPUT'
+        'E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE'
       )
       assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', alias))
       assert.isFalse(await callbacks.authorize.listInvitations(user(owner), alias))
@@ -731,7 +731,7 @@ test('string invitation authorization uses exact stored scope spelling on both c
       .update({ status: 'unknown' })
     assert.equal(
       await codeOf(callbacks.authorize.invite(user(owner), 'editor', canonical)),
-      'E_ACCESS_CONTROL_INVALID_CONFIG'
+      'E_ACCESS_CONTROL_INVALID_STORED_STATUS'
     )
 
     // A database lookup failure must escape both the membership read and the authorization hook.

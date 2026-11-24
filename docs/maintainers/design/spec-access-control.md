@@ -407,14 +407,14 @@ Definitions (`O` = owner role, `M(k)` = minimum role for key `k`):
 
 Evaluated in order; first match wins.
 
-| #   | Condition                            | Result                 |
-| --- | ------------------------------------ | ---------------------- |
-| 1   | actor or target role unknown         | deny `UNKNOWN_ROLE`    |
-| 2   | `isSelf`                             | deny `SELF_MANAGEMENT` |
-| 3   | `!can(actorRole, 'members:manage')`  | deny `FORBIDDEN`       |
-| 4   | `O` set and `targetRole === O`       | deny `OWNER_PROTECTED` |
-| 5   | `rank(targetRole) > rank(actorRole)` | deny `RANK_TOO_LOW`    |
-| 6   | otherwise                            | allow                  |
+| #   | Condition                            | Result                   |
+| --- | ------------------------------------ | ------------------------ |
+| 1   | actor or target role unknown         | deny `UNKNOWN_ROLE`      |
+| 2   | `isSelf`                             | deny `SELF_MANAGEMENT`   |
+| 3   | `!can(actorRole, 'members:manage')`  | deny `PERMISSION_DENIED` |
+| 4   | `O` set and `targetRole === O`       | deny `OWNER_PROTECTED`   |
+| 5   | `rank(targetRole) > rank(actorRole)` | deny `RANK_TOO_LOW`      |
+| 6   | otherwise                            | allow                    |
 
 Equal rank is allowed (an admin may manage another admin).
 
@@ -631,32 +631,32 @@ export interface MembershipPage {
 }
 ```
 
-Keys are normalised on read: `keyType: 'integer'` → JS number (throw `INVALID_INPUT` if not a safe
-positive integer); `'uuid'` → lower-case string matching the UUID pattern (else `INVALID_INPUT`);
+Keys are normalised on read: `keyType: 'integer'` → JS number (throw `INVALID_KEY` if not a safe
+positive integer); `'uuid'` → lower-case string matching the UUID pattern (else `INVALID_KEY`);
 `'string'` → string of 1-254 characters. For string keys, ordinary reads and writes use a matching parent row's stored spelling under
 that parent's collation, or the supplied spelling if no parent matches. A serialized invitation
 scope must exactly equal the stored string parent spelling before acceptance locks its scope;
-otherwise a matching alias is `INVALID_INPUT` and a missing parent is `SCOPE_NOT_FOUND`.
+otherwise a matching alias is `INVALID_INVITATION_SCOPE` and a missing parent is `SCOPE_NOT_FOUND`.
 
 ### 5.2 Ordinary operations (actor-authorized)
 
 For each write (`add`, `changeRole`, `setStatus`, `remove`, `leave`, `transferOwnership`; the three
 reads below do not lock): run in a transaction (4.3) → locks (4.2) → load the actor's membership in that scope
-through `trx`; missing or suspended → `FORBIDDEN` → apply `decideManagement`/`decideAssignment` rows that depend only
+through `trx`; missing or suspended → `MEMBERSHIP_REQUIRED` or `MEMBERSHIP_SUSPENDED` → apply `decideManagement`/`decideAssignment` rows that depend only
 on the actor (unknown actor role, `members:manage`) → only then check the target's existence (so a
 non-manager cannot probe membership by 404 versus 403) → remaining rule rows → write → event → return.
 
-| Method              | Input                                       | Rule                                                                                                                                                                             | Result                                     | Event                                                         |
-| ------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------- |
-| `find`              | `scopeId, userId, trx?`                     | none (no lock, plain read)                                                                                                                                                       | `Membership \| null`                       | none                                                          |
-| `listForUser`       | `userId, trx?`                              | none (no lock)                                                                                                                                                                   | `Membership[]` ordered by `created_at, id` | none                                                          |
-| `listForScope`      | `{ actor, scopeId, cursor?, limit?, trx? }` | actor `can('members:list')`                                                                                                                                                      | `MembershipPage`                           | none                                                          |
-| `add`               | `{ actor, scopeId, userId, role, trx? }`    | `decideAssignment` (3.2); after locking, `trx.from(users.table).select('id').where('id', userId).first()` is `undefined` → `USER_NOT_FOUND`; already a member → `ALREADY_MEMBER` | `Membership`                               | `membership.added`                                            |
-| `changeRole`        | `{ actor, scopeId, userId, role, trx? }`    | target must exist (`NOT_A_MEMBER`); `decideAssignment`                                                                                                                           | `Membership`                               | `membership.role_changed` (skip write and event if unchanged) |
-| `setStatus`         | `{ actor, scopeId, userId, status, trx? }`  | target exists; `decideManagement`                                                                                                                                                | `Membership`                               | `membership.status_changed` (skip if unchanged)               |
-| `remove`            | `{ actor, scopeId, userId, trx? }`          | target exists; `decideManagement`                                                                                                                                                | `void`                                     | `membership.removed` (`reason: 'removed'`)                    |
-| `leave`             | `{ scopeId, userId, trx? }`                 | member exists; owner → `OWNER_PROTECTED`                                                                                                                                         | `void`                                     | `membership.left`                                             |
-| `transferOwnership` | `{ actor, scopeId, toUserId, trx? }`        | `O` unset → `OWNER_DISABLED`; actor not the active `O` → `FORBIDDEN`; target is actor → `SELF_MANAGEMENT`; target missing → `NOT_A_MEMBER`; target suspended → `INVALID_INPUT`   | `void`                                     | `membership.ownership_transferred`                            |
+| Method              | Input                                       | Rule                                                                                                                                                                                    | Result                                     | Event                                                         |
+| ------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| `find`              | `scopeId, userId, trx?`                     | none (no lock, plain read)                                                                                                                                                              | `Membership \| null`                       | none                                                          |
+| `listForUser`       | `userId, trx?`                              | none (no lock)                                                                                                                                                                          | `Membership[]` ordered by `created_at, id` | none                                                          |
+| `listForScope`      | `{ actor, scopeId, cursor?, limit?, trx? }` | actor `can('members:list')`                                                                                                                                                             | `MembershipPage`                           | none                                                          |
+| `add`               | `{ actor, scopeId, userId, role, trx? }`    | `decideAssignment` (3.2); after locking, `trx.from(users.table).select('id').where('id', userId).first()` is `undefined` → `USER_NOT_FOUND`; already a member → `ALREADY_MEMBER`        | `Membership`                               | `membership.added`                                            |
+| `changeRole`        | `{ actor, scopeId, userId, role, trx? }`    | target must exist (`NOT_A_MEMBER`); `decideAssignment`                                                                                                                                  | `Membership`                               | `membership.role_changed` (skip write and event if unchanged) |
+| `setStatus`         | `{ actor, scopeId, userId, status, trx? }`  | target exists; `decideManagement`                                                                                                                                                       | `Membership`                               | `membership.status_changed` (skip if unchanged)               |
+| `remove`            | `{ actor, scopeId, userId, trx? }`          | target exists; `decideManagement`                                                                                                                                                       | `void`                                     | `membership.removed` (`reason: 'removed'`)                    |
+| `leave`             | `{ scopeId, userId, trx? }`                 | member exists; owner → `OWNER_PROTECTED`                                                                                                                                                | `void`                                     | `membership.left`                                             |
+| `transferOwnership` | `{ actor, scopeId, toUserId, trx? }`        | `O` unset → `OWNER_DISABLED`; non-owner actor → `OWNER_REQUIRED`; target is actor → `SELF_MANAGEMENT`; target missing → `NOT_A_MEMBER`; target suspended → `OWNERSHIP_TARGET_SUSPENDED` | `void`                                     | `membership.ownership_transferred`                            |
 
 - `listForScope`: `limit` default 25, max 100; ordered by `created_at asc, id asc`; cursor is
   base64url JSON `[createdAt, id]` like the kit's invitation cursor **[repo]**
@@ -669,13 +669,13 @@ non-manager cannot probe membership by 404 versus 403) → remaining rule rows �
 
 ### 5.3 Trusted operations (no actor)
 
-| Method                        | Input                                                         | Checks                                                                                                                                                                                                                                       | Event                            |
-| ----------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| `createFirstMember`           | `{ scopeId, userId, role?, trx? }`                            | scope locked; any membership exists → `SCOPE_NOT_EMPTY`. When `O` set: role is `O` (passing another role → `INVALID_INPUT`). When unset: `role` required and must satisfy `can(role, 'members:manage')`, else `INVALID_INPUT`.               | `membership.first_member`        |
-| `acceptInvitation`            | `{ scopeId, userId, role, invitationId, trx }` (trx required) | scope locked; role known and not `O` else `INVALID_INPUT`; existing membership → `ALREADY_MEMBER`                                                                                                                                            | `membership.invitation_accepted` |
-| `grant`                       | `{ scopeId, userId, role, trx }` (trx required)               | scope locked; role known and not `O` else `INVALID_INPUT`; missing user row → `USER_NOT_FOUND`; existing membership → `ALREADY_MEMBER`. For a membership the application authorised itself (admission, eligibility); no actor, no invitation | `membership.granted`             |
-| `identityRoles`               | `{ actorId, targetId, trx? }`                                 | locks both user rows ascending (freezing both membership sets), reads memberships, locks the scope rows of both maps' union, ascending; returns `{ actorRoles, targetRoles }` per 3.4                                                        | none                             |
-| `assertCanAdministerIdentity` | `{ actorId, targetId, trx? }`                                 | `identityRoles` then `canAdministerIdentity`; false → `FORBIDDEN`                                                                                                                                                                            | none                             |
+| Method                        | Input                                                         | Checks                                                                                                                                                                                                                                                                                                                | Event                            |
+| ----------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `createFirstMember`           | `{ scopeId, userId, role?, trx? }`                            | scope locked; any membership exists → `SCOPE_NOT_EMPTY`. When `O` set: role is `O` (passing another role → `FIRST_MEMBER_MUST_BE_OWNER`). When unset: `role` required and must satisfy `can(role, 'members:manage')`, or fail with `FIRST_MEMBER_ROLE_REQUIRED`, `UNKNOWN_ROLE` or `FIRST_MEMBER_ROLE_CANNOT_MANAGE`. | `membership.first_member`        |
+| `acceptInvitation`            | `{ scopeId, userId, role, invitationId, trx }` (trx required) | scope locked; role known and not `O` else `UNKNOWN_ROLE` or `OWNER_ROLE_NOT_GRANTABLE`; existing membership → `ALREADY_MEMBER`                                                                                                                                                                                        | `membership.invitation_accepted` |
+| `grant`                       | `{ scopeId, userId, role, trx }` (trx required)               | scope locked; role known and not `O` else `UNKNOWN_ROLE` or `OWNER_ROLE_NOT_GRANTABLE`; missing user row → `USER_NOT_FOUND`; existing membership → `ALREADY_MEMBER`. For a membership the application authorised itself (admission, eligibility); no actor, no invitation                                             | `membership.granted`             |
+| `identityRoles`               | `{ actorId, targetId, trx? }`                                 | locks both user rows ascending (freezing both membership sets), reads memberships, locks the scope rows of both maps' union, ascending; returns `{ actorRoles, targetRoles }` per 3.4                                                                                                                                 | none                             |
+| `assertCanAdministerIdentity` | `{ actorId, targetId, trx? }`                                 | `identityRoles` then the identity rules. Raise the failed rule and conceal it in the HTTP response                                                                                                                                                                                                                    | none                             |
 
 These are server-only. They are on the service but documented as "do not expose to request input
 without your own checks".
@@ -726,26 +726,8 @@ message. Throw the class exported by `src/errors.ts` under that code. Applicatio
 Invalid application configuration or a missing required transaction raises AdonisJS
 `InvalidArgumentsException`. A service accessed before initialization raises `RuntimeException`.
 
-| Code                               | HTTP | Message                                                                                 | Thrown when                                                                             |
-| ---------------------------------- | ---- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `E_ACCESS_CONTROL_FORBIDDEN`       | 403  | You do not have permission to do that.                                                  | actor lacks membership, is suspended, lacks the key, or is not the owner for a transfer |
-| `E_ACCESS_CONTROL_NOT_A_MEMBER`    | 404  | That person is not a member of this team.                                               | target membership missing                                                               |
-| `E_ACCESS_CONTROL_USER_NOT_FOUND`  | 404  | That person does not exist.                                                             | `add` for a missing users row                                                           |
-| `E_ACCESS_CONTROL_ALREADY_MEMBER`  | 409  | That person is already a member of this team.                                           | add or accept on an existing membership                                                 |
-| `E_ACCESS_CONTROL_UNKNOWN_ROLE`    | 422  | That role does not exist.                                                               | a role outside the tuple                                                                |
-| `E_ACCESS_CONTROL_RANK_TOO_LOW`    | 403  | You cannot manage someone with a higher role.                                           | rank rules                                                                              |
-| `E_ACCESS_CONTROL_OWNER_PROTECTED` | 409  | The owner cannot be changed, suspended or removed except through an ownership transfer. | owner targeted, assigned, or leaving                                                    |
-| `E_ACCESS_CONTROL_SELF_MANAGEMENT` | 409  | You cannot change your own role or status.                                              | self role or status change; transfer to self                                            |
-| `E_ACCESS_CONTROL_OWNER_DISABLED`  | 409  | This application has no owner role.                                                     | transfer without `ownerRole`                                                            |
-| `E_ACCESS_CONTROL_LAST_OWNER`      | 409  | Transfer ownership before deleting this account.                                        | account deletion while owner                                                            |
-| `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY` | 409  | This team already has members.                                                          | `createFirstMember` on a non-empty scope                                                |
-| `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` | 404  | That team does not exist.                                                               | scope row missing during lock                                                           |
-| `E_ACCESS_CONTROL_INVALID_INPUT`   | 422  | The request is not valid.                                                               | malformed keys, bad trusted-op input, transfer to a suspended member                    |
-| `E_ACCESS_CONTROL_INVALID_CONFIG`  | 500  | The access-control configuration is not valid.                                          | invalid stored membership role, status or timestamp                                     |
-| `E_ACCESS_CONTROL_CONFLICT`        | 409  | The team changed while it was being deleted. Try again.                                 | `removeAllForScope`: the member set changed between read and lock                       |
-
-Elsewhere in this spec, codes are written without the `E_ACCESS_CONTROL_` prefix for brevity. The
-scope middleware's refusals use `FORBIDDEN`.
+See the [error reference](../../reference/errors.md) for the codes, statuses and protective
+HTTP mappings. The rest of this specification omits the `E_ACCESS_CONTROL_` prefix for brevity.
 
 **Language (1.2):** Each package exception implements `handle(error, ctx)`: the message is
 `ctx.i18n.t('errors.<code>', {}, <English message>)` when `ctx.i18n` exists, otherwise the English
@@ -871,7 +853,7 @@ Behaviour:
   when `app.container.hasBinding('account_admission')` is true at call time **[repo]**
   `src/admission/provider.ts`, unless `options.admission === false`.
 - **Acceptance failures fail the whole acceptance [decided].** `acceptInvitation` errors
-  (`SCOPE_NOT_FOUND` for a deleted team, `UNKNOWN_ROLE`/`INVALID_INPUT` for a renamed or owner role,
+  (`SCOPE_NOT_FOUND` for a deleted team, `UNKNOWN_ROLE`/`OWNER_ROLE_NOT_GRANTABLE` for a renamed or owner role,
   `ALREADY_MEMBER`) propagate and roll back the kit's acceptance transaction, matching #768's proposal.
   Silently skipping would hide a data-path error. Apps that prefer to skip wrap the callback.
 - With admission evidence enabled, the app composes
@@ -964,7 +946,7 @@ Each milestone is one pull request, passes the gate, and lists its tests by name
   concurrent `transferOwnership` twice, and transfer versus remove: exactly one active owner remains;
   each `transferOwnership` error code; `add` for a missing user → `USER_NOT_FOUND`; non-manager gets 403,
   not 404, for a missing target; `identityRoles` maps (actor active only, target includes suspended);
-  `assertCanAdministerIdentity` allowed and `FORBIDDEN`; a stored role outside the tuple → `can` false,
+  `assertCanAdministerIdentity` allowed and refused; a stored role outside the tuple → `can` false,
   `decideManagement` `UNKNOWN_ROLE`; `SCOPE_NOT_FOUND`; cursor paging across equal `created_at`;
   caller-supplied `trx` path and package-owned path both covered; deleting a scope or user row with
   memberships still present fails on the `RESTRICT` key; `removeAllForScope` emits one

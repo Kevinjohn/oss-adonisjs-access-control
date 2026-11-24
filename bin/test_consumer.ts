@@ -104,7 +104,7 @@ const rootProbe = `
   assert.equal(middleware.default, scopeMiddleware.default)
   assert.equal(middleware.scopeMiddleware, scopeMiddleware.scopeMiddleware)
   await assert.rejects(import('@kevinjohn/adonisjs-access-control/services/main'), /requires an AdonisJS application/)
-  assert.equal(new api.errors.E_ACCESS_CONTROL_FORBIDDEN().code, 'E_ACCESS_CONTROL_FORBIDDEN')
+  assert.equal(new api.errors.E_ACCESS_CONTROL_PERMISSION_DENIED().code, 'E_ACCESS_CONTROL_PERMISSION_DENIED')
 `
 
 const providerProbe = `

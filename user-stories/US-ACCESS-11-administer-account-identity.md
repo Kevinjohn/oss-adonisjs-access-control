@@ -34,7 +34,7 @@ flowchart TD
     A["assertCanAdministerIdentity({ actorId, targetId, trx? })"] --> B["Reuse or open trx; resolve stored user IDs; identityRoles locks users, reads memberships, locks union of scopes, builds role maps"]
     B --> C["canAdministerIdentity refuses empty target map, allows self with memberships, and otherwise checks every target scope"]
     C --> D{"Allowed?"}
-    D -->|No| E["throw FORBIDDEN"]
+    D -->|No| E["Raise failed raw rule and return HTTP FORBIDDEN"]
     D -->|Yes| F["return to host for separate Kit operation"]
 ```
 

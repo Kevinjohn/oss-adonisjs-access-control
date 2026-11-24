@@ -6,16 +6,29 @@ import type { AccessControl } from './define.js'
 import {
   E_ACCESS_CONTROL_ALREADY_MEMBER,
   E_ACCESS_CONTROL_CONFLICT,
-  E_ACCESS_CONTROL_FORBIDDEN,
-  E_ACCESS_CONTROL_INVALID_CONFIG,
-  E_ACCESS_CONTROL_INVALID_INPUT,
+  E_ACCESS_CONTROL_FIRST_MEMBER_MUST_BE_OWNER,
+  E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_CANNOT_MANAGE,
+  E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_REQUIRED,
+  E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE,
+  E_ACCESS_CONTROL_INVALID_MEMBERSHIP_STATUS,
+  E_ACCESS_CONTROL_INVALID_PAGE_LIMIT,
+  E_ACCESS_CONTROL_INVALID_STORED_ROLE,
+  E_ACCESS_CONTROL_INVALID_STORED_STATUS,
+  E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP,
   E_ACCESS_CONTROL_LAST_OWNER,
+  E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED,
+  E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED,
   E_ACCESS_CONTROL_NOT_A_MEMBER,
+  E_ACCESS_CONTROL_OWNERSHIP_TARGET_SUSPENDED,
   E_ACCESS_CONTROL_OWNER_DISABLED,
   E_ACCESS_CONTROL_OWNER_PROTECTED,
+  E_ACCESS_CONTROL_OWNER_REQUIRED,
+  E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE,
+  E_ACCESS_CONTROL_PERMISSION_DENIED,
   E_ACCESS_CONTROL_SCOPE_NOT_EMPTY,
   E_ACCESS_CONTROL_SCOPE_NOT_FOUND,
   E_ACCESS_CONTROL_SELF_MANAGEMENT,
+  E_ACCESS_CONTROL_UNKNOWN_PERMISSION,
   E_ACCESS_CONTROL_UNKNOWN_ROLE,
   E_ACCESS_CONTROL_USER_NOT_FOUND,
 } from './errors.js'
@@ -24,6 +37,7 @@ import { requireValidKey } from './keys.js'
 import { readStoredParentId, resolveStoredParentId } from './stored_keys.js'
 import { lockScope, lockScopes, lockUsers, sortUniqueKeys, haveSameKeys } from './locks.js'
 import { decodeCursor, encodeCursor } from './pagination.js'
+import { decideIdentity } from './rules.js'
 import type {
   Actor,
   Membership,
@@ -243,14 +257,9 @@ export class MembershipService<Role extends string = string> {
 
   #toMembership(row: Row): Membership {
     // Any stored string stays readable, so a renamed role can still be found and migrated.
-    if (typeof row.role !== 'string')
-      throw new E_ACCESS_CONTROL_INVALID_CONFIG(
-        'access-control: stored membership has an invalid role'
-      )
+    if (typeof row.role !== 'string') throw new E_ACCESS_CONTROL_INVALID_STORED_ROLE()
     if (!statuses.includes(row.status as MembershipStatus))
-      throw new E_ACCESS_CONTROL_INVALID_CONFIG(
-        'access-control: stored membership has an unsupported status'
-      )
+      throw new E_ACCESS_CONTROL_INVALID_STORED_STATUS()
     return {
       scopeId: this.#requireScopeKey(row.scope_id),
       userId: this.#requireUserKey(row.user_id),
@@ -266,12 +275,12 @@ export class MembershipService<Role extends string = string> {
       const timestamp = this.#runner.readTimestamp(value)
       if (timestamp?.isValid) return timestamp
     } catch (cause) {
-      throw new E_ACCESS_CONTROL_INVALID_CONFIG(
+      throw new E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP(
         `access-control: stored membership has an invalid ${column} timestamp`,
         { cause }
       )
     }
-    throw new E_ACCESS_CONTROL_INVALID_CONFIG(
+    throw new E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP(
       `access-control: stored membership has an invalid ${column} timestamp`
     )
   }
@@ -364,7 +373,7 @@ export class MembershipService<Role extends string = string> {
     const stored = await readStoredParentId(client, this.#scopeTable, String(scopeId))
     if (stored === undefined) throw new E_ACCESS_CONTROL_SCOPE_NOT_FOUND()
     if (stored !== scopeId)
-      throw new E_ACCESS_CONTROL_INVALID_INPUT(
+      throw new E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE(
         'access-control: invitation scope must use the stored spelling'
       )
     return stored
@@ -405,9 +414,11 @@ export class MembershipService<Role extends string = string> {
    */
   async #requireManager(trx: Trx, scopeId: ScopeKey, actorId: UserKey): Promise<Membership> {
     const actor = await this.#read(trx, scopeId, actorId)
-    if (!actor || actor.status !== 'active') throw new E_ACCESS_CONTROL_FORBIDDEN()
+    if (!actor) throw new E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED()
+    if (actor.status !== 'active') throw new E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED()
     if (this.#access.rank(actor.role) < 0) throw new E_ACCESS_CONTROL_UNKNOWN_ROLE()
-    if (!this.#access.can(actor.role, 'members:manage')) throw new E_ACCESS_CONTROL_FORBIDDEN()
+    if (!this.#access.can(actor.role, 'members:manage'))
+      throw new E_ACCESS_CONTROL_PERMISSION_DENIED()
     return actor
   }
 
@@ -508,8 +519,8 @@ export class MembershipService<Role extends string = string> {
 
   /**
    * The user's active membership when its role holds `permission`, read through the caller's
-   * transaction. Throws `E_ACCESS_CONTROL_FORBIDDEN` for a missing or suspended membership, a
-   * stored role outside the configured roles, and a role without the permission. Does not lock.
+   * transaction. Distinguishes a missing or suspended membership, unknown role or permission, and
+   * insufficient permissions. Does not lock.
    *
    * @example
    * ```ts
@@ -524,12 +535,13 @@ export class MembershipService<Role extends string = string> {
   async authorize(input: AuthorizeInput): Promise<Membership> {
     const trx = this.#requireTrx(input.trx, 'authorize')
     const membership = await this.find(input.scopeId, input.userId, trx)
-    if (
-      !membership ||
-      membership.status !== 'active' ||
-      !this.#access.can(membership.role, input.permission)
-    )
-      throw new E_ACCESS_CONTROL_FORBIDDEN()
+    if (!membership) throw new E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED()
+    if (membership.status !== 'active') throw new E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED()
+    if (this.#access.rank(membership.role) < 0) throw new E_ACCESS_CONTROL_UNKNOWN_ROLE()
+    if (!this.#access.permissionKeys.some((key) => key === input.permission))
+      throw new E_ACCESS_CONTROL_UNKNOWN_PERMISSION()
+    if (!this.#access.can(membership.role, input.permission))
+      throw new E_ACCESS_CONTROL_PERMISSION_DENIED()
     return membership
   }
 
@@ -551,16 +563,17 @@ export class MembershipService<Role extends string = string> {
     const normalizedActor = this.#requireUserKey(input.actor.id, 'actor.id')
     const limit = input.limit ?? 25
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
-      throw new E_ACCESS_CONTROL_INVALID_INPUT(
-        'access-control: limit must be an integer from 1 to 100'
-      )
+      throw new E_ACCESS_CONTROL_INVALID_PAGE_LIMIT()
     const cursor = input.cursor === undefined ? null : decodeCursor(input.cursor)
     const client = this.#resolveQueryClient(input.trx)
     const scopeId = await this.#resolveStoredScopeId(client, normalizedScope)
     const actorId = await this.#resolveStoredUserId(client, normalizedActor)
     const actor = await this.#read(client, scopeId, actorId)
-    if (!actor || actor.status !== 'active' || !this.#access.can(actor.role, 'members:list'))
-      throw new E_ACCESS_CONTROL_FORBIDDEN()
+    if (!actor) throw new E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED()
+    if (actor.status !== 'active') throw new E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED()
+    if (this.#access.rank(actor.role) < 0) throw new E_ACCESS_CONTROL_UNKNOWN_ROLE()
+    if (!this.#access.can(actor.role, 'members:list'))
+      throw new E_ACCESS_CONTROL_PERMISSION_DENIED()
     const query = client.from(this.#table).where('scope_id', scopeId)
     if (cursor) {
       const after = this.#runner.sqlTimestamp(client, this.#runner.readTimestamp(cursor.createdAt)!)
@@ -700,8 +713,7 @@ export class MembershipService<Role extends string = string> {
     let userId = this.#requireUserKey(input.userId)
     let actorId = this.#requireUserKey(input.actor.id, 'actor.id')
     const status = input.status
-    if (!statuses.includes(status))
-      throw new E_ACCESS_CONTROL_INVALID_INPUT('access-control: status must be active or suspended')
+    if (!statuses.includes(status)) throw new E_ACCESS_CONTROL_INVALID_MEMBERSHIP_STATUS()
     return this.#run(input.trx, async (trx) => {
       const stored = await this.#resolveStoredKeys(trx, scopeId, [actorId, userId])
       ;[actorId, userId] = stored.userIds
@@ -794,7 +806,7 @@ export class MembershipService<Role extends string = string> {
       } catch (caught) {
         // Any signed-in user may call leave, so a missing scope reads like a missing membership.
         if (caught instanceof E_ACCESS_CONTROL_SCOPE_NOT_FOUND)
-          throw new E_ACCESS_CONTROL_NOT_A_MEMBER()
+          throw caught.concealScopeFailure('scope-existence')
         throw caught
       }
       const membership = await this.#requireTarget(trx, scopeId, userId)
@@ -830,14 +842,13 @@ export class MembershipService<Role extends string = string> {
       scopeId = stored.scopeId
       await this.#lock(trx, scopeId, [actorId, toUserId])
       const actor = await this.#read(trx, scopeId, actorId)
-      if (!actor || actor.status !== 'active' || actor.role !== ownerRole)
-        throw new E_ACCESS_CONTROL_FORBIDDEN()
+      if (!actor) throw new E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED()
+      if (actor.status !== 'active') throw new E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED()
+      if (this.#access.rank(actor.role) < 0) throw new E_ACCESS_CONTROL_UNKNOWN_ROLE()
+      if (actor.role !== ownerRole) throw new E_ACCESS_CONTROL_OWNER_REQUIRED()
       if (toUserId === actorId) throw new E_ACCESS_CONTROL_SELF_MANAGEMENT()
       const target = await this.#requireTarget(trx, scopeId, toUserId)
-      if (target.status !== 'active')
-        throw new E_ACCESS_CONTROL_INVALID_INPUT(
-          'access-control: ownership can only go to an active member'
-        )
+      if (target.status !== 'active') throw new E_ACCESS_CONTROL_OWNERSHIP_TARGET_SUSPENDED()
       await this.#update(trx, { scopeId, userId: actorId, patch: { role: demotedTo } })
       await this.#update(trx, { scopeId, userId: toUserId, patch: { role: ownerRole } })
       await this.#notifyMembershipChanged(
@@ -868,15 +879,13 @@ export class MembershipService<Role extends string = string> {
     let role: string
     if (ownerRole !== undefined) {
       if (input.role !== undefined && input.role !== ownerRole)
-        throw new E_ACCESS_CONTROL_INVALID_INPUT(
-          'access-control: the first member takes the owner role'
-        )
+        throw new E_ACCESS_CONTROL_FIRST_MEMBER_MUST_BE_OWNER()
       role = ownerRole
     } else {
-      if (input.role === undefined || !this.#access.can(input.role, 'members:manage'))
-        throw new E_ACCESS_CONTROL_INVALID_INPUT(
-          'access-control: the first member needs a role with members:manage'
-        )
+      if (input.role === undefined) throw new E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_REQUIRED()
+      if (this.#access.rank(input.role) < 0) throw new E_ACCESS_CONTROL_UNKNOWN_ROLE()
+      if (!this.#access.can(input.role, 'members:manage'))
+        throw new E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_CANNOT_MANAGE()
       role = input.role
     }
     return this.#run(input.trx, async (trx) => {
@@ -913,10 +922,8 @@ export class MembershipService<Role extends string = string> {
     const trx = this.#requireTrx(input.trx, 'acceptInvitation')
     const role = input.role
     const invitationId = input.invitationId
-    if (this.#access.rank(role) < 0 || role === this.#access.ownerRole)
-      throw new E_ACCESS_CONTROL_INVALID_INPUT(
-        'access-control: an invitation role must be a known non-owner role'
-      )
+    if (this.#access.rank(role) < 0) throw new E_ACCESS_CONTROL_UNKNOWN_ROLE()
+    if (role === this.#access.ownerRole) throw new E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE()
     const normalizedScopeId = this.#requireScopeKey(input.scopeId)
     const normalizedUserId = this.#requireUserKey(input.userId)
     const scopeId = await this.#requireStoredInvitationScopeId(trx, normalizedScopeId)
@@ -948,10 +955,8 @@ export class MembershipService<Role extends string = string> {
   async grant(input: GrantMembershipInput): Promise<Membership> {
     const trx = this.#requireTrx(input.trx, 'grant')
     const role = input.role
-    if (this.#access.rank(role) < 0 || role === this.#access.ownerRole)
-      throw new E_ACCESS_CONTROL_INVALID_INPUT(
-        'access-control: a granted role must be a known non-owner role'
-      )
+    if (this.#access.rank(role) < 0) throw new E_ACCESS_CONTROL_UNKNOWN_ROLE()
+    if (role === this.#access.ownerRole) throw new E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE()
     const { scopeId, userIds } = await this.#resolveStoredKeys(
       trx,
       this.#requireScopeKey(input.scopeId),
@@ -1024,7 +1029,7 @@ export class MembershipService<Role extends string = string> {
   }
 
   /**
-   * Trusted: `identityRoles` then the identity predicate; false is `FORBIDDEN`.
+   * Trusted: raises the failed identity rule after reading the actor and target memberships.
    *
    * @example
    * ```ts
@@ -1042,8 +1047,9 @@ export class MembershipService<Role extends string = string> {
         this.#requireUserKey(input.targetId, 'targetId')
       )
       const { actorRoles, targetRoles } = await this.identityRoles({ actorId, targetId, trx })
-      if (!this.#access.canAdministerIdentity(actorRoles, targetRoles, actorId === targetId))
-        throw new E_ACCESS_CONTROL_FORBIDDEN()
+      const decision = decideIdentity(this.#access, actorRoles, targetRoles, actorId === targetId)
+      // An unauthorized actor must not learn the target account's membership or role.
+      if (!decision.allowed) throw new errors[decision.code]().concealScopeFailure('access')
     })
   }
 

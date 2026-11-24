@@ -99,7 +99,7 @@ Handle a specific refusal through the root `errors` namespace.
 ```ts
 import { errors } from '@kevinjohn/adonisjs-access-control'
 
-if (error instanceof errors.E_ACCESS_CONTROL_FORBIDDEN) {
+if (error instanceof errors.E_ACCESS_CONTROL_PERMISSION_DENIED) {
   // Render the application's permission-denied response.
 }
 ```

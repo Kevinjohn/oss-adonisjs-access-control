@@ -30,7 +30,7 @@ change their status or remove them. The first matching row wins.
 
 1. The actor's or the target's role is unknown: denied, `UNKNOWN_ROLE`.
 2. The actor is the target: denied, `SELF_MANAGEMENT`. Nobody changes their own role or status.
-3. The actor lacks `members:manage`: denied, `FORBIDDEN`.
+3. The actor lacks `members:manage`: denied, `PERMISSION_DENIED`.
 4. The target is the owner: denied, `OWNER_PROTECTED`.
 5. The target ranks above the actor: denied, `RANK_TOO_LOW`.
 6. Otherwise allowed. Equal rank is allowed: an admin manages another admin.
@@ -72,6 +72,6 @@ target, suspended ones included.
 4. Otherwise true.
 
 `memberships.assertCanAdministerIdentity({ actorId, targetId })` loads both maps under locks and
-throws `E_ACCESS_CONTROL_FORBIDDEN` when the predicate is false. Run it immediately before the
+raises the failed identity rule. Run it immediately before the
 Account Kit operation it guards; the guarantee covers the check, not the moment between the check
 and the kit's own transaction.

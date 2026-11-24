@@ -18,7 +18,7 @@ and rules use `defineConfig` from the root export; `defineAccessControl` remains
 A membership is `{ scopeId, userId, role, status, createdAt, updatedAt }`. Keys are normalised to
 the configured key types on the way in: a numeric string becomes a number for `integer` keys, a
 UUID is lower-cased, and a `string` key keeps its exact spelling when it has 1 to 254
-characters. Other inputs are `E_ACCESS_CONTROL_INVALID_INPUT`. For string keys,
+characters. Other inputs are `E_ACCESS_CONTROL_INVALID_KEY`. For string keys,
 reads use the stored parent spelling when the database matches an alias; if no parent matches,
 the supplied spelling is used. This follows the parent table's collation without changing
 historical rows.
@@ -41,7 +41,8 @@ considerations apply to both reads.
 
 Rows with a null or non-string role, an unsupported status, or a missing or unreadable
 `created_at` or `updated_at` fail
-with `errors.E_ACCESS_CONTROL_INVALID_CONFIG` (500). This diagnostic also applies
+with `E_ACCESS_CONTROL_INVALID_STORED_ROLE`, `E_ACCESS_CONTROL_INVALID_STORED_STATUS` or
+`E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP` (500). The diagnostic also applies
 to Account Kit's membership data export. Historical role strings remain valid data for raw reads,
 client summaries and exports; the scope middleware still refuses them with
 `E_ACCESS_CONTROL_FORBIDDEN`; repair invalid stored values in application-owned data migrations.
@@ -51,7 +52,7 @@ client summaries and exports; the scope middleware still refuses them with
 Manager writes take an `actor` (the acting user), open a transaction through Account Kit's runner,
 lock the rows in a fixed order, load the actor's own membership in the scope and apply the
 [rules](rules.md). The actor must be an active member; a missing or suspended actor gets
-`E_ACCESS_CONTROL_FORBIDDEN` before the target is looked at, so a non-manager cannot learn
+a membership or permission error before the target is looked at, so a non-manager cannot learn
 whether someone is a member from a 404 versus a 403.
 
 | Method              | Input                                       | Result     | Change record `type`               |
@@ -92,7 +93,7 @@ directly.
 | `acceptInvitation`            | Creates the membership an accepted Account Kit invitation grants, inside the kit's transaction. The [Account Kit guide](account-kit.md) wires it.                                                                                             |
 | `grant`                       | Creates a membership the application has authorised itself (admission, eligibility), inside the application's kit transaction. Takes no actor and no invitation; refuses the owner role, a missing user or scope, and an existing membership. |
 | `identityRoles`               | Loads the actor's active memberships and all of the target's, under locks, for `canAdministerIdentity`.                                                                                                                                       |
-| `assertCanAdministerIdentity` | Throws `FORBIDDEN` unless the actor may administer the target across every scope.                                                                                                                                                             |
+| `assertCanAdministerIdentity` | Raises the failed identity rule unless the actor may administer the target across every scope.                                                                                                                                                |
 | `prepareAccountDeletion`      | Removes every membership of a user inside the kit's deletion transaction; refuses an active owner with `LAST_OWNER`.                                                                                                                          |
 | `removeAllForScope`           | Removes every membership of a scope inside your scope-deletion transaction, just before you delete the scope row. A member set that changed since the first read is `CONFLICT`; retry the transaction.                                        |
 | `exportFor`                   | The user's memberships with ISO timestamps, for the kit's data export.                                                                                                                                                                        |

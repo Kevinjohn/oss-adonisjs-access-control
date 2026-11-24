@@ -1,4 +1,5 @@
 // Pure rules (specification section 3). No AdonisJS imports; exposed on the AccessControl instance.
+import type { AccessControl } from './define.js'
 import type { RuleResult, ScopeKey } from './types.js'
 
 /** The role tuple, owner role and lowest role per permission key, as validated by `define.ts`. */
@@ -10,7 +11,8 @@ export interface RoleMatrix {
 }
 
 const deny = (
-  code: 'UNKNOWN_ROLE' | 'SELF_MANAGEMENT' | 'FORBIDDEN' | 'OWNER_PROTECTED' | 'RANK_TOO_LOW'
+  code:
+    'UNKNOWN_ROLE' | 'SELF_MANAGEMENT' | 'PERMISSION_DENIED' | 'OWNER_PROTECTED' | 'RANK_TOO_LOW'
 ): RuleResult => ({
   allowed: false,
   code: `E_ACCESS_CONTROL_${code}`,
@@ -50,7 +52,7 @@ export function decideManagement(
   const targetRank = rank(matrix, input.targetRole)
   if (actorRank < 0 || targetRank < 0) return deny('UNKNOWN_ROLE')
   if (input.isSelf) return deny('SELF_MANAGEMENT')
-  if (!can(matrix, input.actorRole, 'members:manage')) return deny('FORBIDDEN')
+  if (!can(matrix, input.actorRole, 'members:manage')) return deny('PERMISSION_DENIED')
   if (matrix.ownerRole !== undefined && input.targetRole === matrix.ownerRole)
     return deny('OWNER_PROTECTED')
   if (targetRank > actorRank) return deny('RANK_TOO_LOW')
@@ -72,22 +74,34 @@ export function decideAssignment(
   return { allowed: true }
 }
 
+type IdentityDecision =
+  | RuleResult
+  | {
+      allowed: false
+      code:
+        | 'E_ACCESS_CONTROL_IDENTITY_TARGET_HAS_NO_MEMBERSHIPS'
+        | 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED'
+    }
+
 /**
- * Identity predicate (3.4): the actor must be able to manage the target in every scope the target
- * belongs to. `actorRoles` holds the actor's active memberships; `targetRoles` all of the target's.
+ * The actor must manage the target in every scope. The actor map includes active memberships
+ * only, and the target map includes all memberships.
  */
-export function canAdministerIdentity(
-  matrix: RoleMatrix,
+export function decideIdentity(
+  access: Pick<AccessControl, 'decideManagement'>,
   actorRoles: ReadonlyMap<ScopeKey, string>,
   targetRoles: ReadonlyMap<ScopeKey, string>,
   isSelf: boolean
-): boolean {
-  if (targetRoles.size === 0) return false
-  if (isSelf) return true
+): IdentityDecision {
+  if (targetRoles.size === 0)
+    return { allowed: false, code: 'E_ACCESS_CONTROL_IDENTITY_TARGET_HAS_NO_MEMBERSHIPS' }
+  if (isSelf) return { allowed: true }
   for (const [scope, targetRole] of targetRoles) {
     const actorRole = actorRoles.get(scope)
-    if (actorRole === undefined) return false
-    if (!decideManagement(matrix, { actorRole, targetRole, isSelf: false }).allowed) return false
+    if (actorRole === undefined)
+      return { allowed: false, code: 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED' }
+    const decision = access.decideManagement({ actorRole, targetRole, isSelf: false })
+    if (!decision.allowed) return decision
   }
-  return true
+  return { allowed: true }
 }

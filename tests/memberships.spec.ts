@@ -1,3 +1,4 @@
+import { HttpContextFactory } from '@adonisjs/core/factories/http'
 import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
 import { errors } from '../index.js'
@@ -78,13 +79,13 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     assert.equal(asViewer.role, 'viewer')
     // A role below the permission, a non-member, an unknown key and another scope are refused.
     const otherScope = await f.createScope()
-    for (const refused of [
-      () => check(viewer, 'members:manage'),
-      () => check(outsider, 'project:read'),
-      () => check(owner, 'lexcorp:audit'),
-      () => check(owner, 'project:read', otherScope),
-    ])
-      assert.equal(await codeOf(refused()), 'E_ACCESS_CONTROL_FORBIDDEN')
+    for (const [refused, expected] of [
+      [() => check(viewer, 'members:manage'), 'E_ACCESS_CONTROL_PERMISSION_DENIED'],
+      [() => check(outsider, 'project:read'), 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED'],
+      [() => check(owner, 'lexcorp:audit'), 'E_ACCESS_CONTROL_UNKNOWN_PERMISSION'],
+      [() => check(owner, 'project:read', otherScope), 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED'],
+    ] as const)
+      assert.equal(await codeOf(refused()), expected)
     // A suspended membership and a stored role outside the configured roles are refused.
     await f.memberships.setStatus({
       actor: actor(owner),
@@ -92,9 +93,12 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       userId: editor,
       status: 'suspended',
     })
-    assert.equal(await codeOf(check(editor, 'project:read')), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(
+      await codeOf(check(editor, 'project:read')),
+      'E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED'
+    )
     await f.db.from(f.names.memberships).where('user_id', admin).update({ role: 'intern' })
-    assert.equal(await codeOf(check(admin, 'project:read')), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(await codeOf(check(admin, 'project:read')), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
     // The check needs the transaction of the work it authorizes.
     await rejects(
       f.memberships.authorize({
@@ -143,8 +147,8 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
   test('add: each error code', async ({ assert }) => {
     const add = (who: number | string, userId: number | string, role: string) =>
       codeOf(f.memberships.add({ actor: actor(who), scopeId: scope, userId, role }))
-    assert.equal(await add(outsider, viewer, 'viewer'), 'E_ACCESS_CONTROL_FORBIDDEN')
-    assert.equal(await add(editor, outsider, 'viewer'), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(await add(outsider, viewer, 'viewer'), 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED')
+    assert.equal(await add(editor, outsider, 'viewer'), 'E_ACCESS_CONTROL_PERMISSION_DENIED')
     assert.equal(await add(admin, 999_999, 'viewer'), 'E_ACCESS_CONTROL_USER_NOT_FOUND')
     assert.equal(await add(admin, viewer, 'viewer'), 'E_ACCESS_CONTROL_ALREADY_MEMBER')
     // Adding oneself is not self-management: the actor is a manager, so already a member.
@@ -171,18 +175,18 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       await codeOf(
         f.memberships.add({ actor: actor(admin), scopeId: scope, userId: 'abc', role: 'viewer' })
       ),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_KEY'
     )
     assert.equal(
       await codeOf(
         f.memberships.add({ actor: actor(admin), scopeId: -1, userId: outsider, role: 'viewer' })
       ),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_KEY'
     )
     assert.lengthOf(f.events, 0)
   })
 
-  test('add: a suspended actor is FORBIDDEN', async ({ assert }) => {
+  test('add: a suspended actor is refused', async ({ assert }) => {
     await f.memberships.setStatus({
       actor: actor(owner),
       scopeId: scope,
@@ -193,7 +197,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       await codeOf(
         f.memberships.add({ actor: actor(admin), scopeId: scope, userId: outsider, role: 'viewer' })
       ),
-      'E_ACCESS_CONTROL_FORBIDDEN'
+      'E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED'
     )
   })
 
@@ -271,7 +275,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
 
     const change = (who: number | string, userId: number | string, role: string) =>
       codeOf(f.memberships.changeRole({ actor: actor(who), scopeId: scope, userId, role }))
-    assert.equal(await change(editor, viewer, 'viewer'), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(await change(editor, viewer, 'viewer'), 'E_ACCESS_CONTROL_PERMISSION_DENIED')
     assert.equal(await change(admin, outsider, 'viewer'), 'E_ACCESS_CONTROL_NOT_A_MEMBER')
     assert.equal(await change(admin, admin, 'viewer'), 'E_ACCESS_CONTROL_SELF_MANAGEMENT')
     assert.equal(await change(admin, owner, 'viewer'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
@@ -355,11 +359,11 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
           status: status as 'active',
         })
       )
-    assert.equal(await set(editor, viewer, 'suspended'), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(await set(editor, viewer, 'suspended'), 'E_ACCESS_CONTROL_PERMISSION_DENIED')
     assert.equal(await set(admin, outsider, 'suspended'), 'E_ACCESS_CONTROL_NOT_A_MEMBER')
     assert.equal(await set(admin, admin, 'suspended'), 'E_ACCESS_CONTROL_SELF_MANAGEMENT')
     assert.equal(await set(admin, owner, 'suspended'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
-    assert.equal(await set(admin, viewer, 'banned'), 'E_ACCESS_CONTROL_INVALID_INPUT')
+    assert.equal(await set(admin, viewer, 'banned'), 'E_ACCESS_CONTROL_INVALID_MEMBERSHIP_STATUS')
   })
 
   test('remove: happy path and errors', async ({ assert }) => {
@@ -377,7 +381,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     ])
     const remove = (who: number | string, userId: number | string) =>
       codeOf(f.memberships.remove({ actor: actor(who), scopeId: scope, userId }))
-    assert.equal(await remove(editor, viewer), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(await remove(editor, viewer), 'E_ACCESS_CONTROL_PERMISSION_DENIED')
     assert.equal(await remove(admin, viewer), 'E_ACCESS_CONTROL_NOT_A_MEMBER')
     assert.equal(await remove(admin, admin), 'E_ACCESS_CONTROL_SELF_MANAGEMENT')
     assert.equal(await remove(admin, owner), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
@@ -393,7 +397,11 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
         role: 'viewer',
         status: 'active',
       } as const
-      assert.equal(await codeOf(f.memberships[method](input)), 'E_ACCESS_CONTROL_FORBIDDEN', method)
+      assert.equal(
+        await codeOf(f.memberships[method](input)),
+        'E_ACCESS_CONTROL_PERMISSION_DENIED',
+        method
+      )
     }
   })
 
@@ -421,11 +429,23 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       await codeOf(f.memberships.leave({ scopeId: scope, userId: outsider })),
       'E_ACCESS_CONTROL_NOT_A_MEMBER'
     )
-    assert.equal(
-      await codeOf(f.memberships.leave({ scopeId: 999_999, userId: outsider })),
-      'E_ACCESS_CONTROL_NOT_A_MEMBER',
-      'a missing scope reads like a missing membership: leave is open to every signed-in user'
-    )
+    const failure = await f.memberships
+      .leave({ scopeId: 999_999, userId: outsider })
+      .catch((error: unknown) => error)
+    assert.instanceOf(failure, errors.E_ACCESS_CONTROL_SCOPE_NOT_FOUND)
+    const missingScope = failure as InstanceType<typeof errors.E_ACCESS_CONTROL_SCOPE_NOT_FOUND>
+    assert.equal(missingScope.code, 'E_ACCESS_CONTROL_SCOPE_NOT_FOUND')
+    const ctx = new HttpContextFactory().create()
+    await missingScope.handle(missingScope, ctx)
+    assert.equal(ctx.response.getStatus(), 404)
+    assert.deepEqual(ctx.response.getBody(), {
+      errors: [
+        {
+          code: 'E_ACCESS_CONTROL_NOT_A_MEMBER',
+          message: 'That person is not a member of this team.',
+        },
+      ],
+    })
   })
 
   test('transferOwnership: demotes the old owner to the highest non-owner role atomically', async ({
@@ -472,8 +492,8 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
   test('transferOwnership: each error code', async ({ assert }) => {
     const transfer = (who: number | string, toUserId: number | string) =>
       codeOf(f.memberships.transferOwnership({ actor: actor(who), scopeId: scope, toUserId }))
-    assert.equal(await transfer(admin, editor), 'E_ACCESS_CONTROL_FORBIDDEN')
-    assert.equal(await transfer(outsider, editor), 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.equal(await transfer(admin, editor), 'E_ACCESS_CONTROL_OWNER_REQUIRED')
+    assert.equal(await transfer(outsider, editor), 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED')
     assert.equal(await transfer(owner, owner), 'E_ACCESS_CONTROL_SELF_MANAGEMENT')
     assert.equal(await transfer(owner, outsider), 'E_ACCESS_CONTROL_NOT_A_MEMBER')
     await f.memberships.setStatus({
@@ -482,7 +502,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       userId: editor,
       status: 'suspended',
     })
-    assert.equal(await transfer(owner, editor), 'E_ACCESS_CONTROL_INVALID_INPUT')
+    assert.equal(await transfer(owner, editor), 'E_ACCESS_CONTROL_OWNERSHIP_TARGET_SUSPENDED')
     const noOwner = await membershipFixture({ owner: false })
     try {
       const s = await noOwner.createScope()
@@ -503,8 +523,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
   test('onMembershipChanged throwing rolls back the write', async ({ assert }) => {
     const failing = await membershipFixture({
       async onMembershipChanged(event) {
-        if (event.type === 'membership.added')
-          throw new errors.E_ACCESS_CONTROL_INVALID_INPUT('nope')
+        if (event.type === 'membership.added') throw new errors.E_ACCESS_CONTROL_INVALID_KEY('nope')
       },
     })
     try {
@@ -515,7 +534,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
         await codeOf(
           failing.memberships.add({ actor: actor(o), scopeId: s, userId: u, role: 'viewer' })
         ),
-        'E_ACCESS_CONTROL_INVALID_INPUT'
+        'E_ACCESS_CONTROL_INVALID_KEY'
       )
       assert.isNull(await failing.memberships.find(s, u))
     } finally {
@@ -536,7 +555,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     )
     assert.isNull(await f.memberships.find(scope, outsider))
     assert.deepEqual(await f.memberships.listForUser(outsider), [])
-    assert.equal(await codeOf(f.memberships.find(scope, 'x')), 'E_ACCESS_CONTROL_INVALID_INPUT')
+    assert.equal(await codeOf(f.memberships.find(scope, 'x')), 'E_ACCESS_CONTROL_INVALID_KEY')
   })
 
   test('listForScope: pages in created_at, id order and needs members:list', async ({ assert }) => {
@@ -570,25 +589,25 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     )
     assert.equal(
       await codeOf(f.memberships.listForScope({ actor: actor(editor), scopeId: scope })),
-      'E_ACCESS_CONTROL_FORBIDDEN'
+      'E_ACCESS_CONTROL_PERMISSION_DENIED'
     )
     assert.equal(
       await codeOf(f.memberships.listForScope({ actor: actor(outsider), scopeId: scope })),
-      'E_ACCESS_CONTROL_FORBIDDEN'
+      'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED'
     )
     assert.equal(
       await codeOf(f.memberships.listForScope({ actor: actor(admin), scopeId: scope, limit: 0 })),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_PAGE_LIMIT'
     )
     assert.equal(
       await codeOf(f.memberships.listForScope({ actor: actor(admin), scopeId: scope, limit: 101 })),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_PAGE_LIMIT'
     )
     assert.equal(
       await codeOf(
         f.memberships.listForScope({ actor: actor(admin), scopeId: scope, cursor: 'nope' })
       ),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_CURSOR'
     )
   })
 

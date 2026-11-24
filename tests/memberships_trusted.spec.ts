@@ -1,5 +1,6 @@
 import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
+import { errors } from '../index.js'
 import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
 
 const actor = (id: number | string) => ({ id })
@@ -16,7 +17,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     const [a, b] = await Promise.all([f.createUser(), f.createUser()])
     assert.equal(
       await codeOf(f.memberships.createFirstMember({ scopeId: scope, userId: a, role: 'admin' })),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_FIRST_MEMBER_MUST_BE_OWNER'
     )
     const first = await f.memberships.createFirstMember({ scopeId: scope, userId: a })
     assert.deepInclude(first, { role: 'owner', status: 'active' })
@@ -42,17 +43,17 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
       const a = await g.createUser()
       assert.equal(
         await codeOf(g.memberships.createFirstMember({ scopeId: scope, userId: a })),
-        'E_ACCESS_CONTROL_INVALID_INPUT'
+        'E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_REQUIRED'
       )
       assert.equal(
         await codeOf(
           g.memberships.createFirstMember({ scopeId: scope, userId: a, role: 'editor' })
         ),
-        'E_ACCESS_CONTROL_INVALID_INPUT'
+        'E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_CANNOT_MANAGE'
       )
       assert.equal(
         await codeOf(g.memberships.createFirstMember({ scopeId: scope, userId: a, role: 'ceo' })),
-        'E_ACCESS_CONTROL_INVALID_INPUT'
+        'E_ACCESS_CONTROL_UNKNOWN_ROLE'
       )
       assert.deepInclude(
         await g.memberships.createFirstMember({ scopeId: scope, userId: a, role: 'admin' }),
@@ -110,16 +111,16 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     )
     assert.equal(
       await inTrx({ scopeId: scope, userId: o, role: 'owner', invitationId: 9 }),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE'
     )
     const v = await f.createUser()
     assert.equal(
       await inTrx({ scopeId: scope, userId: v, role: 'owner', invitationId: 9 }),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE'
     )
     assert.equal(
       await inTrx({ scopeId: scope, userId: v, role: 'ceo', invitationId: 9 }),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_UNKNOWN_ROLE'
     )
     assert.equal(
       await inTrx({ scopeId: 999_999, userId: v, role: 'editor', invitationId: 9 }),
@@ -142,11 +143,11 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
       codeOf(f.runner.transaction(f.db, (trx) => f.memberships.grant({ ...input, trx } as never)))
     assert.equal(
       await inTrx({ scopeId: scope, userId: u, role: 'owner' }),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE'
     )
     assert.equal(
       await inTrx({ scopeId: scope, userId: u, role: 'ceo' }),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_UNKNOWN_ROLE'
     )
     assert.equal(
       await inTrx({ scopeId: scope, userId: 999_999, role: 'editor' }),
@@ -262,7 +263,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     )
     assert.equal(
       await codeOf(f.memberships.assertCanAdministerIdentity({ actorId: a, targetId: t })),
-      'E_ACCESS_CONTROL_FORBIDDEN'
+      'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED'
     )
     await f.memberships.leave({ scopeId: s3, userId: a })
     // The owner row cannot leave through the service; drop it directly to shape the next case.
@@ -272,15 +273,19 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     assert.deepEqual([...self.targetRoles.keys()], [s1, s2])
     await f.memberships.assertCanAdministerIdentity({ actorId: a, targetId: a })
     const nobody = await f.createUser()
-    assert.equal(
-      await codeOf(
-        f.memberships.assertCanAdministerIdentity({ actorId: nobody, targetId: nobody })
-      ),
-      'E_ACCESS_CONTROL_FORBIDDEN'
-    )
+    const failure = await f.memberships
+      .assertCanAdministerIdentity({ actorId: nobody, targetId: nobody })
+      .catch((error: unknown) => error)
+    const Cause = errors.E_ACCESS_CONTROL_IDENTITY_TARGET_HAS_NO_MEMBERSHIPS
+    assert.instanceOf(failure, Cause)
+    assert.deepEqual((failure as InstanceType<typeof Cause>).getHttpResponse(), {
+      code: 'E_ACCESS_CONTROL_FORBIDDEN',
+      status: 403,
+      message: 'You do not have permission to do that.',
+    })
     assert.equal(
       await codeOf(f.memberships.identityRoles({ actorId: a, targetId: 'nope' })),
-      'E_ACCESS_CONTROL_INVALID_INPUT'
+      'E_ACCESS_CONTROL_INVALID_KEY'
     )
   })
 

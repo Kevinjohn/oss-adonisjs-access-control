@@ -21,11 +21,11 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.isFunction(root.AccessControl)
     assert.notProperty(root, 'AccessControlError')
     assert.notProperty(root, 'errorTable')
-    assert.lengthOf(Object.keys(root.errors), 15)
-    const { E_ACCESS_CONTROL_FORBIDDEN } = root.errors
-    const forbidden = new E_ACCESS_CONTROL_FORBIDDEN()
-    assert.instanceOf(forbidden, E_ACCESS_CONTROL_FORBIDDEN)
-    assert.equal(forbidden.code, 'E_ACCESS_CONTROL_FORBIDDEN')
+    assert.lengthOf(Object.keys(root.errors), 32)
+    const { E_ACCESS_CONTROL_PERMISSION_DENIED } = root.errors
+    const forbidden = new E_ACCESS_CONTROL_PERMISSION_DENIED()
+    assert.instanceOf(forbidden, E_ACCESS_CONTROL_PERMISSION_DENIED)
+    assert.equal(forbidden.code, 'E_ACCESS_CONTROL_PERMISSION_DENIED')
     assert.equal(forbidden.status, 403)
     assert.isString(root.stubsRoot)
     assert.isTrue(existsSync(root.stubsRoot))

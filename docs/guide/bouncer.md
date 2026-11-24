@@ -33,7 +33,7 @@ active, verified account. `middleware.auth()` alone skips those checks: a revoke
 still reach the scope middleware and the Bouncer abilities.
 
 The middleware reads the user from `ctx.auth.user`, takes the scope from `ctx.params.scopeId` and
-loads an active membership with `memberships.findActive`, without locking. It sets
+reads the membership with `memberships.find` and checks its status and role without locking. It sets
 `ctx.membership` for the rest of the request. The
 request is refused with `E_ACCESS_CONTROL_FORBIDDEN` (403) when there is no user, the scope key is
 malformed or unknown, the user is not a member, the membership is suspended, or the stored role is

@@ -11,7 +11,7 @@ As an application integrator, I want to export membership data with account reco
 
 ## Acceptance criteria
 
-- Exporting a stored row with an invalid status or a missing or unreadable required timestamp raises `E_ACCESS_CONTROL_INVALID_CONFIG` (500). The host receives the failure instead of a partially sanitised export. See [storage and export tests](../tests/membership_storage.spec.ts).
+- Exporting a stored row with an invalid status or a missing or unreadable required timestamp raises `E_ACCESS_CONTROL_INVALID_STORED_STATUS` or `E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP` (500). The host receives the failure instead of a partially sanitised export. See [storage and export tests](../tests/membership_storage.spec.ts).
 
 - Account export includes `application.memberships` with `scopeId`, `role`, `status`, `createdAt` and `updatedAt`. Both timestamps are ISO strings in UTC.
 - Export is a plain read through the supplied transaction; host owns the surrounding export route, proof and response.
@@ -33,7 +33,7 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 flowchart TD
     A0["Kit accountData.export checks feature and confirms actor"] --> A["Kit calls configured exportAccountData(user, trx)"] --> B["memberships.exportFor({ userId, trx })"]
     B --> C["Return memberships with ISO timestamps to Kit export’s application section"]
-    B --> X["Invalid stored status or timestamps: INVALID_CONFIG"]
+    B --> X["Invalid stored status or timestamps: INVALID_STORED_STATUS or INVALID_STORED_TIMESTAMP"]
 ```
 
 **Code references:** [callbacks](../account_kit/main.ts), [lifecycle methods](../src/memberships.ts), [Account Kit export](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8/src/account_export.ts#L85-L154).

@@ -1,5 +1,5 @@
 // Normalises scope and user keys per the configured key type (specification 5.1).
-import { E_ACCESS_CONTROL_INVALID_INPUT } from './errors.js'
+import { E_ACCESS_CONTROL_INVALID_KEY } from './errors.js'
 import type { KeyType } from './types.js'
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -8,13 +8,13 @@ const integerPattern = /^[1-9][0-9]*$/
 function createInvalidKeyError(
   what: string,
   detail: string
-): InstanceType<typeof E_ACCESS_CONTROL_INVALID_INPUT> {
-  return new E_ACCESS_CONTROL_INVALID_INPUT(`access-control: ${what} ${detail}`)
+): InstanceType<typeof E_ACCESS_CONTROL_INVALID_KEY> {
+  return new E_ACCESS_CONTROL_INVALID_KEY(`access-control: ${what} ${detail}`)
 }
 
 /**
  * `integer` keys become a safe positive integer, `uuid` keys a lower-case UUID string and
- * `string` keys a string of 1 to 254 characters; anything else is `INVALID_INPUT`.
+ * `string` keys a string of 1 to 254 characters; anything else is `INVALID_KEY`.
  */
 export function requireValidKey(keyType: KeyType, value: unknown, what: string): number | string {
   if (keyType === 'integer') {

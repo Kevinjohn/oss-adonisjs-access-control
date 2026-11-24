@@ -16,7 +16,7 @@ As an active scope manager, I want to suspend or restore a membership so that sc
 | `actor`   | API input `{ id }`   | Required; the acting user, who must be an active member of the scope with `members:manage`.                                              |
 | `scopeId` | API input            | Required; normalised to the configured scope key type.                                                                                   |
 | `userId`  | API input            | Required; the member whose membership to suspend or restore. Not a member: `E_ACCESS_CONTROL_NOT_A_MEMBER` (404), after the actor check. |
-| `status`  | API input            | Required; `active` or `suspended`. Any other value: `E_ACCESS_CONTROL_INVALID_INPUT` (422), before locking.                              |
+| `status`  | API input            | Required; `active` or `suspended`. Any other value: `E_ACCESS_CONTROL_INVALID_MEMBERSHIP_STATUS` (422), before locking.                  |
 | `trx`     | Optional transaction | Omitted: the runner opens and commits one. Supplied: the caller owns commit and rollback.                                                |
 
 - Supported statuses are `active` and `suspended`.

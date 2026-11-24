@@ -43,7 +43,7 @@ scope parent or invalid key input, including a wrong stored spelling. Other look
 to the caller. The kit accepts an address's pending invitations sequentially in JavaScript
 code-unit order of their stored scope strings. Actor send, manage and list callbacks deny aliases;
 operator issuance can bypass those callbacks. Acceptance independently rejects a matching string
-alias with `E_ACCESS_CONTROL_INVALID_INPUT` before locking that scope; a missing string parent is
+alias with `E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE` before locking that scope; a missing string parent is
 `E_ACCESS_CONTROL_SCOPE_NOT_FOUND`. Earlier accepted invitations in that batch are rolled back
 with the account and invitation consumption if a later one fails.
 
@@ -101,6 +101,6 @@ objects.
 
 Before a kit operation taken by one user on another (a password reset request, a session
 revocation), call `memberships.assertCanAdministerIdentity({ actorId, targetId })`. It throws
-`E_ACCESS_CONTROL_FORBIDDEN` unless the actor may manage the target in every scope the target
+the failed identity rule unless the actor may manage the target in every scope the target
 belongs to. Run it immediately before the kit operation, in its own transaction; the kit opens its
 own and may send mail, so the two cannot share one.

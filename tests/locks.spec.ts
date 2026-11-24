@@ -175,9 +175,9 @@ test.group('locks: key types and custom tables', () => {
       assert.equal(upper.scopeId, s)
       assert.equal(
         await codeOf(f.memberships.find(s, 'not-a-uuid')),
-        'E_ACCESS_CONTROL_INVALID_INPUT'
+        'E_ACCESS_CONTROL_INVALID_KEY'
       )
-      assert.equal(await codeOf(f.memberships.find(s, 12)), 'E_ACCESS_CONTROL_INVALID_INPUT')
+      assert.equal(await codeOf(f.memberships.find(s, 12)), 'E_ACCESS_CONTROL_INVALID_KEY')
     } finally {
       await f.cleanup()
     }
@@ -194,19 +194,19 @@ test.group('locks: key types and custom tables', () => {
       assert.isString(o)
       await f.memberships.createFirstMember({ scopeId: s, userId: o })
       await f.memberships.add({ actor: actor(o), scopeId: s, userId: u, role: 'viewer' })
-      assert.equal(await codeOf(f.memberships.find(s, '')), 'E_ACCESS_CONTROL_INVALID_INPUT')
+      assert.equal(await codeOf(f.memberships.find(s, '')), 'E_ACCESS_CONTROL_INVALID_KEY')
       assert.equal(
         await codeOf(f.memberships.find(s, 'x'.repeat(255))),
-        'E_ACCESS_CONTROL_INVALID_INPUT'
+        'E_ACCESS_CONTROL_INVALID_KEY'
       )
-      assert.equal(await codeOf(f.memberships.find(s, 3)), 'E_ACCESS_CONTROL_INVALID_INPUT')
+      assert.equal(await codeOf(f.memberships.find(s, 3)), 'E_ACCESS_CONTROL_INVALID_KEY')
       assert.equal(await codeOf(f.memberships.find('1', o)), 'resolved')
-      assert.equal(await codeOf(f.memberships.find('1.5', o)), 'E_ACCESS_CONTROL_INVALID_INPUT')
+      assert.equal(await codeOf(f.memberships.find('1.5', o)), 'E_ACCESS_CONTROL_INVALID_KEY')
       assert.equal(
         await codeOf(f.memberships.find(Number.MAX_SAFE_INTEGER + 2, o)),
-        'E_ACCESS_CONTROL_INVALID_INPUT'
+        'E_ACCESS_CONTROL_INVALID_KEY'
       )
-      assert.equal(await codeOf(f.memberships.find(0, o)), 'E_ACCESS_CONTROL_INVALID_INPUT')
+      assert.equal(await codeOf(f.memberships.find(0, o)), 'E_ACCESS_CONTROL_INVALID_KEY')
     } finally {
       await f.cleanup()
     }

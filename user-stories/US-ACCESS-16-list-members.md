@@ -35,8 +35,8 @@ Scope: a plain read through the caller-supplied transaction or the default datab
 flowchart TD
     A["MembershipService.listForScope"] --> B["normalize scope and actor key; validate limit and decode cursor"]
     B --> C["resolve stored keys; read actor membership; require active and members:list"]
-    B --> X["Bad limit, cursor or keys: INVALID_INPUT"]
-    C --> Y["No active permitted actor: FORBIDDEN"]
+    B --> X["INVALID_PAGE_LIMIT, INVALID_CURSOR or INVALID_KEY"]
+    C --> Y["No active permitted actor: membership, role or permission failure"]
     C --> D["apply cursor continuation predicates"]
     D --> E["query ordered created_at,id page with limit + 1"]
     E --> F["return up to limit rows and next opaque cursor or null"]

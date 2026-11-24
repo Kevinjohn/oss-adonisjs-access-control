@@ -57,14 +57,30 @@ test('app-owned membership rows reject invalid status and required timestamps, i
         },
       ],
     })
-    for (const [patch, message] of [
-      [{ role: null }, 'invalid role'],
-      [{ status: 'unknown' }, 'unsupported status'],
-      [{ status: null }, 'unsupported status'],
-      [{ created_at: null }, 'invalid created_at timestamp'],
-      [{ created_at: 'not a timestamp' }, 'invalid created_at timestamp'],
-      [{ updated_at: null }, 'invalid updated_at timestamp'],
-      [{ updated_at: 'not a timestamp' }, 'invalid updated_at timestamp'],
+    for (const [patch, code, message] of [
+      [{ role: null }, 'E_ACCESS_CONTROL_INVALID_STORED_ROLE', 'invalid role'],
+      [{ status: 'unknown' }, 'E_ACCESS_CONTROL_INVALID_STORED_STATUS', 'unsupported status'],
+      [{ status: null }, 'E_ACCESS_CONTROL_INVALID_STORED_STATUS', 'unsupported status'],
+      [
+        { created_at: null },
+        'E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP',
+        'invalid created_at timestamp',
+      ],
+      [
+        { created_at: 'not a timestamp' },
+        'E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP',
+        'invalid created_at timestamp',
+      ],
+      [
+        { updated_at: null },
+        'E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP',
+        'invalid updated_at timestamp',
+      ],
+      [
+        { updated_at: 'not a timestamp' },
+        'E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP',
+        'invalid updated_at timestamp',
+      ],
     ] as const) {
       await db.from(tableName).update({ ...base, ...patch })
       for (const read of [
@@ -73,9 +89,10 @@ test('app-owned membership rows reject invalid status and required timestamps, i
         exportData,
       ]) {
         await rejects(read, (error: unknown) => {
-          assert.instanceOf(error, errors.E_ACCESS_CONTROL_INVALID_CONFIG)
-          const diagnostic = error as InstanceType<typeof errors.E_ACCESS_CONTROL_INVALID_CONFIG>
-          assert.equal(diagnostic.code, 'E_ACCESS_CONTROL_INVALID_CONFIG')
+          const Cause = errors[code]
+          assert.instanceOf(error, Cause)
+          const diagnostic = error as InstanceType<typeof Cause>
+          assert.equal(diagnostic.code, code)
           assert.equal(diagnostic.status, 500)
           assert.equal(diagnostic.message, `access-control: stored membership has an ${message}`)
           return true

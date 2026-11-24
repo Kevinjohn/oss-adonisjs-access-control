@@ -39,7 +39,7 @@ Scope: package behaviour; the runner commits when `input.trx` is omitted; suppli
 ```mermaid
 flowchart TD
     A["MembershipService.changeRole"] --> B["normalize keys; reuse or open trx; resolve stored keys; lock users then scope; require known active manager; load target"]
-    B --> X["Missing scope: SCOPE_NOT_FOUND; unknown actor role: UNKNOWN_ROLE; no active manager: FORBIDDEN; missing target: NOT_A_MEMBER"]
+    B --> X["Missing scope: SCOPE_NOT_FOUND; unknown actor role: UNKNOWN_ROLE; no active manager: MEMBERSHIP_REQUIRED, MEMBERSHIP_SUSPENDED or PERMISSION_DENIED; missing target: NOT_A_MEMBER"]
     B --> C["decideAssignment checks management and next role"]
     C --> D{"Allowed?"}
     D -->|No| E["throw rule error"]

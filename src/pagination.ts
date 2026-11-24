@@ -1,6 +1,6 @@
 // The opaque cursor for paging a scope's members, shaped like Account Kit's invitation cursor.
 import { DateTime } from 'luxon'
-import { E_ACCESS_CONTROL_INVALID_INPUT } from './errors.js'
+import { E_ACCESS_CONTROL_INVALID_CURSOR } from './errors.js'
 
 const MAX_CURSOR_LENGTH = 512
 
@@ -14,17 +14,15 @@ export function encodeCursor(createdAt: string, id: number): string {
   return Buffer.from(JSON.stringify([createdAt, id])).toString('base64url')
 }
 
-/** Reads a cursor from `encodeCursor`; anything else is `INVALID_INPUT`. */
+/** Reads a cursor from `encodeCursor`; anything else is `INVALID_CURSOR`. */
 export function decodeCursor(cursor: string): MembershipCursor {
-  const createInvalidCursorError = () =>
-    new E_ACCESS_CONTROL_INVALID_INPUT('Invalid membership cursor')
   if (typeof cursor !== 'string' || cursor.length === 0 || cursor.length > MAX_CURSOR_LENGTH)
-    throw createInvalidCursorError()
+    throw new E_ACCESS_CONTROL_INVALID_CURSOR()
   let decoded: unknown
   try {
     decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'))
   } catch {
-    throw createInvalidCursorError()
+    throw new E_ACCESS_CONTROL_INVALID_CURSOR()
   }
   if (
     !Array.isArray(decoded) ||
@@ -35,6 +33,6 @@ export function decodeCursor(cursor: string): MembershipCursor {
     decoded[1] < 1 ||
     encodeCursor(decoded[0], decoded[1]) !== cursor
   )
-    throw createInvalidCursorError()
+    throw new E_ACCESS_CONTROL_INVALID_CURSOR()
   return { createdAt: decoded[0], id: decoded[1] }
 }

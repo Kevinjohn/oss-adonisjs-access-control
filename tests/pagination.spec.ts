@@ -26,7 +26,7 @@ test.group('pagination: membership cursors', () => {
       try {
         decodeCursor(cursor)
       } catch (error) {
-        assert.equal((error as { code: string }).code, 'E_ACCESS_CONTROL_INVALID_INPUT')
+        assert.equal((error as { code: string }).code, 'E_ACCESS_CONTROL_INVALID_CURSOR')
       }
     }
   })

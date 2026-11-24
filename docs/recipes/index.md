@@ -243,10 +243,14 @@ codes a user can reach to 4xx and leaves the rest as reported server faults:
 import { errors } from '@kevinjohn/adonisjs-access-control'
 import type { AccessControlErrorCode } from '@kevinjohn/adonisjs-access-control/types'
 
-// Unlisted codes (INVALID_INPUT, INVALID_CONFIG, UNKNOWN_ROLE, OWNER_DISABLED, SCOPE_NOT_EMPTY)
-// are faults: the application validates its input before calling the package.
-const refusals: Partial<Record<AccessControlErrorCode, { status: number; code: string }>> = {
+// Validate request inputs before calling the package and report unlisted failures.
+const refusals: Partial<
+  Record<AccessControlErrorCode | 'E_ACCESS_CONTROL_FORBIDDEN', { status: number; code: string }>
+> = {
   E_ACCESS_CONTROL_FORBIDDEN: { status: 403, code: 'FORBIDDEN' },
+  E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED: { status: 403, code: 'FORBIDDEN' },
+  E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED: { status: 403, code: 'FORBIDDEN' },
+  E_ACCESS_CONTROL_PERMISSION_DENIED: { status: 403, code: 'FORBIDDEN' },
   E_ACCESS_CONTROL_SELF_MANAGEMENT: { status: 403, code: 'FORBIDDEN' },
   E_ACCESS_CONTROL_OWNER_PROTECTED: { status: 403, code: 'FORBIDDEN' },
   E_ACCESS_CONTROL_RANK_TOO_LOW: { status: 403, code: 'FORBIDDEN' },
@@ -265,7 +269,10 @@ export function isAccessControlException(error: unknown): error is AccessControl
 }
 
 export function accessRefusal(error: unknown) {
-  return isAccessControlException(error) ? refusals[error.code] : undefined
+  if (isAccessControlException(error)) {
+    const { code } = error.getHttpResponse()
+    return refusals[code]
+  }
 }
 ```
 
@@ -286,15 +293,15 @@ async handle(error: unknown, ctx: HttpContext) {
 async report(error: unknown, ctx: HttpContext) {
   if (accessRefusal(error)) return
   if (isAccessControlException(error)) {
-    // The base handler skips 422, so INVALID_INPUT would otherwise go unlogged.
+    // The base handler skips 422, so INVALID_CURSOR would otherwise go unlogged.
     return ctx.logger.error({ err: error }, error.message)
   }
   return super.report(error, ctx)
 }
 ```
 
-Collapsing the four management refusals into one 403, as here, keeps the response from saying
-which rule refused. Validate request input before the package: roles against `roles`, statuses,
+Using the projected code preserves the package's anti-enumeration rules. This handler also
+returns a uniform response for failed management checks. Validate request input before the package: roles against `roles`, statuses,
 paging limits, and route parameters against the key limits. String keys are 1 to 254 characters,
 so bound those parameters where routes are declared and a longer value matches no route:
 
@@ -304,7 +311,7 @@ for (const param of ['scopeId', 'userId']) router.where(param, /^.{1,254}$/)
 ```
 
 The paging `cursor` is the one input you cannot validate first: it is opaque, and a client can
-send it back altered. Catch `INVALID_INPUT` around `listForScope` so a bad cursor answers 400
+send it back altered. Catch `INVALID_CURSOR` around `listForScope` so a bad cursor answers 400
 instead of reaching the handler as a fault:
 
 ```ts
@@ -318,7 +325,7 @@ router
         limit: 50,
       })
     } catch (error) {
-      if (error instanceof errors.E_ACCESS_CONTROL_INVALID_INPUT) {
+      if (error instanceof errors.E_ACCESS_CONTROL_INVALID_CURSOR) {
         return response.badRequest({ code: 'INVALID_CURSOR' })
       }
       throw error
@@ -328,7 +335,7 @@ router
 ```
 
 The scope key and `limit` come from the server here, so a bad cursor is the only way this call
-answers `INVALID_INPUT`.
+answers `INVALID_CURSOR`.
 
 Capacity Lens maps its codes in
 [`refusal.ts`](https://github.com/Kevinjohn/capacitylens/blob/68b353794/apps/backend/app/services/access_control/refusal.ts), handles them in

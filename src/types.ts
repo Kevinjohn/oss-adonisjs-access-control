@@ -178,11 +178,20 @@ export type PermissionKeyOf<T> =
 export type RoleOf<T> = T extends AccessControl<infer R, any> ? R[number] : never
 
 /** The decision of a pure rule: allowed, or denied with the error code to raise. */
-export type RuleResult = { allowed: true } | { allowed: false; code: AccessControlErrorCode }
+export type RuleResult =
+  | { allowed: true }
+  | {
+      allowed: false
+      code:
+        | 'E_ACCESS_CONTROL_UNKNOWN_ROLE'
+        | 'E_ACCESS_CONTROL_SELF_MANAGEMENT'
+        | 'E_ACCESS_CONTROL_PERMISSION_DENIED'
+        | 'E_ACCESS_CONTROL_OWNER_PROTECTED'
+        | 'E_ACCESS_CONTROL_RANK_TOO_LOW'
+    }
 
 /** Every public error code. */
 export type AccessControlErrorCode =
-  | 'E_ACCESS_CONTROL_FORBIDDEN'
   | 'E_ACCESS_CONTROL_NOT_A_MEMBER'
   | 'E_ACCESS_CONTROL_USER_NOT_FOUND'
   | 'E_ACCESS_CONTROL_ALREADY_MEMBER'
@@ -194,9 +203,27 @@ export type AccessControlErrorCode =
   | 'E_ACCESS_CONTROL_LAST_OWNER'
   | 'E_ACCESS_CONTROL_SCOPE_NOT_EMPTY'
   | 'E_ACCESS_CONTROL_SCOPE_NOT_FOUND'
-  | 'E_ACCESS_CONTROL_INVALID_INPUT'
-  | 'E_ACCESS_CONTROL_INVALID_CONFIG'
   | 'E_ACCESS_CONTROL_CONFLICT'
+  | 'E_ACCESS_CONTROL_INVALID_KEY'
+  | 'E_ACCESS_CONTROL_INVALID_CURSOR'
+  | 'E_ACCESS_CONTROL_INVALID_PAGE_LIMIT'
+  | 'E_ACCESS_CONTROL_INVALID_MEMBERSHIP_STATUS'
+  | 'E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE'
+  | 'E_ACCESS_CONTROL_FIRST_MEMBER_MUST_BE_OWNER'
+  | 'E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_REQUIRED'
+  | 'E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_CANNOT_MANAGE'
+  | 'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE'
+  | 'E_ACCESS_CONTROL_OWNERSHIP_TARGET_SUSPENDED'
+  | 'E_ACCESS_CONTROL_INVALID_STORED_ROLE'
+  | 'E_ACCESS_CONTROL_INVALID_STORED_STATUS'
+  | 'E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP'
+  | 'E_ACCESS_CONTROL_AUTHENTICATION_REQUIRED'
+  | 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED'
+  | 'E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED'
+  | 'E_ACCESS_CONTROL_PERMISSION_DENIED'
+  | 'E_ACCESS_CONTROL_UNKNOWN_PERMISSION'
+  | 'E_ACCESS_CONTROL_OWNER_REQUIRED'
+  | 'E_ACCESS_CONTROL_IDENTITY_TARGET_HAS_NO_MEMBERSHIPS'
 
 /** Anything that can say which SQL dialect it talks to: a query client, transaction or database. */
 export type DialectSource = DialectClient | DialectDatabase

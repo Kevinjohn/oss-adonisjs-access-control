@@ -16,7 +16,7 @@ As an application integrator, I want Access Control errors to be translated so t
 | `errors.<code>` translation | Host i18n key, one per error code | Optional; for example `errors.E_ACCESS_CONTROL_FORBIDDEN`. Missing keys return the English fallback. The package ships no translations. |
 | `ctx.i18n`                  | Request context property          | Optional; without it the English message is sent.                                                                                       |
 
-- The response status comes from the exception class (for example 403 for `E_ACCESS_CONTROL_FORBIDDEN`, 404 for `E_ACCESS_CONTROL_NOT_A_MEMBER`).
+- The response uses the HTTP projection (for example 403 for `E_ACCESS_CONTROL_FORBIDDEN`, 404 for `E_ACCESS_CONTROL_NOT_A_MEMBER`).
 - The body is `{ errors: [{ code, message }] }` with `Cache-Control: no-store`.
 - With `ctx.i18n` the message is `ctx.i18n.t('errors.<code>', {}, <fallback>)`. The fallback is the error's own message: the table's English text, or a custom detail message where the package raised one.
 
@@ -43,7 +43,7 @@ flowchart TD
     B --> C{"ctx.i18n exists?"}
     C -->|No| D["message = error.message"]
     C -->|Yes| E["message = i18n.t(errors.CODE, {}, error.message)"]
-    D --> F["status from exception class; Cache-Control no-store; JSON errors array"]
+    D --> F["HTTP projection; Cache-Control no-store; JSON errors array"]
     E --> F
 ```
 

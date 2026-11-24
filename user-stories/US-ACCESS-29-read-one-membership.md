@@ -13,7 +13,7 @@ As a host application developer, I want to distinguish a stored membership from 
 
 - getMembership and its alias find normalise the configured keys, resolve stored spelling and return a membership or null. Suspended rows are returned. These reads accept an optional transaction and acquire no locks. The host controls who may see the row.
 - findActive returns null for absent or suspended rows. It returns a typed active membership for a configured role and raises E_ACCESS_CONTROL_UNKNOWN_ROLE for an active row outside the matrix.
-- Invalid input keys fail validation. Invalid stored status or required timestamps raise E_ACCESS_CONTROL_INVALID_CONFIG.
+- Invalid input keys fail validation. Invalid stored status or required timestamps raise `E_ACCESS_CONTROL_INVALID_STORED_STATUS` or `E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP`.
 
 ## User flow
 

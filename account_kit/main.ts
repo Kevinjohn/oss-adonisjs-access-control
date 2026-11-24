@@ -11,7 +11,11 @@ import type {
   Trx,
 } from '@kevinjohn/adonisjs-account-kit'
 import { AccessControl } from '../src/define.js'
-import { E_ACCESS_CONTROL_INVALID_INPUT, E_ACCESS_CONTROL_SCOPE_NOT_FOUND } from '../src/errors.js'
+import {
+  E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE,
+  E_ACCESS_CONTROL_INVALID_KEY,
+  E_ACCESS_CONTROL_SCOPE_NOT_FOUND,
+} from '../src/errors.js'
 import { isCanonicalKey } from '../src/keys.js'
 import type { Membership, UserKey } from '../src/types.js'
 
@@ -101,7 +105,8 @@ async function getActiveMembership(
     return membership !== null && membership.status === 'active' ? membership : null
   } catch (error) {
     if (
-      error instanceof E_ACCESS_CONTROL_INVALID_INPUT ||
+      error instanceof E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE ||
+      error instanceof E_ACCESS_CONTROL_INVALID_KEY ||
       error instanceof E_ACCESS_CONTROL_SCOPE_NOT_FOUND
     )
       return null
@@ -151,6 +156,7 @@ export function accessControlKitCallbacks(
 ): AccessControlKitCallbacks {
   const admission = options.admission !== false
   return {
+    // Return a uniform refusal to Account Kit so invitations cannot reveal scope membership.
     authorize: {
       async invite(actor, role, context) {
         return checkInvitationPermission({
@@ -183,7 +189,7 @@ export function accessControlKitCallbacks(
       if (invitation.scope !== null) {
         const access = await resolveAccessControl()
         if (readCanonicalInvitationScope(access, invitation.scope) === null)
-          throw new E_ACCESS_CONTROL_INVALID_INPUT(
+          throw new E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE(
             `invitation ${invitation.id}: scope must be a canonical ${access.config.scope.keyType} key`
           )
         await access.memberships.acceptInvitation({
