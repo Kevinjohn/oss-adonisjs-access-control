@@ -389,12 +389,14 @@ rank(role: string): number            // -1 when unknown
 can(role: string, key: string): boolean
 permissionsFor(role: string): PermissionKey[]
 assignableRoles(actorRole: string): Role[]
-canManage(input: { actorRole: string; targetRole: string; isSelf: boolean }): RuleResult
-canAssign(input: { actorRole: string; targetRole: string; nextRole: string; isSelf: boolean }): RuleResult
+decideManagement(input: { actorRole: string; targetRole: string; isSelf: boolean }): RuleResult
+decideAssignment(input: { actorRole: string; targetRole: string; nextRole: string; isSelf: boolean }): RuleResult
 canAdministerIdentity(actorRoles: ReadonlyMap<ScopeKey, string>, targetRoles: ReadonlyMap<ScopeKey, string>, isSelf: boolean): boolean
 
 type RuleResult = { allowed: true } | { allowed: false; code: AccessControlErrorCode }
 ```
+
+The supported aliases `canManage` and `canAssign` return the same records.
 
 Definitions (`O` = owner role, `M(k)` = minimum role for key `k`):
 
@@ -402,7 +404,7 @@ Definitions (`O` = owner role, `M(k)` = minimum role for key `k`):
 - `assignableRoles(actorRole)`: if `!can(actorRole, 'members:manage')` then `[]`; else every role with
   `rank <= rank(actorRole)`, excluding `O`.
 
-### 3.1 Management truth table (`canManage`: change role target, change status, remove)
+### 3.1 Management truth table (`decideManagement`: change role target, change status, remove)
 
 Evaluated in order; first match wins.
 
@@ -417,9 +419,9 @@ Evaluated in order; first match wins.
 
 Equal rank is allowed (an admin may manage another admin).
 
-### 3.2 Assignment (`canAssign`)
+### 3.2 Assignment (`decideAssignment`)
 
-`canManage` first; then, in order:
+`decideManagement` first; then, in order:
 
 | #   | Condition                          | Result                 |
 | --- | ---------------------------------- | ---------------------- |
@@ -428,8 +430,8 @@ Equal rank is allowed (an admin may manage another admin).
 | 3   | `rank(nextRole) > rank(actorRole)` | deny `RANK_TOO_LOW`    |
 | 4   | otherwise                          | allow                  |
 
-`add` uses `canAssign` with `targetRole = nextRole` and `isSelf = false`, skipping `canManage` rows
-2, 4 and 5 (there is no existing target).
+`add` calls `decideAssignment` with `targetRole = nextRole` and `isSelf = false`. The same
+`decideManagement` rules run with the requested role as the target role.
 
 ### 3.3 Self operations
 
@@ -444,7 +446,7 @@ For password reset, session revocation and similar actions by one user on anothe
 1. `targetRoles.size === 0` → false.
 2. `isSelf` → true.
 3. For every `(scope, targetRole)` in `targetRoles`: actor must have an entry in `actorRoles` for that
-   scope, and `canManage({ actorRole, targetRole, isSelf: false })` must allow. Any failure → false.
+   scope, and `decideManagement({ actorRole, targetRole, isSelf: false })` must allow. Any failure → false.
    (A target who is an owner anywhere can therefore only be administered by themselves.)
 4. Otherwise true.
 
@@ -641,21 +643,21 @@ otherwise a matching alias is `INVALID_INPUT` and a missing parent is `SCOPE_NOT
 
 For each write (`add`, `changeRole`, `setStatus`, `remove`, `leave`, `transferOwnership`; the three
 reads below do not lock): run in a transaction (4.3) → locks (4.2) → load the actor's membership in that scope
-through `trx`; missing or suspended → `FORBIDDEN` → apply `canManage`/`canAssign` rows that depend only
+through `trx`; missing or suspended → `FORBIDDEN` → apply `decideManagement`/`decideAssignment` rows that depend only
 on the actor (unknown actor role, `members:manage`) → only then check the target's existence (so a
 non-manager cannot probe membership by 404 versus 403) → remaining rule rows → write → event → return.
 
-| Method              | Input                                       | Rule                                                                                                                                                                           | Result                                     | Event                                                         |
-| ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ | ------------------------------------------------------------- |
-| `find`              | `scopeId, userId, trx?`                     | none (no lock, plain read)                                                                                                                                                     | `Membership \| null`                       | none                                                          |
-| `listForUser`       | `userId, trx?`                              | none (no lock)                                                                                                                                                                 | `Membership[]` ordered by `created_at, id` | none                                                          |
-| `listForScope`      | `{ actor, scopeId, cursor?, limit?, trx? }` | actor `can('members:list')`                                                                                                                                                    | `MembershipPage`                           | none                                                          |
-| `add`               | `{ actor, scopeId, userId, role, trx? }`    | `canAssign` (3.2); after locking, `trx.from(users.table).select('id').where('id', userId).first()` is `undefined` → `USER_NOT_FOUND`; already a member → `ALREADY_MEMBER`      | `Membership`                               | `membership.added`                                            |
-| `changeRole`        | `{ actor, scopeId, userId, role, trx? }`    | target must exist (`NOT_A_MEMBER`); `canAssign`                                                                                                                                | `Membership`                               | `membership.role_changed` (skip write and event if unchanged) |
-| `setStatus`         | `{ actor, scopeId, userId, status, trx? }`  | target exists; `canManage`                                                                                                                                                     | `Membership`                               | `membership.status_changed` (skip if unchanged)               |
-| `remove`            | `{ actor, scopeId, userId, trx? }`          | target exists; `canManage`                                                                                                                                                     | `void`                                     | `membership.removed` (`reason: 'removed'`)                    |
-| `leave`             | `{ scopeId, userId, trx? }`                 | member exists; owner → `OWNER_PROTECTED`                                                                                                                                       | `void`                                     | `membership.left`                                             |
-| `transferOwnership` | `{ actor, scopeId, toUserId, trx? }`        | `O` unset → `OWNER_DISABLED`; actor not the active `O` → `FORBIDDEN`; target is actor → `SELF_MANAGEMENT`; target missing → `NOT_A_MEMBER`; target suspended → `INVALID_INPUT` | `void`                                     | `membership.ownership_transferred`                            |
+| Method              | Input                                       | Rule                                                                                                                                                                             | Result                                     | Event                                                         |
+| ------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| `find`              | `scopeId, userId, trx?`                     | none (no lock, plain read)                                                                                                                                                       | `Membership \| null`                       | none                                                          |
+| `listForUser`       | `userId, trx?`                              | none (no lock)                                                                                                                                                                   | `Membership[]` ordered by `created_at, id` | none                                                          |
+| `listForScope`      | `{ actor, scopeId, cursor?, limit?, trx? }` | actor `can('members:list')`                                                                                                                                                      | `MembershipPage`                           | none                                                          |
+| `add`               | `{ actor, scopeId, userId, role, trx? }`    | `decideAssignment` (3.2); after locking, `trx.from(users.table).select('id').where('id', userId).first()` is `undefined` → `USER_NOT_FOUND`; already a member → `ALREADY_MEMBER` | `Membership`                               | `membership.added`                                            |
+| `changeRole`        | `{ actor, scopeId, userId, role, trx? }`    | target must exist (`NOT_A_MEMBER`); `decideAssignment`                                                                                                                           | `Membership`                               | `membership.role_changed` (skip write and event if unchanged) |
+| `setStatus`         | `{ actor, scopeId, userId, status, trx? }`  | target exists; `decideManagement`                                                                                                                                                | `Membership`                               | `membership.status_changed` (skip if unchanged)               |
+| `remove`            | `{ actor, scopeId, userId, trx? }`          | target exists; `decideManagement`                                                                                                                                                | `void`                                     | `membership.removed` (`reason: 'removed'`)                    |
+| `leave`             | `{ scopeId, userId, trx? }`                 | member exists; owner → `OWNER_PROTECTED`                                                                                                                                         | `void`                                     | `membership.left`                                             |
+| `transferOwnership` | `{ actor, scopeId, toUserId, trx? }`        | `O` unset → `OWNER_DISABLED`; actor not the active `O` → `FORBIDDEN`; target is actor → `SELF_MANAGEMENT`; target missing → `NOT_A_MEMBER`; target suspended → `INVALID_INPUT`   | `void`                                     | `membership.ownership_transferred`                            |
 
 - `listForScope`: `limit` default 25, max 100; ordered by `created_at asc, id asc`; cursor is
   base64url JSON `[createdAt, id]` like the kit's invitation cursor **[repo]**
@@ -968,7 +970,7 @@ Each milestone is one pull request, passes the gate, and lists its tests by name
   each `transferOwnership` error code; `add` for a missing user → `USER_NOT_FOUND`; non-manager gets 403,
   not 404, for a missing target; `identityRoles` maps (actor active only, target includes suspended);
   `assertCanAdministerIdentity` allowed and `FORBIDDEN`; a stored role outside the tuple → `can` false,
-  `canManage` `UNKNOWN_ROLE`; `SCOPE_NOT_FOUND`; cursor paging across equal `created_at`;
+  `decideManagement` `UNKNOWN_ROLE`; `SCOPE_NOT_FOUND`; cursor paging across equal `created_at`;
   caller-supplied `trx` path and package-owned path both covered; deleting a scope or user row with
   memberships still present fails on the `RESTRICT` key; `removeAllForScope` emits one
   `scope_deleted` event per membership and the scope row then deletes; custom `membershipsTable`.

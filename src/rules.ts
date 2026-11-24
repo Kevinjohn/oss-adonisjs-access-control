@@ -30,12 +30,12 @@ export function can(matrix: RoleMatrix, role: string, key: string): boolean {
 }
 
 /** Every key the role satisfies, in declaration order. */
-export function permissionsFor(matrix: RoleMatrix, role: string): string[] {
+export function listPermissionsForRole(matrix: RoleMatrix, role: string): string[] {
   return [...matrix.minimumRoleByPermission.keys()].filter((key) => can(matrix, role, key))
 }
 
 /** Roles the actor may assign: none without `members:manage`; else up to its rank, never the owner. */
-export function assignableRoles(matrix: RoleMatrix, actorRole: string): string[] {
+export function listAssignableRoles(matrix: RoleMatrix, actorRole: string): string[] {
   if (!can(matrix, actorRole, 'members:manage')) return []
   const actorRank = rank(matrix, actorRole)
   return matrix.roles.filter((role, index) => index <= actorRank && role !== matrix.ownerRole)

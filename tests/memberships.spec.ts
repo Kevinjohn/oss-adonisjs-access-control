@@ -546,6 +546,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       page.items.map((m) => m.userId),
       [owner, admin, editor]
     )
+    assert.deepEqual(Object.keys(page).sort(), ['items', 'nextCursor'])
     assert.isString(page.nextCursor)
     const rest = await f.memberships.listForScope({
       actor: actor(admin),
@@ -558,6 +559,16 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       [viewer]
     )
     assert.isNull(rest.nextCursor)
+    await f.memberships.remove({ actor: actor(owner), scopeId: scope, userId: viewer })
+    assert.deepEqual(
+      await f.memberships.listForScope({
+        actor: actor(admin),
+        scopeId: scope,
+        limit: 3,
+        cursor: page.nextCursor!,
+      }),
+      { items: [], nextCursor: null }
+    )
     assert.equal(
       await codeOf(f.memberships.listForScope({ actor: actor(editor), scopeId: scope })),
       'E_ACCESS_CONTROL_FORBIDDEN'

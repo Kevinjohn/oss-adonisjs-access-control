@@ -1,6 +1,6 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { AccessControl } from '../src/define.js'
-import { accountKitVersions, runDoctor } from '../src/doctor.js'
+import { readAccountKitVersions, runDoctor } from '../src/doctor.js'
 
 /**
  * `node ace access-control:doctor [--scope=<id>] [--json]`: read-only checks of the memberships
@@ -12,9 +12,12 @@ export default class AccessControlDoctor extends BaseCommand {
   static description = 'Check the memberships table against config/access_control.ts'
   static options = { startApp: true }
 
-  /** The Account Kit version check's input; throws when the installed manifest cannot be read. */
+  /**
+   * Override in a subclass to supply the version check's input.
+   * The default reads package manifests and throws when the installed manifest cannot be read.
+   */
   protected accountKitVersions() {
-    return accountKitVersions()
+    return readAccountKitVersions()
   }
 
   @flags.string({ description: 'Restrict the row checks to one scope id' })

@@ -20,7 +20,7 @@ export type AbilityMap<P> = { [K in PermissionKeyOf<P>]: BouncerAbility<AbilityS
  * missing, inactive or other-subject membership, and otherwise asks `can(role, key)`. Guests
  * are denied by Bouncer itself (`allowGuest: false`).
  */
-export function abilities<P>(
+export function createAbilities<P>(
   access: AccessControl<any, any>,
   resolve: MembershipResolver
 ): AbilityMap<P> {

@@ -83,7 +83,7 @@ test.group('Account Kit owned fields', () => {
 
   test('keeps deliberately stale installed fixture and unrelated hashes', ({ assert }) => {
     const source = `assert.equal(versions.expected, '${from.version}')\nassert.equal(versions.installed, '${from.version}')\n{ installed: '0.3.2', expected: '${from.version}' }\nconst hash = '${from.sha256}'`
-    const prefixed = `const versions = accountKitVersions()\n${source}`
+    const prefixed = `const versions = readAccountKitVersions()\n${source}`
     const rewritten = projectKitFile('tests/doctor.spec.ts', prefixed, from, to)
     assert.include(rewritten, "installed: '0.3.2'")
     assert.include(rewritten, `const hash = '${from.sha256}'`)

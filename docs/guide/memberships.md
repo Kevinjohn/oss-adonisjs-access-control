@@ -64,7 +64,9 @@ whether someone is a member from a 404 versus a 403.
 | `transferOwnership` | `{ actor, scopeId, toUserId, trx? }`        | nothing    | `membership.ownership_transferred` |
 
 - `listForScope` requires `members:list`, pages by `created_at` then `id` with an opaque cursor,
-  and accepts a `limit` from 1 to 100 (default 25).
+  and accepts a `limit` from 1 to 100 (default 25). Each page returns `{ items, nextCursor }`.
+  Use `nextCursor` as the next call's `cursor`. It is `null` on the last or an empty page, where
+  an empty page has `items: []`.
 - `add` requires the user row to exist (`USER_NOT_FOUND`) and no existing membership
   (`ALREADY_MEMBER`).
 - `changeRole` and `setStatus` skip the write and the change callback when nothing changes.

@@ -44,4 +44,4 @@ flowchart TD
     F --> G["print manual Bouncer and Account Kit integration steps"]
 ```
 
-**Code references:** [configureWith and manualSteps](../configure.ts), [planMigrations](../src/migration_order.ts), [setup guide](../docs/guide/setup.md)
+**Code references:** [configureWith and formatManualSteps](../configure.ts), [planMigrations](../src/migration_order.ts), [setup guide](../docs/guide/setup.md)

@@ -15,7 +15,7 @@ export interface MembershipsMigrationSchema {
   userIdColumn: string
 }
 
-function invalid(detail: string): AccessControlError {
+function createMigrationConfigError(detail: string): AccessControlError {
   return new AccessControlError('E_ACCESS_CONTROL_INVALID_CONFIG', {
     message: `access-control: ${detail}`,
   })
@@ -25,7 +25,7 @@ function invalid(detail: string): AccessControlError {
  * Column builders per key type, identical to Account Kit's: `integer` keys stay `integer()` so a
  * MySQL foreign key against an `increments()` parent matches.
  */
-function keyColumn(name: string, keyType: KeyType): string {
+function formatKeyColumn(name: string, keyType: KeyType): string {
   return keyType === 'integer'
     ? `table.integer('${name}').unsigned()`
     : keyType === 'uuid'
@@ -34,7 +34,7 @@ function keyColumn(name: string, keyType: KeyType): string {
 }
 
 /** Validates the names and key types and returns the stub data. */
-export function membershipsMigrationSchema(input: {
+export function buildMembershipMigrationSchema(input: {
   membershipsTable: string
   usersTable: string
   userKeyType: KeyType
@@ -42,18 +42,22 @@ export function membershipsMigrationSchema(input: {
   scopeKeyType: KeyType
 }): MembershipsMigrationSchema {
   for (const name of ['membershipsTable', 'usersTable', 'scopeTable'] as const)
-    if (!isSqlIdentifier(input[name])) throw invalid(`${name} must be a plain SQL identifier`)
+    if (!isSqlIdentifier(input[name]))
+      throw createMigrationConfigError(`${name} must be a plain SQL identifier`)
   // The released stub's longest generated name is `${membershipsTable}_scope_user_unique`.
   // PostgreSQL truncates identifiers beyond 63 bytes, which can collide with the other indexes.
   if (Buffer.byteLength(`${input.membershipsTable}_scope_user_unique`) > 63)
-    throw invalid('membershipsTable must be at most 45 characters for generated SQL identifiers')
+    throw createMigrationConfigError(
+      'membershipsTable must be at most 45 characters for generated SQL identifiers'
+    )
   for (const name of ['userKeyType', 'scopeKeyType'] as const)
-    if (!keyTypes.includes(input[name])) throw invalid(`${name} must be integer, string or uuid`)
+    if (!keyTypes.includes(input[name]))
+      throw createMigrationConfigError(`${name} must be integer, string or uuid`)
   return {
     membershipsTable: input.membershipsTable,
     usersTable: input.usersTable,
     scopeTable: input.scopeTable,
-    scopeIdColumn: keyColumn('scope_id', input.scopeKeyType),
-    userIdColumn: keyColumn('user_id', input.userKeyType),
+    scopeIdColumn: formatKeyColumn('scope_id', input.scopeKeyType),
+    userIdColumn: formatKeyColumn('user_id', input.userKeyType),
   }
 }

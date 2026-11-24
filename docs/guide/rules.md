@@ -3,9 +3,16 @@
 The rules are pure functions on the configuration, exposed on the `AccessControl` instance and
 applied by the membership service inside its transactions. `O` is the owner role when set.
 
-`decideManagement` and `decideAssignment` return `RuleResult` decisions (`{ allowed: true }` or
-`{ allowed: false, code }`), not booleans. The older names `canManage` and `canAssign` remain
-supported aliases that return the same decisions.
+`decideManagement` and `decideAssignment` return `RuleResult` records. Read `decision.allowed`
+to check for a grant and `decision.code` when it is false. The supported aliases `canManage`
+and `canAssign` return the same records, including the refusal code.
+
+```ts
+const decision = accessControl.decideAssignment({ actorRole, targetRole, nextRole, isSelf })
+if (!decision.allowed) {
+  return { allowed: false, code: decision.code }
+}
+```
 
 ## Vocabulary
 

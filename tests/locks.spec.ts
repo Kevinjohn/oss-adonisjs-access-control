@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { locksRows } from './helpers/database.js'
 import { defineAccessControl } from '../index.js'
 import { isCanonicalKey } from '../src/keys.js'
-import { sameKeys } from '../src/locks.js'
+import { haveSameKeys } from '../src/locks.js'
 import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
 
 const actor = (id: number | string) => ({ id })
@@ -265,12 +265,12 @@ test.group('locks: key types and custom tables', () => {
 })
 
 test.group('keys: pure helpers', () => {
-  test('sameKeys compares the sorted key sets element by element', ({ assert }) => {
-    assert.isTrue(sameKeys([2, 1], [1, 2]))
-    assert.isTrue(sameKeys(['b', 'a'], ['a', 'b']))
-    assert.isFalse(sameKeys(['a\nb'], ['a', 'b']))
-    assert.isFalse(sameKeys([1], [1, 2]))
-    assert.isFalse(sameKeys([], [1]))
+  test('haveSameKeys compares the sorted key sets element by element', ({ assert }) => {
+    assert.isTrue(haveSameKeys([2, 1], [1, 2]))
+    assert.isTrue(haveSameKeys(['b', 'a'], ['a', 'b']))
+    assert.isFalse(haveSameKeys(['a\nb'], ['a', 'b']))
+    assert.isFalse(haveSameKeys([1], [1, 2]))
+    assert.isFalse(haveSameKeys([], [1]))
   })
 
   test('isCanonicalKey accepts only the normalised spelling of a key', ({ assert }) => {

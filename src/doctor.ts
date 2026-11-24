@@ -7,7 +7,7 @@ import type { AccessControl } from './define.js'
 import { requireValidKey } from './keys.js'
 import { readTimestamp } from './kit_transaction.js'
 import { inspectMembershipConstraints } from './membership_constraints.js'
-import { packageManifest } from './package_root.js'
+import { readPackageManifest } from './package_root.js'
 import { resolveStoredParentId } from './stored_keys.js'
 
 /** One doctor check: `ok` when `count` is zero; `sampleIds` holds up to 20 row ids. */
@@ -66,18 +66,18 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
   const { access, db } = input
   const { membershipsTable, users, scope: scopeConfig, roles, ownerRole } = access.config
   // A fresh schema builder per call: knex queues statements on a reused builder.
-  const schema = () => db.connection().schema
+  const createSchemaBuilder = () => db.connection().schema
   const checks: DoctorCheck[] = []
 
-  if (!(await schema().hasTable(membershipsTable))) {
+  if (!(await createSchemaBuilder().hasTable(membershipsTable))) {
     checks.push({ name: 'memberships_table', ok: false, count: 1, sampleIds: [] })
-    return { checks: [...checks, ...(await accountKitCheck(input))] }
+    return { checks: [...checks, ...(await checkAccountKitVersion(input))] }
   }
   const missing: string[] = []
   for (const column of expectedColumns)
-    if (!(await schema().hasColumn(membershipsTable, column))) missing.push(column)
+    if (!(await createSchemaBuilder().hasColumn(membershipsTable, column))) missing.push(column)
   checks.push(buildDoctorCheck('memberships_table', missing))
-  if (missing.length > 0) return { checks: [...checks, ...(await accountKitCheck(input))] }
+  if (missing.length > 0) return { checks: [...checks, ...(await checkAccountKitVersion(input))] }
 
   const constraints = await inspectMembershipConstraints(db.connection(), {
     table: membershipsTable,
@@ -109,13 +109,16 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
   }
   // The runtime compares roles and statuses as exact strings; MySQL's default collation does
   // not, so `EDITOR` would pass `NOT IN ('editor', ...)` there and be refused at runtime.
-  const exact = (column: string) =>
+  const formatExactColumn = (column: string) =>
     db.connection().dialect.name === 'mysql' ? `binary ${column}` : column
   const buildExcludedValueQuery = (column: string, values: string[]) =>
     buildMembershipQuery().where((query) =>
       query
         .whereNull(column)
-        .orWhereRaw(`${exact(column)} not in (${values.map(() => '?').join(', ')})`, values)
+        .orWhereRaw(
+          `${formatExactColumn(column)} not in (${values.map(() => '?').join(', ')})`,
+          values
+        )
     )
 
   const unknownRole = buildExcludedValueQuery('m.role', [...roles])
@@ -159,18 +162,18 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
   checks.push(buildDoctorCheck('invalid_timestamp', invalidTimestampIds, invalidTimestampCount))
 
   if (ownerRole !== undefined) {
-    const owners = (comparison: '=' | '>') =>
+    const queryOwnerCounts = (comparison: '=' | '>') =>
       buildMembershipQuery()
         .select('m.scope_id')
         .select(db.raw('count(*) over() as total'))
         .groupBy('m.scope_id')
         .havingRaw(
-          `sum(case when ${exact('m.role')} = ? and ${exact('m.status')} = 'active' then 1 else 0 end) ${comparison} ?`,
+          `sum(case when ${formatExactColumn('m.role')} = ? and ${formatExactColumn('m.status')} = 'active' then 1 else 0 end) ${comparison} ?`,
           [ownerRole, comparison === '=' ? 0 : 1]
         )
         .orderBy('m.scope_id', 'asc')
         .limit(sampleLimit)
-    const [without, many] = await Promise.all([owners('='), owners('>')])
+    const [without, many] = await Promise.all([queryOwnerCounts('='), queryOwnerCounts('>')])
     checks.push(
       buildDoctorCheck(
         'scope_without_owner',
@@ -207,11 +210,11 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
       await countMatchingRows(orphanUser)
     )
   )
-  checks.push(...(await accountKitCheck(input)))
+  checks.push(...(await checkAccountKitVersion(input)))
   return { checks }
 }
 
-async function accountKitCheck(input: DoctorInput): Promise<DoctorCheck[]> {
+async function checkAccountKitVersion(input: DoctorInput): Promise<DoctorCheck[]> {
   if (input.accountKit === undefined) return []
   const { installed, expected } = input.accountKit
   return [
@@ -230,11 +233,11 @@ async function accountKitCheck(input: DoctorInput): Promise<DoctorCheck[]> {
  * A manifest that is installed but cannot be read, or has no version, throws: the check could not
  * run.
  */
-export function accountKitVersions(
+export function readAccountKitVersions(
   resolve: (specifier: string) => string = (specifier) => import.meta.resolve(specifier)
 ): { installed: string | null; expected: string } {
   const here = dirname(fileURLToPath(import.meta.url))
-  const own = packageManifest(here, '@kevinjohn/adonisjs-access-control')
+  const own = readPackageManifest(here, '@kevinjohn/adonisjs-access-control')
   const expected = String(
     (own.peerDependencies as Record<string, string>)['@kevinjohn/adonisjs-account-kit']
   )
@@ -247,7 +250,7 @@ export function accountKitVersions(
     }
     throw error
   }
-  const { version } = packageManifest(dirname(entry), '@kevinjohn/adonisjs-account-kit')
+  const { version } = readPackageManifest(dirname(entry), '@kevinjohn/adonisjs-account-kit')
   if (typeof version !== 'string') {
     throw new RuntimeException('@kevinjohn/adonisjs-account-kit: installed manifest has no version')
   }

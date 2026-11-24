@@ -7,7 +7,7 @@ import { test } from '@japa/runner'
 import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import AccessControlDoctor from '../commands/doctor.js'
 import { AccessControl, defineAccessControl } from '../index.js'
-import { accountKitVersions, runDoctor, type DoctorReport } from '../src/doctor.js'
+import { readAccountKitVersions, runDoctor, type DoctorReport } from '../src/doctor.js'
 import { sqlTimestamp } from '../src/kit_transaction.js'
 import { bootTestApp, type TestApp } from './helpers/app.js'
 import { testEngine } from './helpers/database.js'
@@ -512,7 +512,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         'created_at',
         'updated_at',
       ])
-      const versions = accountKitVersions()
+      const versions = readAccountKitVersions()
       assert.equal(versions.expected, '0.6.0')
       assert.equal(versions.installed, '0.6.0')
     } finally {
@@ -525,7 +525,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
   }) => {
     const notFound = Object.assign(new Error('not found'), { code: 'ERR_MODULE_NOT_FOUND' })
     assert.deepEqual(
-      accountKitVersions(() => {
+      readAccountKitVersions(() => {
         throw notFound
       }),
       { installed: null, expected: '0.6.0' }
@@ -533,7 +533,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     const other = Object.assign(new Error('bad exports'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' })
     assert.throws(
       () =>
-        accountKitVersions(() => {
+        readAccountKitVersions(() => {
           throw other
         }),
       'bad exports'
@@ -545,12 +545,12 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       const entry = pathToFileURL(join(root, 'build', 'index.js')).href
       await mkdir(join(root, 'build'))
       await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit",')
-      assert.throws(() => accountKitVersions(() => entry), /cannot read .*package\.json/)
+      assert.throws(() => readAccountKitVersions(() => entry), /cannot read .*package\.json/)
       await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit"}')
-      assert.throws(() => accountKitVersions(() => entry), /installed manifest has no version/)
+      assert.throws(() => readAccountKitVersions(() => entry), /installed manifest has no version/)
       await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit","version":"0.3.3"}')
       assert.deepEqual(
-        accountKitVersions(() => entry),
+        readAccountKitVersions(() => entry),
         { installed: '0.3.3', expected: '0.6.0' }
       )
     } finally {

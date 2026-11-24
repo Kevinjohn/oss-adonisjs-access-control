@@ -1,9 +1,9 @@
 import { dirname, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { packageRoot } from '../src/package_root.js'
+import { locatePackageRoot } from '../src/package_root.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const root = packageRoot(here, '@kevinjohn/adonisjs-access-control')
+const root = locatePackageRoot(here, '@kevinjohn/adonisjs-access-control')
 const build = join(root, 'build')
 
 /**

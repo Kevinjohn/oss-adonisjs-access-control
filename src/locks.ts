@@ -3,7 +3,7 @@ import { AccessControlError } from './errors.js'
 import type { ScopeKey, TransactionRunner, Trx, UserKey } from './types.js'
 
 /** Unique keys in code-unit order of `String(key)`, so integer keys sort as strings. */
-export function ascending<K extends ScopeKey | UserKey>(keys: Iterable<K>): K[] {
+export function sortUniqueKeys<K extends ScopeKey | UserKey>(keys: Iterable<K>): K[] {
   const keysByText = new Map<string, K>()
   for (const key of keys) keysByText.set(String(key), key)
   return [...keysByText.entries()]
@@ -12,9 +12,12 @@ export function ascending<K extends ScopeKey | UserKey>(keys: Iterable<K>): K[] 
 }
 
 /** Whether two key lists hold the same set of keys, compared element by element. */
-export function sameKeys<K extends ScopeKey | UserKey>(a: Iterable<K>, b: Iterable<K>): boolean {
-  const left = ascending(a).map(String)
-  const right = ascending(b).map(String)
+export function haveSameKeys<K extends ScopeKey | UserKey>(
+  a: Iterable<K>,
+  b: Iterable<K>
+): boolean {
+  const left = sortUniqueKeys(a).map(String)
+  const right = sortUniqueKeys(b).map(String)
   return left.length === right.length && left.every((key, index) => key === right[index])
 }
 
@@ -24,7 +27,7 @@ export async function lockUsers(
   trx: Trx,
   { usersTable, userIds }: { usersTable: string; userIds: Iterable<UserKey> }
 ): Promise<void> {
-  for (const userId of ascending(userIds)) await runner.lockRow(trx, usersTable, userId)
+  for (const userId of sortUniqueKeys(userIds)) await runner.lockRow(trx, usersTable, userId)
 }
 
 /** Locks one scope row and proves it exists; otherwise `SCOPE_NOT_FOUND`. */
@@ -45,5 +48,6 @@ export async function lockScopes(
   trx: Trx,
   { scopeTable, scopeIds }: { scopeTable: string; scopeIds: Iterable<ScopeKey> }
 ): Promise<void> {
-  for (const scopeId of ascending(scopeIds)) await lockScope(runner, trx, { scopeTable, scopeId })
+  for (const scopeId of sortUniqueKeys(scopeIds))
+    await lockScope(runner, trx, { scopeTable, scopeId })
 }

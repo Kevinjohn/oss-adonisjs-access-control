@@ -5,7 +5,7 @@ import type { KeyType } from './types.js'
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const integerPattern = /^[1-9][0-9]*$/
 
-function invalid(what: string, detail: string): AccessControlError {
+function createInvalidKeyError(what: string, detail: string): AccessControlError {
   return new AccessControlError('E_ACCESS_CONTROL_INVALID_INPUT', {
     message: `access-control: ${what} ${detail}`,
   })
@@ -24,16 +24,16 @@ export function requireValidKey(keyType: KeyType, value: unknown, what: string):
           ? Number(value)
           : Number.NaN
     if (!Number.isSafeInteger(number) || number < 1)
-      throw invalid(what, 'must be a positive integer')
+      throw createInvalidKeyError(what, 'must be a positive integer')
     return number
   }
-  if (typeof value !== 'string') throw invalid(what, 'must be a string')
+  if (typeof value !== 'string') throw createInvalidKeyError(what, 'must be a string')
   if (keyType === 'uuid') {
-    if (!uuidPattern.test(value)) throw invalid(what, 'must be a UUID')
+    if (!uuidPattern.test(value)) throw createInvalidKeyError(what, 'must be a UUID')
     return value.toLowerCase()
   }
   if (value.length < 1 || value.length > 254)
-    throw invalid(what, 'must be 1 to 254 characters long')
+    throw createInvalidKeyError(what, 'must be 1 to 254 characters long')
   return value
 }
 

@@ -38,7 +38,9 @@ cannot change the kit's lock order. An invitation without a scope is not a team 
 refused by these callbacks; keep your own callbacks for those if you send them. The scope must be
 spelled canonically: a lower-case UUID, a plain integer, or the exact stored parent spelling
 for a bounded string key. The spelling includes case and accents even when the database compares
-those as equal. The kit accepts an address's pending invitations sequentially in JavaScript
+those as equal. The authorization callbacks return false for an absent membership, a missing string
+scope parent or invalid key input, including a wrong stored spelling. Other lookup errors propagate
+to the caller. The kit accepts an address's pending invitations sequentially in JavaScript
 code-unit order of their stored scope strings. Actor send, manage and list callbacks deny aliases;
 operator issuance can bypass those callbacks. Acceptance independently rejects a matching string
 alias with `E_ACCESS_CONTROL_INVALID_INPUT` before locking that scope; a missing string parent is
