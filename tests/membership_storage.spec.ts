@@ -1,7 +1,7 @@
 import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
 import type { AccountUser } from '@kevinjohn/adonisjs-account-kit'
-import { AccessControl, AccessControlError, defineConfig } from '../index.js'
+import { AccessControl, defineConfig, errors } from '../index.js'
 import { accessControlKitCallbacks } from '../account_kit/main.js'
 import { loadRunner } from '../src/kit_transaction.js'
 import { bootTestApp } from './helpers/app.js'
@@ -73,8 +73,8 @@ test('app-owned membership rows reject invalid status and required timestamps, i
         exportData,
       ]) {
         await rejects(read, (error: unknown) => {
-          assert.instanceOf(error, AccessControlError)
-          const diagnostic = error as AccessControlError
+          assert.instanceOf(error, errors.E_ACCESS_CONTROL_INVALID_CONFIG)
+          const diagnostic = error as InstanceType<typeof errors.E_ACCESS_CONTROL_INVALID_CONFIG>
           assert.equal(diagnostic.code, 'E_ACCESS_CONTROL_INVALID_CONFIG')
           assert.equal(diagnostic.status, 500)
           assert.equal(diagnostic.message, `access-control: stored membership has an ${message}`)

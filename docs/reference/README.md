@@ -20,7 +20,7 @@ This reference describes the current release. Its provider entry is
 | `@kevinjohn/adonisjs-access-control/commands`                | Ace command discovery loader                                                                                                | <a href="/oss-adonisjs-access-control/reference/api/commands/main/">Commands reference</a>                     |
 
 The exports above are the complete supported surface. The root exports `defineConfig` and its
-alias `defineAccessControl`, `AccessControl`, `AccessControlError`, `errorTable`, the `errors`
+alias `defineAccessControl`, `AccessControl`, the `errors`
 namespace, `configure` and `stubsRoot`.
 
 Every error code, status and message is listed in [Errors](errors.md).

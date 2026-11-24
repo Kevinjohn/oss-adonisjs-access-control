@@ -13,7 +13,7 @@ As a host developer, I want to require a scoped permission inside my transaction
 
 - An active member whose configured role meets the permission threshold is returned to the caller.
 - An absent or suspended membership, unknown role, unknown permission or insufficient rank raises E_ACCESS_CONTROL_FORBIDDEN. The service requires a caller transaction and does not lock the row.
-- A missing transaction or malformed key raises `E_ACCESS_CONTROL_INVALID_INPUT`; invalid stored status or timestamps raise `E_ACCESS_CONTROL_INVALID_CONFIG`.
+- A missing transaction raises AdonisJS's `InvalidArgumentsException`. A malformed key raises `E_ACCESS_CONTROL_INVALID_INPUT`. Invalid stored status or timestamps raise `E_ACCESS_CONTROL_INVALID_CONFIG`.
 - The host still owns record-level policy and any subsequent write.
 
 ## User flow

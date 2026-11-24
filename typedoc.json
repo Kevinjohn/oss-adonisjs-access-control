@@ -21,7 +21,23 @@
   "treatWarningsAsErrors": true,
   "validation": { "notDocumented": true },
   "requiredToBeDocumented": ["Class", "Function", "Interface", "TypeAlias", "Variable"],
-  "intentionallyNotExported": [],
+  "intentionallyNotExported": [
+    "AlreadyMemberException",
+    "ConflictException",
+    "ForbiddenException",
+    "InvalidConfigException",
+    "InvalidInputException",
+    "LastOwnerException",
+    "NotAMemberException",
+    "OwnerDisabledException",
+    "OwnerProtectedException",
+    "RankTooLowException",
+    "ScopeNotEmptyException",
+    "ScopeNotFoundException",
+    "SelfManagementException",
+    "UnknownRoleException",
+    "UserNotFoundException"
+  ],
   "externalSymbolLinkMappings": {
     "@adonisjs/ace": {
       "CommandMetaData": "https://github.com/adonisjs/ace"

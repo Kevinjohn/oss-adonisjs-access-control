@@ -57,7 +57,7 @@ Keys are not stored. Renaming a key is a code change, but a frontend reading the
 ## Boot validation
 
 The provider resolves the configuration at boot and refuses to start with
-`E_ACCESS_CONTROL_INVALID_CONFIG` when the roles, the owner role, a table name, a key type or a
+AdonisJS's `InvalidArgumentsException` when the roles, the owner role, a table name, a key type or a
 permission value is invalid, or when a required key is missing. Boot never reads the database.
 
 ## Deployment contract

@@ -11,7 +11,7 @@ import type {
   Trx,
 } from '@kevinjohn/adonisjs-account-kit'
 import { AccessControl } from '../src/define.js'
-import { AccessControlError } from '../src/errors.js'
+import { E_ACCESS_CONTROL_INVALID_INPUT, E_ACCESS_CONTROL_SCOPE_NOT_FOUND } from '../src/errors.js'
 import { isCanonicalKey } from '../src/keys.js'
 import type { Membership, UserKey } from '../src/types.js'
 
@@ -101,9 +101,8 @@ async function getActiveMembership(
     return membership !== null && membership.status === 'active' ? membership : null
   } catch (error) {
     if (
-      error instanceof AccessControlError &&
-      (error.code === 'E_ACCESS_CONTROL_INVALID_INPUT' ||
-        error.code === 'E_ACCESS_CONTROL_SCOPE_NOT_FOUND')
+      error instanceof E_ACCESS_CONTROL_INVALID_INPUT ||
+      error instanceof E_ACCESS_CONTROL_SCOPE_NOT_FOUND
     )
       return null
     throw error
@@ -135,6 +134,17 @@ async function checkInvitationPermission({
 /**
  * Builds the Account Kit callbacks backed by the application's `AccessControl`. Call it in
  * `config/account_kit.ts`; nothing is resolved until the kit calls a callback.
+ *
+ * @example
+ * ```ts
+ * import { accessControlKitCallbacks } from '@kevinjohn/adonisjs-access-control/account-kit'
+ * import { defineConfig } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * export default defineConfig({
+ *   ...accountOptions,
+ *   ...accessControlKitCallbacks(),
+ * })
+ * ```
  */
 export function accessControlKitCallbacks(
   options: AccessControlKitCallbackOptions = {}
@@ -173,9 +183,9 @@ export function accessControlKitCallbacks(
       if (invitation.scope !== null) {
         const access = await resolveAccessControl()
         if (readCanonicalInvitationScope(access, invitation.scope) === null)
-          throw new AccessControlError('E_ACCESS_CONTROL_INVALID_INPUT', {
-            message: `invitation ${invitation.id}: scope must be a canonical ${access.config.scope.keyType} key`,
-          })
+          throw new E_ACCESS_CONTROL_INVALID_INPUT(
+            `invitation ${invitation.id}: scope must be a canonical ${access.config.scope.keyType} key`
+          )
         await access.memberships.acceptInvitation({
           scopeId: invitation.scope,
           userId: user.id,

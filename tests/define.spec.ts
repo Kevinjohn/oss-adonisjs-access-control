@@ -1,5 +1,6 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { test } from '@japa/runner'
-import { AccessControlError, defineAccessControl } from '../index.js'
+import { defineAccessControl } from '../index.js'
 
 const base = {
   roles: ['viewer', 'editor', 'admin', 'owner'],
@@ -22,13 +23,13 @@ function assertInvalidConfig(assert: any, build: () => unknown, detail: RegExp) 
   try {
     build()
   } catch (error) {
-    assert.instanceOf(error, AccessControlError)
-    assert.equal((error as AccessControlError).code, 'E_ACCESS_CONTROL_INVALID_CONFIG')
-    assert.equal((error as AccessControlError).status, 500)
+    assert.instanceOf(error, InvalidArgumentsException)
+    assert.equal((error as InvalidArgumentsException).code, 'E_INVALID_ARGUMENTS_EXCEPTION')
+    assert.equal((error as InvalidArgumentsException).status, 500)
     assert.match((error as Error).message, detail)
     return
   }
-  assert.fail('expected E_ACCESS_CONTROL_INVALID_CONFIG')
+  assert.fail('expected E_INVALID_ARGUMENTS_EXCEPTION')
 }
 
 test.group('defineAccessControl: boot validation (spec 2.3)', () => {

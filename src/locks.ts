@@ -1,5 +1,5 @@
 // The lock process (specification 4.2): user rows ascending, then scope rows ascending.
-import { AccessControlError } from './errors.js'
+import { E_ACCESS_CONTROL_SCOPE_NOT_FOUND } from './errors.js'
 import type { ScopeKey, TransactionRunner, Trx, UserKey } from './types.js'
 
 /** Unique keys in code-unit order of `String(key)`, so integer keys sort as strings. */
@@ -38,8 +38,7 @@ export async function lockScope(
 ): Promise<void> {
   await runner.lockRow(trx, scopeTable, scopeId)
   const row = await trx.from(scopeTable).select('id').where('id', scopeId).first()
-  if (row === undefined || row === null)
-    throw new AccessControlError('E_ACCESS_CONTROL_SCOPE_NOT_FOUND')
+  if (row === undefined || row === null) throw new E_ACCESS_CONTROL_SCOPE_NOT_FOUND()
 }
 
 /** Locks several scope rows, ascending. */

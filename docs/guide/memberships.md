@@ -41,7 +41,7 @@ considerations apply to both reads.
 
 Rows with a null or non-string role, an unsupported status, or a missing or unreadable
 `created_at` or `updated_at` fail
-with `AccessControlError` (`E_ACCESS_CONTROL_INVALID_CONFIG`, 500). This diagnostic also applies
+with `errors.E_ACCESS_CONTROL_INVALID_CONFIG` (500). This diagnostic also applies
 to Account Kit's membership data export. Historical role strings remain valid data for raw reads,
 client summaries and exports; the scope middleware still refuses them with
 `E_ACCESS_CONTROL_FORBIDDEN`; repair invalid stored values in application-owned data migrations.
@@ -191,7 +191,8 @@ await accountKit.authentication.withCurrent(current, async ({ account, trx }) =>
 
 ## Errors
 
-Every error is an `AccessControlError` with a code from the
-[error reference](../reference/errors.md), an HTTP status and a message. Handled by the
-application's exception handler, it renders `{ errors: [{ code, message }] }` with
+The root `errors` namespace exposes each package exception by its code. For example, catch
+`errors.E_ACCESS_CONTROL_NOT_A_MEMBER` to handle a missing membership. See the
+[error reference](../reference/errors.md) for the corresponding statuses and messages. An
+uncaught package exception renders `{ errors: [{ code, message }] }` with
 `Cache-Control: no-store`.

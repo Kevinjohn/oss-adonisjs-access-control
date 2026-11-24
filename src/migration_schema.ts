@@ -1,4 +1,4 @@
-import { AccessControlError } from './errors.js'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { isSqlIdentifier } from './identifiers.js'
 import type { KeyType } from './types.js'
 
@@ -15,10 +15,8 @@ export interface MembershipsMigrationSchema {
   userIdColumn: string
 }
 
-function createMigrationConfigError(detail: string): AccessControlError {
-  return new AccessControlError('E_ACCESS_CONTROL_INVALID_CONFIG', {
-    message: `access-control: ${detail}`,
-  })
+function createMigrationConfigError(detail: string): InvalidArgumentsException {
+  return new InvalidArgumentsException(`access-control: ${detail}`)
 }
 
 /**

@@ -1,6 +1,6 @@
 // The opaque cursor for paging a scope's members, shaped like Account Kit's invitation cursor.
 import { DateTime } from 'luxon'
-import { AccessControlError } from './errors.js'
+import { E_ACCESS_CONTROL_INVALID_INPUT } from './errors.js'
 
 const MAX_CURSOR_LENGTH = 512
 
@@ -17,9 +17,7 @@ export function encodeCursor(createdAt: string, id: number): string {
 /** Reads a cursor from `encodeCursor`; anything else is `INVALID_INPUT`. */
 export function decodeCursor(cursor: string): MembershipCursor {
   const createInvalidCursorError = () =>
-    new AccessControlError('E_ACCESS_CONTROL_INVALID_INPUT', {
-      message: 'Invalid membership cursor',
-    })
+    new E_ACCESS_CONTROL_INVALID_INPUT('Invalid membership cursor')
   if (typeof cursor !== 'string' || cursor.length === 0 || cursor.length > MAX_CURSOR_LENGTH)
     throw createInvalidCursorError()
   let decoded: unknown

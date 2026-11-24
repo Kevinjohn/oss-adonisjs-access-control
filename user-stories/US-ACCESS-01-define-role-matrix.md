@@ -35,7 +35,7 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 flowchart TD
     A["defineAccessControl(config)"] --> B["validate roles, keys, identifiers and owner role"]
     B --> C{"Valid?"}
-    C -->|No| D["AccessControlError invalid config"]
+    C -->|No| D["InvalidArgumentsException"]
     C -->|Yes| E["freeze config and expose rule methods"]
     E --> F["Use pure rule methods"]
     E --> G["Attach database and runner through provider or host call for membership operations"]

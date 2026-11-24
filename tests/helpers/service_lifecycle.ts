@@ -5,7 +5,10 @@ import { AccessControl, defineAccessControl } from '../../index.js'
 
 const mode = process.argv[2]
 const load = () => import('../../services/main.js')
-const diagnostic = /services\/main requires an AdonisJS application/
+const diagnostic = {
+  name: 'RuntimeException',
+  message: /services\/main requires an AdonisJS application/,
+}
 if (mode === 'pre-app') await rejects(load, diagnostic)
 
 const config = defineAccessControl({

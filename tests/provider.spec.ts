@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { AccessControl, defineAccessControl } from '../index.js'
 import { bootTestApp } from './helpers/app.js'
-import { codeOf } from './helpers/fixture.js'
+import { rejects } from 'node:assert/strict'
+import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
 
 test.group('provider and service (spec 1.7, 5)', () => {
   test('binds the configured AccessControl with the database attached, under its alias too', async ({
@@ -43,13 +44,8 @@ test.group('provider and service (spec 1.7, 5)', () => {
     }
   })
 
-  test('boot fails early when the config is not a defineAccessControl result', async ({
-    assert,
-  }) => {
-    assert.equal(
-      await codeOf(bootTestApp({ accessControl: { roles: ['viewer'] } })),
-      'E_ACCESS_CONTROL_INVALID_CONFIG'
-    )
+  test('boot fails early when the config is not a defineAccessControl result', async () => {
+    await rejects(bootTestApp({ accessControl: { roles: ['viewer'] } }), InvalidArgumentsException)
   })
 
   test('without the provider the config stays detached', async ({ assert }) => {
@@ -64,7 +60,7 @@ test.group('provider and service (spec 1.7, 5)', () => {
     })
     const booted = await bootTestApp({ accessControl: config, withProvider: false })
     try {
-      assert.throws(() => config.memberships, /attach/)
+      assert.throws(() => config.memberships, RuntimeException, /attach/)
     } finally {
       await booted.close()
     }
@@ -74,10 +70,7 @@ test.group('provider and service (spec 1.7, 5)', () => {
     const booted = await bootTestApp({ accessControl: undefined })
     try {
       assert.isUndefined(booted.app.config.get('access_control'))
-      assert.equal(
-        await codeOf(booted.app.container.make(AccessControl)),
-        'E_ACCESS_CONTROL_INVALID_CONFIG'
-      )
+      await rejects(booted.app.container.make(AccessControl), InvalidArgumentsException)
     } finally {
       await booted.close()
     }
