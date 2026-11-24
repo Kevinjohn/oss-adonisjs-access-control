@@ -13,7 +13,7 @@
   service before initialization raises
   `RuntimeException`.
 - Breaking: replace `INVALID_INPUT`, `INVALID_CONFIG` and raw `FORBIDDEN` with the specific
-  validation, stored-data and authorization codes in the [error reference](docs/reference/errors.md).
+  validation, stored-data and authorization codes in the [error reference](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/main/docs/reference/errors.md).
   Use `getHttpResponse()` in custom exception handlers to preserve the package's protected responses.
 - Add TypeScript usage examples to configuration, role rules, membership services, scope
   middleware and Account Kit callbacks in the API reference.
