@@ -430,8 +430,8 @@ Equal rank is allowed (an admin may manage another admin).
 | 3   | `rank(nextRole) > rank(actorRole)` | deny `RANK_TOO_LOW`    |
 | 4   | otherwise                          | allow                  |
 
-`add` uses `decideAssignment` with `targetRole = nextRole` and `isSelf = false`, skipping `decideManagement` rows
-2, 4 and 5 (there is no existing target).
+`add` calls `decideAssignment` with `targetRole = nextRole` and `isSelf = false`. The same
+`decideManagement` rules run with the requested role as the target role.
 
 ### 3.3 Self operations
 

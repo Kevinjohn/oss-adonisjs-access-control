@@ -655,6 +655,11 @@ test('string invitation authorization uses exact stored scope spelling on both c
     )
     assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', { scope: '' }))
     assert.equal(
+      await codeOf(access.memberships.getMembershipInRequiredInvitationScope(scope, 0)),
+      'E_ACCESS_CONTROL_INVALID_INPUT'
+    )
+    assert.isFalse(await callbacks.authorize.invite(user(0), 'editor', canonical))
+    assert.equal(
       await codeOf(access.memberships.getMembershipInRequiredInvitationScope('missing', owner)),
       'E_ACCESS_CONTROL_SCOPE_NOT_FOUND'
     )
@@ -686,6 +691,10 @@ test('string invitation authorization uses exact stored scope spelling on both c
         .where({ scope_id: scope, user_id: owner })
         .update({ scope_id: alias.scope })
       assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', alias))
+      await booted.db
+        .from(booted.names.memberships)
+        .where({ scope_id: alias.scope, user_id: owner })
+        .update({ scope_id: scope })
     }
     await booted.db.transaction(async (trx) => {
       const pending = 'team_beta'
@@ -715,6 +724,15 @@ test('string invitation authorization uses exact stored scope spelling on both c
       }
       await trx.rollback()
     })
+
+    await booted.db
+      .from(booted.names.memberships)
+      .where({ scope_id: scope, user_id: owner })
+      .update({ status: 'unknown' })
+    assert.equal(
+      await codeOf(callbacks.authorize.invite(user(owner), 'editor', canonical)),
+      'E_ACCESS_CONTROL_INVALID_CONFIG'
+    )
 
     // A database lookup failure must escape both the membership read and the authorization hook.
     await booted.db.connection().schema.dropTable(booted.names.memberships)
