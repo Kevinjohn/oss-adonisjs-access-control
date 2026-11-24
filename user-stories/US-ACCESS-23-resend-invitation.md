@@ -40,7 +40,8 @@ flowchart TD
     C --> Q{"Allowed?"}
     Q -->|No| E
     Q -->|Yes| P{"Preflight?"}
-    P -->|Yes| A
+    P -->|Yes| W["Commit preflight; consume throttles; start write transaction and recheck"]
+    W --> A
     P -->|No| R{"Recipient address already registered?"}
     R -->|Yes| X["Kit refuses before rotation"]
     R -->|No| F["Kit updates token and expiry and commits"]

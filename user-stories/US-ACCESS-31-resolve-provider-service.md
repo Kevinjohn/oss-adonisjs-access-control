@@ -42,7 +42,7 @@ flowchart TD
     C --> V{"Singleton already resolved?"}
     V -->|Yes| Y["Return the configured instance"]
     V -->|No| E{"Configured value is an AccessControl instance?"}
-    E -->|No| N
+    E -->|No| N["Raise InvalidArgumentsException"]
     E -->|Yes| F["Resolve lucid.db and loadRunner, then config.attach(db, runner)"]
     F --> Y
 ```
