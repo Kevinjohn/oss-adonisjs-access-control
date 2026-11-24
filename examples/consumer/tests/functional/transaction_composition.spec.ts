@@ -1,6 +1,9 @@
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import { InvalidSessionError, PostCommitError } from '@kevinjohn/adonisjs-account-kit/errors'
+import {
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_POST_COMMIT,
+} from '@kevinjohn/adonisjs-account-kit/errors'
 import type { Trx } from '@kevinjohn/adonisjs-account-kit'
 import { compositionFixture, type CompositionFixture } from '#tests/helpers/transaction_composition'
 import User from '#models/user'
@@ -365,7 +368,7 @@ test.group('transaction composition on SQLite', (group) => {
     const error = await within(failure(pending), 2000, 'C06: pending operation did not settle')
     settle()
 
-    assert.instanceOf(error, InvalidSessionError)
+    assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_SESSION)
     assert.isFalse(entered)
     assert.equal(await role(f, f.targetId), 'editor')
     assert.deepEqual(await f.effects.rows(), [])
@@ -432,7 +435,7 @@ test.group('transaction composition on SQLite', (group) => {
     assert.deepEqual(await f.effects.rows(), [{ operation: 'C07', stage: 'after-role' }])
     assert.instanceOf(
       await failure(f.kit.authentication.withCurrent(f.current, async () => {})),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     assert.isArray(await f.kit.authentication.sessions.list({ current: f.revoker }))
   })
@@ -469,7 +472,7 @@ test.group('transaction composition on SQLite', (group) => {
       assert.notEqual(await lastSeen(f), baseline.last_seen_at)
     })
 
-  test('reports a post-commit failure as PostCommitError without a second attempt', async ({
+  test('reports a post-commit failure as E_ACCOUNT_KIT_POST_COMMIT without a second attempt', async ({
     assert,
   }) => {
     const thrown = sentinel('C10', 'SQLITE_BUSY')
@@ -492,9 +495,9 @@ test.group('transaction composition on SQLite', (group) => {
     )
     const attempts = settle()
 
-    assert.instanceOf(error, PostCommitError)
-    assert.strictEqual((error as PostCommitError).cause, thrown)
-    assert.isTrue((error as PostCommitError).committed)
+    assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+    assert.strictEqual((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, thrown)
+    assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
     assert.equal(calls, 1)
     assert.equal(await role(f, f.targetId), 'admin')
     assert.deepEqual(await f.effects.rows(), [{ operation: 'C10', stage: 'after-role' }])
