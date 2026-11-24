@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use `decideManagement` and `decideAssignment` in guidance and clarify the decision records and membership page returned by the existing APIs.
+
 ## 0.3.3 - 2026-11-23
 
 - Require Account Kit 0.6.0 exactly.

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
 import type { BaseSchema } from '@adonisjs/lucid/schema'
-import { membershipsMigrationSchema } from '../../src/migration_schema.js'
+import { buildMembershipMigrationSchema } from '../../src/migration_schema.js'
 import type { KeyType } from '../../src/types.js'
 
 export interface SchemaNames {
@@ -64,7 +64,7 @@ export async function renderMembershipsStub(input: {
   scopeTable: string
   scopeKeyType: KeyType
 }): Promise<string> {
-  const data: Record<string, string> = { ...membershipsMigrationSchema(input) }
+  const data: Record<string, string> = { ...buildMembershipMigrationSchema(input) }
   const stub = await readFile(stubPath, 'utf8')
   return stub
     .replace(/^\{\{\{ exports\(.*\) \}\}\}\n\n/, '')

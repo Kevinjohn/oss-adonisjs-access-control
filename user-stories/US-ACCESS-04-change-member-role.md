@@ -48,4 +48,4 @@ flowchart TD
     F -->|Yes| H["update role; emit membership.role_changed; runner commits only if trx omitted"]
 ```
 
-**Code references:** [changeRole](../src/memberships.ts), [canAssign](../src/rules.ts)
+**Code references:** [changeRole](../src/memberships.ts), [decideAssignment](../src/rules.ts)

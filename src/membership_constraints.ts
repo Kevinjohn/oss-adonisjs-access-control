@@ -125,22 +125,22 @@ export async function inspectMembershipConstraints(
 ) {
   const { indexes, foreignKeys } = await readConstraints(client, schema)
   const sqlite = client.dialect.name === 'sqlite3' || client.dialect.name === 'better-sqlite3'
-  const sameIdentifier = (actual: string | null, expected: string) =>
+  const isSameIdentifier = (actual: string | null, expected: string) =>
     sqlite ? actual?.toLowerCase() === expected.toLowerCase() : actual === expected
   const hasUniquePair = groupColumns(indexes).some((index) => {
     return (
       index.length === 2 &&
-      index.some(({ column_name }) => sameIdentifier(column_name, 'scope_id')) &&
-      index.some(({ column_name }) => sameIdentifier(column_name, 'user_id'))
+      index.some(({ column_name }) => isSameIdentifier(column_name, 'scope_id')) &&
+      index.some(({ column_name }) => isSameIdentifier(column_name, 'user_id'))
     )
   })
   const singleColumnReferences = groupColumns(foreignKeys).filter((group) => group.length === 1)
   const hasReference = (column: string, parent: string) =>
     singleColumnReferences.some(
       ([key]) =>
-        sameIdentifier(key.column_name, column) &&
-        sameIdentifier(key.parent, parent) &&
-        sameIdentifier(key.parent_column, 'id') &&
+        isSameIdentifier(key.column_name, column) &&
+        isSameIdentifier(key.parent, parent) &&
+        isSameIdentifier(key.parent_column, 'id') &&
         (key.deletion === 'RESTRICT' || key.deletion === 'NO ACTION')
     )
 

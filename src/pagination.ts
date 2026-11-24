@@ -16,17 +16,17 @@ export function encodeCursor(createdAt: string, id: number): string {
 
 /** Reads a cursor from `encodeCursor`; anything else is `INVALID_INPUT`. */
 export function decodeCursor(cursor: string): MembershipCursor {
-  const invalid = () =>
+  const createInvalidCursorError = () =>
     new AccessControlError('E_ACCESS_CONTROL_INVALID_INPUT', {
       message: 'Invalid membership cursor',
     })
   if (typeof cursor !== 'string' || cursor.length === 0 || cursor.length > MAX_CURSOR_LENGTH)
-    throw invalid()
+    throw createInvalidCursorError()
   let decoded: unknown
   try {
     decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'))
   } catch {
-    throw invalid()
+    throw createInvalidCursorError()
   }
   if (
     !Array.isArray(decoded) ||
@@ -37,6 +37,6 @@ export function decodeCursor(cursor: string): MembershipCursor {
     decoded[1] < 1 ||
     encodeCursor(decoded[0], decoded[1]) !== cursor
   )
-    throw invalid()
+    throw createInvalidCursorError()
   return { createdAt: decoded[0], id: decoded[1] }
 }

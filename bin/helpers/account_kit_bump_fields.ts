@@ -138,7 +138,7 @@ export function projectKitFile(
       )
   }
   if (isDoctor) {
-    const firstLive = result.indexOf('const versions = accountKitVersions()')
+    const firstLive = result.indexOf('const versions = readAccountKitVersions()')
     if (firstLive !== -1) {
       const prefix = result.slice(0, firstLive)
       let live = result.slice(firstLive)

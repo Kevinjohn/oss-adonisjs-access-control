@@ -93,7 +93,11 @@ async function getActiveMembership(
   const canonical = readCanonicalInvitationScope(access, scope)
   if (canonical === null) return null
   try {
-    const membership = await access.memberships.getInvitationMembership(canonical, actor.id, trx)
+    const membership = await access.memberships.getMembershipInRequiredInvitationScope(
+      canonical,
+      actor.id,
+      trx
+    )
     return membership !== null && membership.status === 'active' ? membership : null
   } catch (error) {
     if (

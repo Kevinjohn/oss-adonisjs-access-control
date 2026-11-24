@@ -39,6 +39,13 @@ test('decision-oriented names preserve allowed and refused rule records', ({ ass
     assert.deepEqual(withOwner.decideAssignment(assignment), expected)
     assert.deepEqual(withOwner.canAssign(assignment), expected)
   }
+
+  const protectedTarget = { actorRole: 'admin', targetRole: 'owner', isSelf: false }
+  const protectedRole = { ...protectedTarget, targetRole: 'viewer', nextRole: 'owner' }
+  assert.deepEqual(withOwner.decideManagement(protectedTarget), denied('OWNER_PROTECTED'))
+  assert.deepEqual(withOwner.canManage(protectedTarget), denied('OWNER_PROTECTED'))
+  assert.deepEqual(withOwner.decideAssignment(protectedRole), denied('OWNER_PROTECTED'))
+  assert.deepEqual(withOwner.canAssign(protectedRole), denied('OWNER_PROTECTED'))
 })
 
 test('successful rule results are independent across instances', ({ assert }) => {

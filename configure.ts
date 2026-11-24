@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url'
 import { sourceFiles } from '@adonisjs/lucid/utils'
 import type Configure from '@adonisjs/core/commands/configure'
 import { stubsRoot } from './stubs/main.js'
-import { membershipsMigrationSchema } from './src/migration_schema.js'
+import { buildMembershipMigrationSchema } from './src/migration_schema.js'
 import { planMigrations } from './src/migration_order.js'
 import type { KeyType } from './src/types.js'
 
@@ -16,7 +16,7 @@ function isMissing(error: unknown): boolean {
 }
 
 /** The released migration stubs, in publishing order, from `migrations/released.json`. */
-export async function releasedMigrations(root: string): Promise<string[]> {
+export async function readReleasedMigrationNames(root: string): Promise<string[]> {
   const released = JSON.parse(
     await readFile(join(root, 'migrations', 'released.json'), 'utf8')
   ) as Array<{ name: string }>
@@ -37,20 +37,20 @@ function flagString(command: Configure, name: string, fallback: string): string 
 
 /** The Bouncer and Account Kit changes `configure` prints instead of editing application files,
  * with the application's own config and middleware paths. */
-export function manualSteps(app: Configure['app']): string {
-  const configFile = (name: string) => app.relativePath(app.configPath(name))
+export function formatManualSteps(app: Configure['app']): string {
+  const resolveConfigPath = (name: string) => app.relativePath(app.configPath(name))
   const bouncerMiddleware = app.relativePath(app.middlewarePath('initialize_bouncer_middleware.ts'))
   return `Bouncer: in ${bouncerMiddleware} merge the generated abilities:
-  import accessControl from '#config/access_control' (the import alias of ${configFile('access_control.ts')})
+  import accessControl from '#config/access_control' (the import alias of ${resolveConfigPath('access_control.ts')})
   ctx.bouncer = new Bouncer(
     () => ctx.auth.user || null,
     { ...abilities, ...accessControl.abilities(() => ctx.membership) },
     policies
   ).setContainerResolver(ctx.containerResolver)
   and widen the HttpContext bouncer type with ReturnType<typeof accessControl.abilities>.
-  (${configFile('access_control.ts')} carries the permission-key types; services/main is typed as a bare AccessControl.)
+  (${resolveConfigPath('access_control.ts')} carries the permission-key types; services/main is typed as a bare AccessControl.)
 Routes: apply Account Kit's managedAccountMiddleware or admissionMiddleware before middleware.scope().
-Account Kit: in ${configFile('account_kit.ts')} pass the package callbacks:
+Account Kit: in ${resolveConfigPath('account_kit.ts')} pass the package callbacks:
   import { accessControlKitCallbacks } from '${packageName}/account-kit'
   const kitCallbacks = accessControlKitCallbacks()
   authorize: kitCallbacks.authorize,
@@ -112,9 +112,9 @@ export async function configureWith(
     migrationPath === undefined
   )
     return
-  let schema: ReturnType<typeof membershipsMigrationSchema>
+  let schema: ReturnType<typeof buildMembershipMigrationSchema>
   try {
-    schema = membershipsMigrationSchema({
+    schema = buildMembershipMigrationSchema({
       membershipsTable,
       usersTable,
       userKeyType,
@@ -142,7 +142,7 @@ export async function configureWith(
   const migrationFiles = files.map((file) => relative(destination, file.absPath))
   let plan: ReturnType<typeof planMigrations>
   try {
-    plan = planMigrations(migrationFiles, await releasedMigrations(root))
+    plan = planMigrations(migrationFiles, await readReleasedMigrationNames(root))
   } catch (error) {
     command.logger.error((error as Error).message)
     command.exitCode = 1
@@ -192,7 +192,7 @@ export async function configureWith(
     rcFile.addCommand(`${packageName}/commands`)
   })
   await codemods.registerMiddleware('named', [{ name: 'scope', path: `${packageName}/middleware` }])
-  command.logger.info(manualSteps(command.app))
+  command.logger.info(formatManualSteps(command.app))
 }
 
 /**

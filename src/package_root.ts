@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 
 /** The directory holding the `package.json` of `packageName`, walking up from `from`. */
-export function packageRoot(from: string, packageName: string): string {
+export function locatePackageRoot(from: string, packageName: string): string {
   let directory = from
   for (;;) {
     const file = join(directory, 'package.json')
@@ -26,6 +26,8 @@ export function packageRoot(from: string, packageName: string): string {
 }
 
 /** The parsed `package.json` of `packageName`, walking up from `from`. */
-export function packageManifest(from: string, packageName: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(join(packageRoot(from, packageName), 'package.json'), 'utf8'))
+export function readPackageManifest(from: string, packageName: string): Record<string, unknown> {
+  return JSON.parse(
+    readFileSync(join(locatePackageRoot(from, packageName), 'package.json'), 'utf8')
+  )
 }

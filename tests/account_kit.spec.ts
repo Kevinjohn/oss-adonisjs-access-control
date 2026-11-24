@@ -631,6 +631,9 @@ test('string invitation authorization uses exact stored scope spelling on both c
     const owner = idOf(
       await booted.db.table(booted.names.users).returning('id').insert({ name: 'owner' })
     )
+    const outsider = idOf(
+      await booted.db.table(booted.names.users).returning('id').insert({ name: 'outsider' })
+    )
     const scope = 'team_alpha'
     await booted.db.table(booted.names.scope).insert({ id: scope, name: 'team' })
     await access.memberships.createFirstMember({ scopeId: scope, userId: owner })
@@ -644,6 +647,17 @@ test('string invitation authorization uses exact stored scope spelling on both c
     assert.isTrue(await callbacks.authorize.invite(user(owner), 'editor', canonical))
     assert.isTrue(await callbacks.authorize.listInvitations(user(owner), canonical))
     assert.isTrue(await canManage(scope))
+    assert.isNull(await access.memberships.getMembershipInRequiredInvitationScope(scope, outsider))
+    assert.isFalse(await callbacks.authorize.invite(user(outsider), 'editor', canonical))
+    assert.equal(
+      await codeOf(access.memberships.getMembershipInRequiredInvitationScope('', owner)),
+      'E_ACCESS_CONTROL_INVALID_INPUT'
+    )
+    assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', { scope: '' }))
+    assert.equal(
+      await codeOf(access.memberships.getMembershipInRequiredInvitationScope('missing', owner)),
+      'E_ACCESS_CONTROL_SCOPE_NOT_FOUND'
+    )
     assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', { scope: 'missing' }))
     await booted.db.transaction(async (trx) => {
       assert.equal(
@@ -659,6 +673,10 @@ test('string invitation authorization uses exact stored scope spelling on both c
       await trx.rollback()
     })
     if (booted.db.connection().dialect.name !== 'postgres') {
+      assert.equal(
+        await codeOf(access.memberships.getMembershipInRequiredInvitationScope(alias.scope, owner)),
+        'E_ACCESS_CONTROL_INVALID_INPUT'
+      )
       assert.isFalse(await callbacks.authorize.invite(user(owner), 'editor', alias))
       assert.isFalse(await callbacks.authorize.listInvitations(user(owner), alias))
       assert.isFalse(await canManage(alias.scope))
@@ -697,6 +715,18 @@ test('string invitation authorization uses exact stored scope spelling on both c
       }
       await trx.rollback()
     })
+
+    // A database lookup failure must escape both the membership read and the authorization hook.
+    await booted.db.connection().schema.dropTable(booted.names.memberships)
+    const missingTable = /no such table|does not exist|doesn't exist/i
+    await assert.rejects(
+      () => access.memberships.getMembershipInRequiredInvitationScope(scope, owner),
+      missingTable
+    )
+    await assert.rejects(
+      () => callbacks.authorize.invite(user(owner), 'editor', canonical),
+      missingTable
+    )
   } finally {
     await booted.close()
   }

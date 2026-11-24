@@ -51,4 +51,4 @@ flowchart TD
     G --> H["Set exit 0 if clean or 1 if findings"]
 ```
 
-**Code references:** [AccessControlDoctor flags and run](../commands/doctor.ts), [runDoctor and accountKitVersions](../src/doctor.ts), [setup guide](../docs/guide/setup.md), [adoption limits](../docs/guide/adopting.md).
+**Code references:** [AccessControlDoctor flags and run](../commands/doctor.ts), [runDoctor and readAccountKitVersions](../src/doctor.ts), [setup guide](../docs/guide/setup.md), [adoption limits](../docs/guide/adopting.md).

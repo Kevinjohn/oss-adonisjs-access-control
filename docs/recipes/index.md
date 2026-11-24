@@ -219,7 +219,7 @@ const page = await accessControl.memberships.listForScope({
 })
 return page.items.map((member) => ({
   ...member,
-  manage: accessControl.canManage({
+  manage: accessControl.decideManagement({
     actorRole: membership.role,
     targetRole: member.role,
     isSelf: member.userId === membership.userId,
@@ -227,7 +227,7 @@ return page.items.map((member) => ({
 }))
 ```
 
-`canManage` covers the package's rules: self, owner, rank and `members:manage`. If the application
+`decideManagement` covers the package's rules: self, owner, rank and `members:manage`. If the application
 adds a stricter rule (see [below](#a-product-rule-stricter-than-the-package)), fold it into the
 same flag. For the role picker, `accessControl.assignableRoles(membership.role)` lists the roles
 the viewer may assign.

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
-import { membershipsMigrationSchema } from '../src/migration_schema.js'
+import { buildMembershipMigrationSchema } from '../src/migration_schema.js'
 import { renderMembershipsStub } from './helpers/schema.js'
 
 const directory = new URL('../stubs/migrations/', import.meta.url)
@@ -70,7 +70,7 @@ test.group('migration stubs: released stubs are immutable (spec 17.1)', () => {
       scopeTable: 'teams',
       scopeKeyType: 'integer',
     } as const
-    assert.deepEqual(membershipsMigrationSchema(valid), {
+    assert.deepEqual(buildMembershipMigrationSchema(valid), {
       membershipsTable: 'memberships',
       usersTable: 'users',
       scopeTable: 'teams',
@@ -78,17 +78,20 @@ test.group('migration stubs: released stubs are immutable (spec 17.1)', () => {
       userIdColumn: "table.integer('user_id').unsigned()",
     })
     assert.throws(
-      () => membershipsMigrationSchema({ ...valid, membershipsTable: 'bad;name' }),
+      () => buildMembershipMigrationSchema({ ...valid, membershipsTable: 'bad;name' }),
       /membershipsTable/
     )
-    assert.throws(() => membershipsMigrationSchema({ ...valid, usersTable: '' }), /usersTable/)
-    assert.throws(() => membershipsMigrationSchema({ ...valid, scopeTable: 'a.b' }), /scopeTable/)
+    assert.throws(() => buildMembershipMigrationSchema({ ...valid, usersTable: '' }), /usersTable/)
     assert.throws(
-      () => membershipsMigrationSchema({ ...valid, userKeyType: 'bigint' as never }),
+      () => buildMembershipMigrationSchema({ ...valid, scopeTable: 'a.b' }),
+      /scopeTable/
+    )
+    assert.throws(
+      () => buildMembershipMigrationSchema({ ...valid, userKeyType: 'bigint' as never }),
       /userKeyType/
     )
     assert.throws(
-      () => membershipsMigrationSchema({ ...valid, scopeKeyType: 'number' as never }),
+      () => buildMembershipMigrationSchema({ ...valid, scopeKeyType: 'number' as never }),
       /scopeKeyType/
     )
   })
