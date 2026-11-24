@@ -422,12 +422,12 @@ Equal rank is allowed (an admin may manage another admin).
 
 `decideManagement` first; then, in order:
 
-| #   | Condition                          | Result                 |
-| --- | ---------------------------------- | ---------------------- |
-| 1   | `nextRole` unknown                 | deny `UNKNOWN_ROLE`    |
-| 2   | `O` set and `nextRole === O`       | deny `OWNER_PROTECTED` |
-| 3   | `rank(nextRole) > rank(actorRole)` | deny `RANK_TOO_LOW`    |
-| 4   | otherwise                          | allow                  |
+| #   | Condition                          | Result                          |
+| --- | ---------------------------------- | ------------------------------- |
+| 1   | `nextRole` unknown                 | deny `UNKNOWN_ROLE`             |
+| 2   | `O` set and `nextRole === O`       | deny `OWNER_ROLE_NOT_GRANTABLE` |
+| 3   | `rank(nextRole) > rank(actorRole)` | deny `RANK_TOO_LOW`             |
+| 4   | otherwise                          | allow                           |
 
 `add` calls `decideAssignment` with `targetRole = nextRole` and `isSelf = false`. The same
 `decideManagement` rules run with the requested role as the target role.

@@ -44,8 +44,8 @@ test('decision-oriented names preserve allowed and refused rule records', ({ ass
   const protectedRole = { ...protectedTarget, targetRole: 'viewer', nextRole: 'owner' }
   assert.deepEqual(withOwner.decideManagement(protectedTarget), denied('OWNER_PROTECTED'))
   assert.deepEqual(withOwner.canManage(protectedTarget), denied('OWNER_PROTECTED'))
-  assert.deepEqual(withOwner.decideAssignment(protectedRole), denied('OWNER_PROTECTED'))
-  assert.deepEqual(withOwner.canAssign(protectedRole), denied('OWNER_PROTECTED'))
+  assert.deepEqual(withOwner.decideAssignment(protectedRole), denied('OWNER_ROLE_NOT_GRANTABLE'))
+  assert.deepEqual(withOwner.canAssign(protectedRole), denied('OWNER_ROLE_NOT_GRANTABLE'))
 })
 
 test('successful rule results are independent across instances', ({ assert }) => {
@@ -263,7 +263,9 @@ test.group('rules: canAssign (spec 3.2)', () => {
     )
   })
 
-  test('row 2: assigning the owner role is OWNER_PROTECTED before the rank check', ({ assert }) => {
+  test('row 2: assigning the owner role is OWNER_ROLE_NOT_GRANTABLE before the rank check', ({
+    assert,
+  }) => {
     assert.deepEqual(
       withOwner.canAssign({
         actorRole: 'owner',
@@ -271,7 +273,7 @@ test.group('rules: canAssign (spec 3.2)', () => {
         nextRole: 'owner',
         isSelf: false,
       }),
-      denied('OWNER_PROTECTED')
+      denied('OWNER_ROLE_NOT_GRANTABLE')
     )
     assert.deepEqual(
       withOwner.canAssign({
@@ -280,7 +282,7 @@ test.group('rules: canAssign (spec 3.2)', () => {
         nextRole: 'owner',
         isSelf: false,
       }),
-      denied('OWNER_PROTECTED')
+      denied('OWNER_ROLE_NOT_GRANTABLE')
     )
   })
 

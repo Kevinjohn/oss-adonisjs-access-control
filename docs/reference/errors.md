@@ -52,7 +52,7 @@ application supplies a translator.
 | `E_ACCESS_CONTROL_OWNER_REQUIRED`                     | 403  | Only the active owner can transfer ownership.                                           |
 | `E_ACCESS_CONTROL_IDENTITY_TARGET_HAS_NO_MEMBERSHIPS` | 403  | The target account has no memberships.                                                  |
 
-An exception may carry a detail and underlying cause. For example,
+The key, invitation-scope and stored-timestamp exceptions can carry a detail and underlying cause. For example,
 `new errors.E_ACCESS_CONTROL_INVALID_KEY('Invalid team id', { cause })`.
 
 Invalid developer configuration and calls that omit a required transaction raise AdonisJS

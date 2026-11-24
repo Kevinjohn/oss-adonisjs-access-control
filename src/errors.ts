@@ -13,7 +13,7 @@ abstract class AccessControlException extends Exception {
     return this
   }
 
-  constructor(detail?: string, options?: ErrorOptions) {
+  protected constructor(detail?: string, options?: ErrorOptions) {
     super(detail, { cause: options?.cause })
     this.message = detail ?? this.message
   }
@@ -63,6 +63,10 @@ class NotAMemberException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_NOT_A_MEMBER'
   static status = 404
   static message = 'That person is not a member of this team.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 404 exception for not a member. */
@@ -73,6 +77,10 @@ class UserNotFoundException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_USER_NOT_FOUND'
   static status = 404
   static message = 'That person does not exist.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 404 exception for user not found. */
@@ -83,6 +91,10 @@ class AlreadyMemberException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_ALREADY_MEMBER'
   static status = 409
   static message = 'That person is already a member of this team.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 409 exception for already member. */
@@ -93,6 +105,10 @@ class UnknownRoleException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_UNKNOWN_ROLE'
   static status = 422
   static message = 'That role does not exist.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 422 exception for unknown role. */
@@ -103,6 +119,10 @@ class RankTooLowException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_RANK_TOO_LOW'
   static status = 403
   static message = 'You cannot manage someone with a higher role.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 403 exception for rank too low. */
@@ -114,6 +134,10 @@ class OwnerProtectedException extends AccessControlException {
   static status = 409
   static message =
     'The owner cannot be changed, suspended or removed except through an ownership transfer.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 409 exception for owner protected. */
@@ -124,6 +148,10 @@ class SelfManagementException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_SELF_MANAGEMENT'
   static status = 409
   static message = 'You cannot change your own role or status.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 409 exception for self management. */
@@ -134,6 +162,10 @@ class OwnerDisabledException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_OWNER_DISABLED'
   static status = 409
   static message = 'This application has no owner role.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 409 exception for owner disabled. */
@@ -144,6 +176,10 @@ class LastOwnerException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_LAST_OWNER'
   static status = 409
   static message = 'Transfer ownership before deleting this account.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 409 exception for last owner. */
@@ -154,6 +190,10 @@ class ScopeNotEmptyException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_SCOPE_NOT_EMPTY'
   static status = 409
   static message = 'This team already has members.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 409 exception for scope not empty. */
@@ -164,6 +204,10 @@ class ScopeNotFoundException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_SCOPE_NOT_FOUND'
   static status = 404
   static message = 'That team does not exist.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 404 exception for scope not found. */
@@ -174,6 +218,10 @@ class ConflictException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_CONFLICT'
   static status = 409
   static message = 'The team changed while it was being deleted. Try again.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The 409 exception for conflict. */
@@ -192,6 +240,10 @@ class InvalidKeyException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_INVALID_KEY'
   static status = 422
   static message = 'The identifier is not valid.'
+
+  constructor(detail?: string, options?: ErrorOptions) {
+    super(detail, options)
+  }
 }
 
 /** The identifier is not valid (422). */
@@ -201,6 +253,10 @@ class InvalidCursorException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_INVALID_CURSOR'
   static status = 422
   static message = 'Invalid membership cursor'
+
+  constructor() {
+    super()
+  }
 }
 
 /** Invalid membership cursor (422). */
@@ -210,6 +266,10 @@ class InvalidPageLimitException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_INVALID_PAGE_LIMIT'
   static status = 422
   static message = 'access-control: limit must be an integer from 1 to 100'
+
+  constructor() {
+    super()
+  }
 }
 
 /** access-control: limit must be an integer from 1 to 100 (422). */
@@ -219,6 +279,10 @@ class InvalidMembershipStatusException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_INVALID_MEMBERSHIP_STATUS'
   static status = 422
   static message = 'access-control: status must be active or suspended'
+
+  constructor() {
+    super()
+  }
 }
 
 /** access-control: status must be active or suspended (422). */
@@ -228,6 +292,10 @@ class InvalidInvitationScopeException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_INVALID_INVITATION_SCOPE'
   static status = 422
   static message = 'The invitation scope must use the canonical spelling.'
+
+  constructor(detail?: string, options?: ErrorOptions) {
+    super(detail, options)
+  }
 }
 
 /** The invitation scope must use the canonical spelling (422). */
@@ -237,6 +305,10 @@ class FirstMemberMustBeOwnerException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_FIRST_MEMBER_MUST_BE_OWNER'
   static status = 422
   static message = 'access-control: the first member takes the owner role'
+
+  constructor() {
+    super()
+  }
 }
 
 /** access-control: the first member takes the owner role (422). */
@@ -246,6 +318,10 @@ class FirstMemberRoleRequiredException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_REQUIRED'
   static status = 422
   static message = 'access-control: the first member needs a role with members:manage'
+
+  constructor() {
+    super()
+  }
 }
 
 /** access-control: the first member needs a role with members:manage (422). */
@@ -255,6 +331,10 @@ class FirstMemberRoleCannotManageException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_FIRST_MEMBER_ROLE_CANNOT_MANAGE'
   static status = 422
   static message = 'access-control: the first member needs a role with members:manage'
+
+  constructor() {
+    super()
+  }
 }
 
 /** access-control: the first member needs a role with members:manage (422). */
@@ -264,6 +344,10 @@ class OwnerRoleNotGrantableException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE'
   static status = 422
   static message = 'The owner role cannot be granted directly or through an invitation.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The owner role cannot be granted directly or through an invitation (422). */
@@ -273,6 +357,10 @@ class OwnershipTargetSuspendedException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_OWNERSHIP_TARGET_SUSPENDED'
   static status = 422
   static message = 'access-control: ownership can only go to an active member'
+
+  constructor() {
+    super()
+  }
 }
 
 /** access-control: ownership can only go to an active member (422). */
@@ -282,6 +370,10 @@ class InvalidStoredRoleException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_INVALID_STORED_ROLE'
   static status = 500
   static message = 'access-control: stored membership has an invalid role'
+
+  constructor() {
+    super()
+  }
 }
 
 /** access-control: stored membership has an invalid role (500). */
@@ -291,6 +383,10 @@ class InvalidStoredStatusException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_INVALID_STORED_STATUS'
   static status = 500
   static message = 'access-control: stored membership has an unsupported status'
+
+  constructor() {
+    super()
+  }
 }
 
 /** access-control: stored membership has an unsupported status (500). */
@@ -300,6 +396,10 @@ class InvalidStoredTimestampException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_INVALID_STORED_TIMESTAMP'
   static status = 500
   static message = 'A stored membership timestamp is not valid.'
+
+  constructor(detail?: string, options?: ErrorOptions) {
+    super(detail, options)
+  }
 }
 
 /** A stored membership timestamp is not valid (500). */
@@ -309,6 +409,10 @@ class AuthenticationRequiredException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_AUTHENTICATION_REQUIRED'
   static status = 403
   static message = 'Authentication is required to enter this scope.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** Authentication is required to enter this scope (403). */
@@ -318,6 +422,10 @@ class MembershipRequiredException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_MEMBERSHIP_REQUIRED'
   static status = 403
   static message = 'A membership is required to do that.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** A membership is required to do that (403). */
@@ -327,6 +435,10 @@ class MembershipSuspendedException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_MEMBERSHIP_SUSPENDED'
   static status = 403
   static message = 'A suspended membership cannot do that.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** A suspended membership cannot do that (403). */
@@ -336,6 +448,10 @@ class PermissionDeniedException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_PERMISSION_DENIED'
   static status = 403
   static message = 'You do not have permission to do that.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** You do not have permission to do that (403). */
@@ -345,6 +461,10 @@ class UnknownPermissionException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_UNKNOWN_PERMISSION'
   static status = 403
   static message = 'That permission does not exist.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** That permission does not exist (403). */
@@ -354,6 +474,10 @@ class OwnerRequiredException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_OWNER_REQUIRED'
   static status = 403
   static message = 'Only the active owner can transfer ownership.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** Only the active owner can transfer ownership (403). */
@@ -363,6 +487,10 @@ class IdentityTargetHasNoMembershipsException extends AccessControlException {
   static readonly code = 'E_ACCESS_CONTROL_IDENTITY_TARGET_HAS_NO_MEMBERSHIPS'
   static status = 403
   static message = 'The target account has no memberships.'
+
+  constructor() {
+    super()
+  }
 }
 
 /** The target account has no memberships (403). */

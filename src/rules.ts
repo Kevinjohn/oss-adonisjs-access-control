@@ -12,7 +12,12 @@ export interface RoleMatrix {
 
 const deny = (
   code:
-    'UNKNOWN_ROLE' | 'SELF_MANAGEMENT' | 'PERMISSION_DENIED' | 'OWNER_PROTECTED' | 'RANK_TOO_LOW'
+    | 'UNKNOWN_ROLE'
+    | 'SELF_MANAGEMENT'
+    | 'PERMISSION_DENIED'
+    | 'OWNER_PROTECTED'
+    | 'OWNER_ROLE_NOT_GRANTABLE'
+    | 'RANK_TOO_LOW'
 ): RuleResult => ({
   allowed: false,
   code: `E_ACCESS_CONTROL_${code}`,
@@ -69,7 +74,7 @@ export function decideAssignment(
   const nextRank = rank(matrix, input.nextRole)
   if (nextRank < 0) return deny('UNKNOWN_ROLE')
   if (matrix.ownerRole !== undefined && input.nextRole === matrix.ownerRole)
-    return deny('OWNER_PROTECTED')
+    return deny('OWNER_ROLE_NOT_GRANTABLE')
   if (nextRank > rank(matrix, input.actorRole)) return deny('RANK_TOO_LOW')
   return { allowed: true }
 }

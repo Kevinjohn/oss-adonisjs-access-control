@@ -117,7 +117,7 @@ Delete:
   them.
 - Policies that re-check a role the generated abilities already check.
 - Local self, owner and rank checks in front of package calls. The package refuses those cases
-  with `SELF_MANAGEMENT`, `OWNER_PROTECTED` and `RANK_TOO_LOW`.
+  with `SELF_MANAGEMENT`, `OWNER_PROTECTED`, `OWNER_ROLE_NOT_GRANTABLE` and `RANK_TOO_LOW`.
 - Extra permission payloads for the client. Use the [client membership summary](client.md) or
   [one shared declaration](../recipes/index.md#share-one-permission-declaration-with-the-browser).
 

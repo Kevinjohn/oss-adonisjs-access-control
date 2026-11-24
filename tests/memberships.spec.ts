@@ -154,12 +154,12 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     // Adding oneself is not self-management: the actor is a manager, so already a member.
     assert.equal(await add(admin, admin, 'viewer'), 'E_ACCESS_CONTROL_ALREADY_MEMBER')
     assert.equal(await add(admin, outsider, 'ceo'), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
-    assert.equal(await add(admin, outsider, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
-    assert.equal(await add(owner, outsider, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
+    assert.equal(await add(admin, outsider, 'owner'), 'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE')
+    assert.equal(await add(owner, outsider, 'owner'), 'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE')
     // Role rows come before the user lookup, so a missing user cannot be told apart by the role.
     assert.equal(await add(admin, 999_999, 'ceo'), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
-    assert.equal(await add(admin, 999_999, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
-    assert.equal(await add(admin, viewer, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
+    assert.equal(await add(admin, 999_999, 'owner'), 'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE')
+    assert.equal(await add(admin, viewer, 'owner'), 'E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE')
     assert.equal(
       await codeOf(
         f.memberships.add({
@@ -278,8 +278,23 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     assert.equal(await change(editor, viewer, 'viewer'), 'E_ACCESS_CONTROL_PERMISSION_DENIED')
     assert.equal(await change(admin, outsider, 'viewer'), 'E_ACCESS_CONTROL_NOT_A_MEMBER')
     assert.equal(await change(admin, admin, 'viewer'), 'E_ACCESS_CONTROL_SELF_MANAGEMENT')
-    assert.equal(await change(admin, owner, 'viewer'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
-    assert.equal(await change(admin, viewer, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
+    for (const [userId, role, Cause, status] of [
+      [owner, 'viewer', errors.E_ACCESS_CONTROL_OWNER_PROTECTED, 409],
+      [viewer, 'owner', errors.E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE, 422],
+    ] as const) {
+      const failure = await f.memberships
+        .changeRole({ actor: actor(admin), scopeId: scope, userId, role })
+        .catch((error: unknown) => error)
+      assert.instanceOf(failure, Cause)
+      const refusal = failure as InstanceType<typeof Cause>
+      assert.equal(refusal.code, Cause.code)
+      const ctx = new HttpContextFactory().create()
+      await refusal.handle(refusal, ctx)
+      assert.equal(ctx.response.getStatus(), status)
+      assert.deepEqual(ctx.response.getBody(), {
+        errors: [{ code: Cause.code, message: Cause.message }],
+      })
+    }
     assert.equal(await change(admin, viewer, 'ceo'), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
     assert.equal(await change(owner, viewer, 'admin'), 'resolved')
     assert.lengthOf(f.events, 2)

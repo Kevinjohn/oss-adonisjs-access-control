@@ -41,7 +41,7 @@ change their status or remove them. The first matching row wins.
 role being assigned.
 
 1. The next role is unknown: denied, `UNKNOWN_ROLE`.
-2. The next role is the owner role: denied, `OWNER_PROTECTED`.
+2. The next role is the owner role: denied, `OWNER_ROLE_NOT_GRANTABLE`.
 3. The next role ranks above the actor: denied, `RANK_TOO_LOW`.
 4. Otherwise allowed.
 

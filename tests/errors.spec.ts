@@ -124,11 +124,21 @@ test.group('errors: public exception classes (spec 6)', () => {
   }) => {
     const cause = new Error('inner')
     const options = { cause, code: 'OTHER', status: 200 }
-    const error = new errors.E_ACCESS_CONTROL_INVALID_CURSOR('Bad cursor', options)
-    assert.equal(error.message, 'Bad cursor')
+    const error = new errors.E_ACCESS_CONTROL_INVALID_KEY('Bad scope key', options)
+    assert.equal(error.message, 'Bad scope key')
     assert.equal(error.cause, cause)
-    assert.equal(error.code, 'E_ACCESS_CONTROL_INVALID_CURSOR')
+    assert.equal(error.code, 'E_ACCESS_CONTROL_INVALID_KEY')
     assert.equal(error.status, 422)
+  })
+
+  test('a fixed cursor message ignores surplus JavaScript arguments', ({ assert }) => {
+    const error = Reflect.construct(errors.E_ACCESS_CONTROL_INVALID_CURSOR, ['Replacement text'])
+    assert.equal(error.message, 'Invalid membership cursor')
+    assert.deepEqual(error.getHttpResponse(), {
+      code: 'E_ACCESS_CONTROL_INVALID_CURSOR',
+      status: 422,
+      message: 'Invalid membership cursor',
+    })
   })
 
   test('handle writes the status, no-store and the errors body', async ({ assert }) => {

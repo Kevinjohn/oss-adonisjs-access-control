@@ -624,6 +624,8 @@ export class MembershipService<Role extends string = string> {
       await this.#lock(trx, scopeId, [actorId, userId])
       const actor = await this.#requireManager(trx, scopeId, actorId)
       // The role rows depend on the actor and the input alone, so they come before the user lookup.
+      if (this.#access.ownerRole !== undefined && role === this.#access.ownerRole)
+        throw new E_ACCESS_CONTROL_OWNER_ROLE_NOT_GRANTABLE()
       allow(
         this.#access.decideAssignment({
           actorRole: actor.role,
