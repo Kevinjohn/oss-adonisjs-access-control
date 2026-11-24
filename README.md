@@ -91,6 +91,9 @@ initializer and the Account Kit callbacks) and `node ace access-control:doctor`.
 
 ## Errors
 
+The exception API below is part of the Unreleased changes. For `0.3.4`, use the
+[versioned error reference](https://github.com/Kevinjohn/oss-adonisjs-access-control/blob/v0.3.4/docs/reference/errors.md).
+
 Handle a specific refusal through the root `errors` namespace.
 
 ```ts
