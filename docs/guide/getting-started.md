@@ -9,14 +9,14 @@ shows these roles and team routes in a bearer-token app.
 ## Before you start
 
 - Node.js 24 and AdonisJS 7 with Lucid and Bouncer installed.
-- Account Kit 0.6.1 configured: `config/account_kit.ts` exists and the kit's migrations have run,
+- Account Kit 0.7.0 configured: `config/account_kit.ts` exists and the kit's migrations have run,
   including its `account_transaction_lock` table.
 - A users table and a `teams` table, each with an `increments()` primary key.
 
 ## 1. Install and configure
 
 ```sh
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.3.4/kevinjohn-adonisjs-access-control-0.3.4.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.4.0/kevinjohn-adonisjs-access-control-0.4.0.tgz
 node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 ```
 

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-24
+
+- Require Account Kit 0.7.0 exactly and use its published archive in the consumer fixture.
 - Breaking: replace the root and `errors` namespace `AccessControlError` exports with the
   individual constructors under `errors.E_ACCESS_CONTROL_*`. Catch the specific class with
   `instanceof` or inspect its stable `code`. Constructors take an optional detail and
