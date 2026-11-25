@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.4.1 - 2026-11-25
+
+- Require Account Kit `0.8.0` exactly and use it in the packed consumer fixture.
+
 ## 0.4.0 - 2026-11-24
 
 - Require Account Kit 0.7.0 exactly and use its published archive in the consumer fixture.
