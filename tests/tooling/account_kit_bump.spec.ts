@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { type KitRelease, kitReleaseUrl } from '../../bin/helpers/account_kit_bump.js'
-import { isKitBumpPath, projectKitFile } from '../../bin/helpers/account_kit_bump_fields.js'
+import { type KitRelease, kitReleaseUrl } from '../../bin/helpers/account_kit_bump.ts'
+import { isKitBumpPath, projectKitFile } from '../../bin/helpers/account_kit_bump_fields.ts'
 
 const from: KitRelease = {
   version: '0.3.3',

@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { kitReleaseUrl } from '../../bin/helpers/account_kit_bump.js'
+import { kitReleaseUrl } from '../../bin/helpers/account_kit_bump.ts'
 
 const run = promisify(execFile)
 const script = fileURLToPath(new URL('../../bin/bump_account_kit.ts', import.meta.url))
@@ -87,6 +87,7 @@ async function fixture(version: '0.3.3' | '0.3.4') {
   const env = {
     ...process.env,
     PATH: `${shim}:${process.env.PATH}`,
+    TS_EXEC_PWD: fileURLToPath(new URL('../..', import.meta.url)),
     KIT_SOURCE_ARCHIVE: releases['0.3.3'].toString('base64'),
     KIT_TARGET_ARCHIVE: releases['0.3.4'].toString('base64'),
   }

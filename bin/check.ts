@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { selectedSteps } from './check_profiles.js'
+import { selectedSteps } from './check_profiles.ts'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Node 24')

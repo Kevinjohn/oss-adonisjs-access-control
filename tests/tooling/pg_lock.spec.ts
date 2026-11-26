@@ -15,7 +15,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
-import { collectExit, outputOf, waitForFile, waitForPidFile } from '../helpers/child_process.js'
+import { collectExit, outputOf, waitForFile, waitForPidFile } from '../helpers/child_process.ts'
 
 const script = fileURLToPath(new URL('../../bin/pg.sh', import.meta.url))
 

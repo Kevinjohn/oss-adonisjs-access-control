@@ -16,7 +16,7 @@ import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { consumerArtifact } from '../../bin/helpers/consumer_artifact.js'
+import { consumerArtifact } from '../../bin/helpers/consumer_artifact.ts'
 
 test.group('consumer archive snapshot', () => {
   test('keeps snapshot bytes after the supplied archive is replaced', async ({ assert }) => {

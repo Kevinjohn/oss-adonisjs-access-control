@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, posix } from 'node:path'
 import { test } from '@japa/runner'
-import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.ts'
 
 /** Tracked Markdown outside dependencies; ignored local notes are not published. */
 function trackedDocuments(): string[] {
@@ -107,7 +107,7 @@ export const guidePages = [
 ]
 
 test('guide navigation points to existing guide pages and sections', async ({ assert }) => {
-  const navigation = await readFile(join(repoRoot, 'docs/.vitepress/navigation.mts'), 'utf8')
+  const navigation = await readFile(join(repoRoot, 'docs/.vitepress/navigation.ts'), 'utf8')
   const links = [...navigation.matchAll(/link:\s*'([^']+)'/g)].map(([, link]) => link)
   const guideLinks = links.filter((link) => link.startsWith('/guide/'))
   const missing: string[] = []
@@ -170,7 +170,7 @@ test('every guide page from the specification exists and is in the sidebar', asy
     'changing-roles',
     'adopting',
   ]
-  const navigation = await readFile(join(repoRoot, 'docs/.vitepress/navigation.mts'), 'utf8')
+  const navigation = await readFile(join(repoRoot, 'docs/.vitepress/navigation.ts'), 'utf8')
   const index = await readFile(join(repoRoot, 'docs/README.md'), 'utf8')
   for (const page of pages) {
     assert.isTrue(existsSync(join(repoRoot, `docs/guide/${page}.md`)), page)
