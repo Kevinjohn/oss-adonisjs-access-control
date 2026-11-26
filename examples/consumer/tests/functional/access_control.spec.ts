@@ -3,21 +3,18 @@ import { DateTime } from 'luxon'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import accessControl from '@kevinjohn/adonisjs-access-control/services/main'
-import User from '#models/user'
-
-async function createUser(email: string) {
-  return User.create({ email, password: 'secret-password', fullName: email })
-}
-
-/** A session the kit established: the user plus the credential revision it stamps at sign-in. */
-function signedIn<T extends { loginAs(user: User): T; withSession(data: object): T }>(
-  request: T,
-  user: User
-): T {
-  return request.loginAs(user).withSession({ accountKitRevision: '' })
-}
+import type User from '#models/user'
+import { createUser } from '#tests/helpers/users'
 
 test.group('Scoped routes with the package middleware and Bouncer abilities', (group) => {
+  /** A session the kit established: the user plus the credential revision it stamps at sign-in. */
+  function signedIn<T extends { loginAs(user: User): T; withSession(data: object): T }>(
+    request: T,
+    user: User
+  ): T {
+    return request.loginAs(user).withSession({ accountKitRevision: '' })
+  }
+
   let scopeId: number
   let owner: User
   let editor: User

@@ -14,84 +14,88 @@ import {
   type TransactionObserver,
 } from '#tests/helpers/transaction_observer'
 
-/** Tag of the case whose actor key sorts after its target key. */
-const actorAfterTarget = '@actor-after-target'
-
-/** A unique failure the application raises; it must escape unchanged. */
-function sentinel(id: string, code = `E_COMPOSITION_${id}`): Error & { code: string } {
-  return Object.assign(new Error(`composition ${id}`), { code })
-}
-
-/** The rejection of `promise`, or undefined when it resolves, so assertions name the failure. */
-async function failure(promise: Promise<unknown>): Promise<unknown> {
-  try {
-    await promise
-  } catch (error) {
-    return error
-  }
-  return undefined
-}
-
-/** A promise and its resolver, for bounded rendezvous between the test and a callback. */
-function barrier(): { promise: Promise<void>; release: () => void } {
-  let release!: () => void
-  const promise = new Promise<void>((resolve) => (release = resolve))
-  return { promise, release }
-}
-
-/** Fails with `message` when `promise` does not settle within `ms`. */
-async function within<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  let timer: NodeJS.Timeout | undefined
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(message)), ms)
-  })
-  try {
-    return await Promise.race([promise, timeout])
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
-async function busyTimeout(): Promise<unknown> {
-  const [row]: Array<Record<string, unknown>> = await db.rawQuery('PRAGMA busy_timeout')
-  return Object.values(row)[0]
-}
-
-/** The member's role, read through `trx` when given. */
-async function role(f: CompositionFixture, userId: number, trx?: Trx): Promise<string | undefined> {
-  const membership = await f.access.memberships.find(f.scopeId, userId, trx)
-  return membership?.role
-}
-
-/** Session A's `last_seen_at`, read directly. */
-async function lastSeen(f: CompositionFixture): Promise<unknown> {
-  const session = await f.snapshotSession()
-  return session.last_seen_at
-}
-
-interface MembershipRow {
-  user_id: number
-  role: string
-  status: string
-}
-
-/** Every membership row of the fixture scope, ordered by user. */
-async function scopeRows(f: CompositionFixture): Promise<MembershipRow[]> {
-  return db.from('memberships').where('scope_id', f.scopeId).orderBy('user_id')
-}
-
-function count(attempts: ObservedAttempts, kind: string): number {
-  return attempts.reduce(
-    (total, attempt) => total + attempt.inside.filter((s) => s.kind === kind).length,
-    0
-  )
-}
-
-function has(attempt: ObservedAttempt, verb: string, table: string): boolean {
-  return attempt.inside.some((s) => s.verb === verb && s.table === table)
-}
-
 test.group('transaction composition on SQLite', (group) => {
+  /** Tag of the case whose actor key sorts after its target key. */
+  const actorAfterTarget = '@actor-after-target'
+
+  /** A unique failure the application raises; it must escape unchanged. */
+  function sentinel(id: string, code = `E_COMPOSITION_${id}`): Error & { code: string } {
+    return Object.assign(new Error(`composition ${id}`), { code })
+  }
+
+  /** The rejection of `promise`, or undefined when it resolves, so assertions name the failure. */
+  async function failure(promise: Promise<unknown>): Promise<unknown> {
+    try {
+      await promise
+    } catch (error) {
+      return error
+    }
+    return undefined
+  }
+
+  /** A promise and its resolver, for bounded rendezvous between the test and a callback. */
+  function barrier(): { promise: Promise<void>; release: () => void } {
+    let release!: () => void
+    const promise = new Promise<void>((resolve) => (release = resolve))
+    return { promise, release }
+  }
+
+  /** Fails with `message` when `promise` does not settle within `ms`. */
+  async function within<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    let timer: NodeJS.Timeout | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms)
+    })
+    try {
+      return await Promise.race([promise, timeout])
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  async function busyTimeout(): Promise<unknown> {
+    const [row]: Array<Record<string, unknown>> = await db.rawQuery('PRAGMA busy_timeout')
+    return Object.values(row)[0]
+  }
+
+  /** The member's role, read through `trx` when given. */
+  async function role(
+    f: CompositionFixture,
+    userId: number,
+    trx?: Trx
+  ): Promise<string | undefined> {
+    const membership = await f.access.memberships.find(f.scopeId, userId, trx)
+    return membership?.role
+  }
+
+  /** Session A's `last_seen_at`, read directly. */
+  async function lastSeen(f: CompositionFixture): Promise<unknown> {
+    const session = await f.snapshotSession()
+    return session.last_seen_at
+  }
+
+  interface MembershipRow {
+    user_id: number
+    role: string
+    status: string
+  }
+
+  /** Every membership row of the fixture scope, ordered by user. */
+  async function scopeRows(f: CompositionFixture): Promise<MembershipRow[]> {
+    return db.from('memberships').where('scope_id', f.scopeId).orderBy('user_id')
+  }
+
+  function count(attempts: ObservedAttempts, kind: string): number {
+    return attempts.reduce(
+      (total, attempt) => total + attempt.inside.filter((s) => s.kind === kind).length,
+      0
+    )
+  }
+
+  function has(attempt: ObservedAttempt, verb: string, table: string): boolean {
+    return attempt.inside.some((s) => s.verb === verb && s.table === table)
+  }
+
   group.tap((t) =>
     t.skip(
       process.env.DB_CLIENT !== 'sqlite',

@@ -1,25 +1,25 @@
 import { test } from '@japa/runner'
 import { classifyForTest, type KnexEvent } from '#tests/helpers/transaction_observer'
 
-const connection = '__knexUid1'
-
-function query(sql: string, txId: string, queryId?: string): KnexEvent {
-  return {
-    event: 'query',
-    payload: { sql, __knexUid: connection, __knexTxId: txId, __knexQueryUid: queryId },
-  }
-}
-
-function response(txId: string, queryId: string): KnexEvent {
-  return {
-    event: 'query-response',
-    payload: { __knexUid: connection, __knexTxId: txId, __knexQueryUid: queryId },
-  }
-}
-
-const lock = 'update account_transaction_lock set version = version where id = 1 returning id'
-
 test.group('transaction observer classifier', () => {
+  const connection = '__knexUid1'
+
+  function query(sql: string, txId: string, queryId?: string): KnexEvent {
+    return {
+      event: 'query',
+      payload: { sql, __knexUid: connection, __knexTxId: txId, __knexQueryUid: queryId },
+    }
+  }
+
+  function response(txId: string, queryId: string): KnexEvent {
+    return {
+      event: 'query-response',
+      payload: { __knexUid: connection, __knexTxId: txId, __knexQueryUid: queryId },
+    }
+  }
+
+  const lock = 'update account_transaction_lock set version = version where id = 1 returning id'
+
   test('reports a query after COMMIT carrying the old transaction id outside the attempt', ({
     assert,
   }) => {
