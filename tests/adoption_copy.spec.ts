@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { copyMemberships } from '../examples/adopting/copy_memberships.js'
-import { membershipFixture } from './helpers/fixture.js'
+import { copyMemberships } from '../examples/adopting/copy_memberships.ts'
+import { membershipFixture } from './helpers/fixture.ts'
 
 test('the adoption copy remains visible through every cursor page', async ({ assert }) => {
   const f = await membershipFixture()

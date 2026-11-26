@@ -12,7 +12,7 @@ import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { ConsumerProcessRunner } from '../../bin/helpers/consumer_process.js'
+import { ConsumerProcessRunner } from '../../bin/helpers/consumer_process.ts'
 
 test('a late signal cannot target a confirmed stopped consumer group', async ({ assert }) => {
   if (process.platform === 'win32') return

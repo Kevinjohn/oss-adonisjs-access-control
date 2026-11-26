@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { makeBumpPlan, saveBumpPlan } from '../../bin/helpers/account_kit_bump_plan.js'
-import { kitReleaseUrl, type KitRelease } from '../../bin/helpers/account_kit_bump.js'
+import { makeBumpPlan, saveBumpPlan } from '../../bin/helpers/account_kit_bump_plan.ts'
+import { kitReleaseUrl, type KitRelease } from '../../bin/helpers/account_kit_bump.ts'
 
 const run = promisify(execFile)
 const script = fileURLToPath(new URL('../../bin/bump_account_kit.ts', import.meta.url))

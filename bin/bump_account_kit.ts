@@ -17,8 +17,8 @@ import {
   kitPackage,
   kitReleaseUrl,
   kitRepository,
-} from './helpers/account_kit_bump.js'
-import { projectKitFile } from './helpers/account_kit_bump_fields.js'
+} from './helpers/account_kit_bump.ts'
+import { projectKitFile } from './helpers/account_kit_bump_fields.ts'
 import {
   applyBumpPlan,
   makeBumpPlan,
@@ -26,7 +26,7 @@ import {
   saveBumpPlan,
   type BumpPlan,
   verifyBumpCheckout,
-} from './helpers/account_kit_bump_plan.js'
+} from './helpers/account_kit_bump_plan.ts'
 
 const run = promisify(execFile)
 

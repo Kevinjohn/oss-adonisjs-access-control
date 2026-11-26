@@ -15,8 +15,8 @@ import {
 import type { BigIntStats } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import type { ConsumerProcessRunner } from './consumer_process.js'
-import { ConsumerCommandError } from './consumer_process.js'
+import type { ConsumerProcessRunner } from './consumer_process.ts'
+import { ConsumerCommandError } from './consumer_process.ts'
 
 /** Owns one immutable input for the complete consumer run. Default build/pack is exclusive per checkout. */
 export async function consumerArtifact(

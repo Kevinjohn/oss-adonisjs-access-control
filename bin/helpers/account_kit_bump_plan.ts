@@ -2,8 +2,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import { link, lstat, mkdir, open, readFile, rename, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { type KitRelease } from './account_kit_bump.js'
-import { isKitBumpPath, projectKitFile } from './account_kit_bump_fields.js'
+import { type KitRelease } from './account_kit_bump.ts'
+import { isKitBumpPath, projectKitFile } from './account_kit_bump_fields.ts'
 
 export interface BumpFile {
   path: string

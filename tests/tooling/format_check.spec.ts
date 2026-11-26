@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { test } from '@japa/runner'
-import { repoRoot } from '../helpers/tracked_markdown.js'
+import { repoRoot } from '../helpers/tracked_markdown.ts'
 
 /** Run the package's `format:check` script text in a throwaway repository with tracked files. */
 async function formatCheck(

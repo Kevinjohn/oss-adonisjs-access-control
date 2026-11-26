@@ -11,7 +11,7 @@ import {
   outputOf,
   waitForFile,
   waitForPidFile,
-} from '../helpers/child_process.js'
+} from '../helpers/child_process.ts'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -92,6 +92,7 @@ async function fixture(options: FixtureOptions = {}): Promise<Fixture> {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: `${bin}${path.delimiter}${supportBin}`,
+    TS_EXEC_PWD: repoRoot,
   }
   delete env.CHECK_CHANGED_HANG
   if (options.command === 'hang') env.CHECK_CHANGED_HANG = '1'

@@ -1,4 +1,4 @@
-import { type KitRelease, kitPackage } from './account_kit_bump.js'
+import { type KitRelease, kitPackage } from './account_kit_bump.ts'
 
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const version = '(\\d+\\.\\d+\\.\\d+)'
