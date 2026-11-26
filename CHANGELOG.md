@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The packed consumer disables migration rollbacks in production on its SQLite and PostgreSQL connections.
+
 - Releases reuse the successful `checks.yml` push or manual run for the exact commit on `main` before
   building and validating the release archive.
 

@@ -26,7 +26,11 @@ const dbConfig = defineConfig({
         validate: (connection) => connection.open && !connection.inTransaction,
       },
       useNullAsDefault: true,
-      migrations: { naturalSort: true, paths: ['database/migrations'] },
+      migrations: {
+        naturalSort: true,
+        paths: ['database/migrations'],
+        disableRollbacksInProduction: true,
+      },
     },
     pg: {
       client: 'pg',
@@ -38,7 +42,11 @@ const dbConfig = defineConfig({
         database: env.get('DB_DATABASE'),
       },
       searchPath: schema ? [schema] : undefined,
-      migrations: { naturalSort: true, paths: ['database/migrations'] },
+      migrations: {
+        naturalSort: true,
+        paths: ['database/migrations'],
+        disableRollbacksInProduction: true,
+      },
     },
   },
 })
