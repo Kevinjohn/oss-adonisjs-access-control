@@ -15,11 +15,11 @@
    `stubs/make/migration/released.json` and a `### Migrations` subsection to the changelog. Hash the exact bytes after the first line
    (the stub destination directive), including the following blank line.
 4. Merge the PR once its review is complete and every check on its head has passed.
-5. The owner runs Actions → release → Run workflow (on `main`). Publishing and tagging stay owner
-   actions.
+5. Wait for the `checks.yml` push or manual run on the release commit on `main` to succeed, then run
+   Actions → release → Run workflow on `main`. Publishing and tagging stay owner actions.
 
-Nothing else is manual. The release is a GitHub prerelease with the tarball attached; its notes
-carry the install command and the SHA-256. `pnpm release` runs the same gate locally.
+The release is a GitHub prerelease with the tarball attached; its notes
+carry the install command and the SHA-256. `pnpm release` runs the package gate locally.
 After publication, follow the release verification steps in [verification](verification.md).
 
 ## Adopting the next Account Kit transaction API
