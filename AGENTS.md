@@ -108,7 +108,7 @@ docs/                       user and maintainer documentation
 - Only lock in the order of specification section 4.2. Ascending means code-unit order of
   `String(key)`.
 - The reserved keys `members:list`, `members:manage` and `invitations:manage` are always present.
-- Released migration stubs are immutable (specification section 17.1).
+- Released migration bodies are immutable (specification section 17.1).
 - Error codes are `E_ACCESS_CONTROL_*` with the response shape from specification section 6.
 - Work in a branch and worktree, never on `main`. A pull request merges once its review is
   complete and every check on its head has passed. Sign commits off (`git commit -s`).
