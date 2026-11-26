@@ -215,9 +215,9 @@ table; shipped in the package), `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDU
 workflows `checks`, `codeql`, `compat`, `docs`, `release`, `scorecard` (no `examples` workflow in
 v1; the packed consumer runs in the `compat` workflow's `consumer` job and locally in
 `pnpm check --full`; `checks.yml` runs the individual scripts as the siblings do). The `release` workflow is manually
-dispatched on `main`, calls the reusable `checks` and `compat` workflows, checks the tag and dated
+dispatched on `main`. It verifies the exact commit’s `checks.yml` push or manual run, checks the tag and dated
 changelog, packs, and publishes the prerelease with the SHA-256.
-`bin/release_check.sh` runs the same gate locally.
+`bin/release_check.sh` runs the package gate locally.
 
 ### 1.9 Documentation layout
 

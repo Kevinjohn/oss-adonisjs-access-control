@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Releases reuse the successful `checks.yml` push or manual run for the exact commit on `main` before
+  building and validating the release archive.
+
 - Breaking: replace `access.clientPayload(membership)` with
   `access.buildClientMembership(membership)`. Import `ClientMembershipSummary` in place of
   `ClientPayload`. The returned fields and their values are unchanged.
