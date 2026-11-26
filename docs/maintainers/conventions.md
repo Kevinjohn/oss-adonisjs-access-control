@@ -64,7 +64,8 @@ PostgreSQL, MySQL, coverage, the docs build and the packed SQLite consumer.
 `pnpm test:consumer` rebuilds and repacks the package before installing it in a copy of
 `examples/consumer`, records floor and latest dependency versions from actual package resolution
 and exercises SQLite and PostgreSQL consumers; `--package=<path>` skips the rebuild and installs
-that tarball as given.
+that tarball as given. The consumer disables migration rollbacks in production for both its
+SQLite and PostgreSQL connections; test-environment migration cleanup remains available.
 
 The `c8` block in `package.json` has `check-coverage: true`. Each floor is the lower of the SQLite
 and PostgreSQL results at the membership service milestone, rounded down to a whole number and
