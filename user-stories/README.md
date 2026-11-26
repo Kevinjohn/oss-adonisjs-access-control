@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `74a5d7358f7fc78727f5ff808bc5fa3ee7c12ac8` (origin/main). This refresh traces 31 existing actions across configuration, membership and role APIs, provider services, middleware, diagnostics, client membership summaries and the Account Kit 0.6.1 integration. The earlier November 2026 review ran 103 focused tests. The current catalogue refresh used source review.
+Source baseline: `da878797e6b77dd5211d9b14cc46423bd8c78db6` (origin/main). This refresh traces 31 existing actions across configuration, membership and role APIs, provider services, middleware, diagnostics, client membership summaries and the Account Kit 0.8.0 integration. Availability is based on source review, not runtime verification.
 
 ## Index
 

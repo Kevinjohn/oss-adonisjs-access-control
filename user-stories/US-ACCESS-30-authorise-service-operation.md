@@ -38,4 +38,4 @@ flowchart TD
     C -->|No| E["Raise forbidden"]
 ```
 
-**Code references:** [authorize](../src/memberships.ts#L524), [permission threshold](../src/rules.ts#L25).
+**Code references:** [authorize](../src/memberships.ts#L420), [permission threshold](../src/rules.ts#L25).

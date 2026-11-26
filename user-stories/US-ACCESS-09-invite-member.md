@@ -6,7 +6,7 @@ As an active team member allowed to invite, I want to invite a person to a scope
 **Access:** Inviter is admitted if admission is active, has active canonical-scope membership and `invitations:manage`; role must be valid, non-owner, and at/below inviter rank.
 **Entry:** Account Kit `invitations.send` invokes `accessControlKitCallbacks().authorize.invite`; app owns invitation entry/UI.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
-**Source:** [account_kit/main.ts](../account_kit/main.ts)
+**Source:** [callbacks](../src/account_kit_callbacks.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
 
 ## Acceptance criteria
@@ -43,4 +43,4 @@ flowchart TD
     H -->|Follow-up fails| I["Error propagates; invitation remains committed"]
 ```
 
-**Code references:** [callback factory](../account_kit/main.ts), [Kit guide](../docs/guide/account-kit.md), [Account Kit sendInvitation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitations.ts).
+**Code references:** [callback factory](../src/account_kit_callbacks.ts), [Kit guide](../docs/guide/account-kit.md), [Account Kit sendInvitation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/42e6c06929baaa01f0c4810e2b9afae2e9953d7d/src/invitations.ts).

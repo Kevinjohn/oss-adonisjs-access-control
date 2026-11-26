@@ -6,7 +6,7 @@ As an application integrator, I want to protect scope ownership during account d
 **Access:** Account Kit owns deletion; Access Control callback refuses deletion while account has active owner membership.
 **Entry:** Account Kit `accountData.delete({ actorId, currentPassword?, recentProof? })` invokes the `onAccountDeletingTransaction` callback, which calls `memberships.prepareAccountDeletion` in the Kit transaction.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
-**Source:** [account_kit/main.ts](../account_kit/main.ts)
+**Source:** [callbacks](../src/account_kit_callbacks.ts)
 **Coverage:** [`tests/memberships_trusted.spec.ts`](../tests/memberships_trusted.spec.ts)
 
 ## Acceptance criteria
@@ -34,10 +34,10 @@ flowchart TD
     B --> C["read memberships and lock involved scopes"]
     C --> D{"Owner role configured and any active owner membership?"}
     D -->|Yes| E["throw LAST_OWNER; Kit transaction rolls back"]
-    D -->|No| F["delete memberships and emit membership.removed with reason account_deleted"]
+    D -->|No| F["delete memberships and invoke optional onMembershipChanged with membership.removed with reason account_deleted"]
     F --> G["Kit deletes account rows and user in same trx and commits"]
     G --> H["Kit attempts deletion notice and lifecycle event"]
     H -->|Follow-up fails| I["Error propagates; account remains deleted"]
 ```
 
-**Code references:** [callback](../account_kit/main.ts), [prepareAccountDeletion](../src/memberships.ts), [Account Kit deletion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/account_deletion.ts).
+**Code references:** [callback](../src/account_kit_callbacks.ts), [prepareAccountDeletion](../src/memberships.ts), [Account Kit deletion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/42e6c06929baaa01f0c4810e2b9afae2e9953d7d/src/account_deletion.ts).

@@ -6,7 +6,7 @@ As an invitee, I want to accept a scoped invitation so that acceptance creates t
 **Access:** Invitation token/recipient validation is owned by Account Kit; acceptance creates the account and is refused for an already registered email. Scoped membership is created only for a canonical configured scope.
 **Entry:** Account Kit `invitations.accept` looks up the token, checks the email, creates the account, consumes the token and other matching invitations, confirms the email, then calls `onInvitationAccepted` for each. Direct acceptance uses `{ token, password, registrationData? }` and the address stored on the invitation. The callback also runs for each pending invitation matched to a newly confirmed address: social sign-up with a provider-verified email, account activation, and a password reset that confirms a never-confirmed account.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
-**Source:** [account_kit/main.ts](../account_kit/main.ts)
+**Source:** [callbacks](../src/account_kit_callbacks.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
 
 ## Acceptance criteria
@@ -17,7 +17,7 @@ As an invitee, I want to accept a scoped invitation so that acceptance creates t
 - For scoped invitations, trusted `acceptInvitation` refuses unknown/owner roles, a deleted scope (`E_ACCESS_CONTROL_SCOPE_NOT_FOUND`) and existing membership, otherwise creates membership inside the Account Kit transaction. Any refusal rolls back the whole acceptance: token acceptance and social sign-up leave no new account behind, while activation and a confirming password reset roll back only that step and the existing account stays. The rollback restores the matched invitation, so every retry of that activation or reset fails the same way while the invalid invitation remains pending. Expiry or operator cleanup can clear that condition. Revocation through [US-ACCESS-24](US-ACCESS-24-revoke-invitation.md) requires authorization while the scope and role still qualify. The optional host callback runs for both scoped and global invitations in that transaction.
 - Global invitation (`scope: null`) does not create team membership. Direct token acceptance returns the account after commit; an acceptance lifecycle follow-up failure can be reported after the account and memberships have committed.
 
-- When Account Kit accepts a batch, it calls the integration in stored scope order. A later scope with a non-canonical spelling rolls back earlier membership and transactional event writes. See [batch acceptance integration](../tests/invitation_batch.spec.ts).
+- When Account Kit accepts a batch, it calls the integration in stored scope order. A later scope with a non-canonical spelling rolls back earlier membership and transactional callback writes. See [batch acceptance integration](../tests/invitation_batch.spec.ts).
 
 ## User flow
 
@@ -56,7 +56,7 @@ flowchart TD
     B -->|No| C["skip membership creation"]
     C --> F
     B -->|Yes| D["validate canonical scope key"]
-    D --> E["memberships.acceptInvitation requires same trx; validate role and stored spelling, lock user then scope, refuse duplicate, insert and emit membership.invitation_accepted"]
+    D --> E["memberships.acceptInvitation requires same trx; validate role and stored spelling, lock user then scope, refuse duplicate, insert and invoke optional onMembershipChanged with membership.invitation_accepted"]
     D -->|Invalid key| X["Kit transaction rolls back"]
     E -->|Error| X
     E --> F["run optional host callback"]
@@ -70,4 +70,4 @@ flowchart TD
     J -->|No| Z["Matching caller owns commit and follow-ups"]
 ```
 
-**Code references:** [acceptance callback](../account_kit/main.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), [Kit acceptance and inspection](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitations.ts), [Kit invitation matching](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_match.ts), [activation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/activation_claim.ts), [password reset](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/password_reset.ts), [social account creation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/social_account_creation.ts).
+**Code references:** [acceptance callback](../src/account_kit_callbacks.ts), [trusted method](../src/memberships.ts), [scope lock](../src/locks.ts), [Kit acceptance and inspection](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/42e6c06929baaa01f0c4810e2b9afae2e9953d7d/src/invitations.ts), [Kit invitation matching](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/42e6c06929baaa01f0c4810e2b9afae2e9953d7d/src/invitation_match.ts), [activation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/42e6c06929baaa01f0c4810e2b9afae2e9953d7d/src/activation_claim.ts), [password reset](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/42e6c06929baaa01f0c4810e2b9afae2e9953d7d/src/password_reset.ts), [social account creation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/42e6c06929baaa01f0c4810e2b9afae2e9953d7d/src/social_account_creation.ts).

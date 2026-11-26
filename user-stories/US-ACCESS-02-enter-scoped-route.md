@@ -52,4 +52,4 @@ flowchart TD
     H -->|Yes| J["App policy checks record"]
 ```
 
-**Code references:** [scope middleware](../middleware/main.ts), [active membership lookup](../src/memberships.ts#L461), [abilities](../src/abilities.ts), [guide](../docs/guide/bouncer.md)
+**Code references:** [scope middleware](../middleware/main.ts), [active membership lookup](../src/memberships.ts#L357), [abilities](../src/abilities.ts), [guide](../docs/guide/bouncer.md)

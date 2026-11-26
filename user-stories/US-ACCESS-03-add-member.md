@@ -13,7 +13,7 @@ As an active scope manager, I want to add a member to a scope so that the added 
 
 - `actor: { id }`, `scopeId`, `userId` and `role` are required. `trx` is optional: the runner opens and commits a transaction when omitted; the caller owns a supplied transaction. Add uses the Kit transaction/lock process.
 - Unknown role, unknown user, existing member, inactive/missing actor or role above actor is refused. If the proposed role passes the assignment checks, an actor who adds themselves is refused as an existing member (`E_ACCESS_CONTROL_ALREADY_MEMBER`), not as self-management. A scope row that does not exist is refused with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404) when the scope is locked, before the actor is checked.
-- Successful add creates membership and emits `membership.added` inside the same transaction.
+- Successful add creates membership and calls the optional change callback with `membership.added` inside the same transaction.
 
 ## User flow
 
@@ -38,7 +38,7 @@ flowchart TD
     D -->|No| F
     D -->|Yes| E{"User exists and no membership?"}
     E -->|No| F["throw domain error"]
-    E -->|Yes| G["insert membership and emit membership.added"]
+    E -->|Yes| G["insert membership and invoke optional onMembershipChanged with membership.added"]
     G --> H["runner commits if trx omitted; otherwise caller owns commit"]
 ```
 
