@@ -1,7 +1,7 @@
 import type { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
-import type { AccessControl } from './define.js'
+import type { AccessControl } from './define.ts'
 
 export type {
   MembershipService,
@@ -22,14 +22,14 @@ export type {
   RemoveAllForScopeInput,
   ExportForInput,
   MembershipExport,
-} from './memberships.js'
-export type { AbilityMap, AbilitySubject, MembershipResolver } from './abilities.js'
-export type { ScopeMiddlewareOptions } from '../middleware/main.js'
+} from './membership_types.ts'
+export type { AbilityMap, AbilitySubject, MembershipResolver } from './ability_types.ts'
+export type { ScopeMiddlewareOptions } from './scope_middleware_types.ts'
 export type {
   AccessControlKitCallbackOptions,
   AccessControlKitCallbacks,
-} from '../account_kit/main.js'
-export type { DoctorCheck, DoctorReport, DoctorInput } from './doctor.js'
+} from './account_kit_types.ts'
+export type { DoctorCheck, DoctorReport, DoctorInput } from './doctor_types.ts'
 
 /** A Lucid transaction client, as started by Account Kit's `transaction()` runner. */
 export type Trx = TransactionClientContract
@@ -62,7 +62,7 @@ export interface Actor {
 }
 
 /** Change records passed to the awaited `onMembershipChanged` callback after the write. */
-export type MembershipEvent<Role extends string> =
+export type MembershipChange<Role extends string> =
   | { type: 'membership.added'; scopeId: ScopeKey; userId: UserKey; actorId: UserKey; role: Role }
   | { type: 'membership.first_member'; scopeId: ScopeKey; userId: UserKey; role: Role }
   | {
@@ -145,7 +145,7 @@ export interface AccessControlConfig<
    * It must not lock or write other users' rows or Account Kit tables, which sit earlier in the
    * lock order; writing app tables is fine.
    */
-  onMembershipChanged?: (change: MembershipEvent<R[number]>, trx: Trx) => Promise<void>
+  onMembershipChanged?: (change: MembershipChange<R[number]>, trx: Trx) => Promise<void>
 }
 
 /** The validated, frozen configuration carried by an `AccessControl` instance. */
@@ -229,7 +229,10 @@ export interface TransactionRunner {
 }
 
 /** The client's membership summary. A stored role may be historical. */
-export interface ClientPayload<Role extends string = string, Key extends string = string> {
+export interface ClientMembershipSummary<
+  Role extends string = string,
+  Key extends string = string,
+> {
   scopeId: string
   role: string
   permissions: Key[]

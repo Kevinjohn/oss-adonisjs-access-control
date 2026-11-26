@@ -67,8 +67,8 @@ The _Tested against_ table in `README.md` mirrors `.github/workflows/checks.yml`
 
 ## Code layout
 
-- `src/` holds the configuration, rules, membership service, locks, errors and payload.
-- `middleware/` and `account_kit/` hold the exported scope middleware and Account Kit callbacks.
+- `src/` holds the configuration, rules, membership service, locks, errors and client membership summaries.
+- `middleware/` and `account_kit/` hold the exported scope middleware and Account Kit entry point.
 - `providers/`, `services/`, `commands/` and `stubs/` hold the provider, container service, Ace
   commands and configure templates.
 - `tests/` mirrors the source. Shared fixtures live in `tests/helpers/`.

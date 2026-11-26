@@ -50,13 +50,14 @@
     "check:changed": "node --import=@poppinss/ts-exec --enable-source-maps bin/check_changed.ts",
     "bump:account-kit": "node --import=@poppinss/ts-exec --enable-source-maps bin/bump_account_kit.ts",
     "precompile": "pnpm lint",
-    "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
+    "compile": "tsdown && adonis-kit index build/commands && tsc --emitDeclarationOnly --declaration",
     "postcompile": "pnpm copy:templates",
     "build": "pnpm compile",
-    "copy:templates": "copyfiles \"stubs/**/*.stub\" stubs/migrations/released.json build",
+    "copy:templates": "copyfiles --up=1 \"stubs/**/*.stub\" stubs/make/migration/released.json build/stubs",
     "docs:api": "typedoc",
     "docs:dev": "pnpm docs:api && vitepress dev docs",
-    "docs:build": "pnpm docs:api && vitepress build docs"
+    "docs:build": "pnpm docs:api && vitepress build docs",
+    "release": "bash bin/release_check.sh"
   },
   "keywords": [
     "adonisjs",
@@ -88,6 +89,8 @@
     "@adonisjs/tsconfig": "^2.0.0",
     "@japa/api-client": "^3.2.1",
     "@japa/assert": "^4.2.0",
+    "@japa/expect-type": "^2.0.4",
+    "@japa/file-system": "^3.0.0",
     "@japa/runner": "^5.3.0",
     "@kevinjohn/adonisjs-account-kit": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.8.0/kevinjohn-adonisjs-account-kit-0.8.0.tgz",
     "@poppinss/ts-exec": "^1.5.2",
@@ -139,7 +142,7 @@
       "./services/main.ts",
       "./middleware/main.ts",
       "./account_kit/main.ts",
-      "./commands/main.ts"
+      "./commands/doctor.ts"
     ],
     "outDir": "./build",
     "clean": true,
@@ -149,7 +152,8 @@
     "dts": false,
     "treeshake": false,
     "sourcemaps": false,
-    "target": "esnext"
+    "target": "esnext",
+    "unbundle": true
   },
   "c8": {
     "reporter": [

@@ -2,15 +2,14 @@
 import { test } from '@japa/runner'
 import type { AccountUser, Invitation, Trx } from '@kevinjohn/adonisjs-account-kit'
 import { withInvitationEvidence } from '@kevinjohn/adonisjs-account-kit/admission'
-import { accessControlKitCallbacks } from '../account_kit/main.js'
-import { AccessControl } from '../index.js'
-import type { MembershipEvent } from '../src/types.js'
-import { bootTestApp, type TestApp } from './helpers/app.js'
-import { codeOf, permissions } from './helpers/fixture.js'
+import { accessControlKitCallbacks } from '../account_kit/main.ts'
+import type { MembershipChange } from '../src/types.ts'
+import { bootTestApp, type TestApp } from './helpers/app.ts'
+import { codeOf, permissions } from './helpers/fixture.ts'
 
 // Created before any application exists, as config/account_kit.ts does.
 const callbacks = accessControlKitCallbacks()
-const events: MembershipEvent<string>[] = []
+const changes: MembershipChange<string>[] = []
 
 function user(id: number): AccountUser {
   return { id, email: `user${id}@example.com` } as unknown as AccountUser
@@ -39,7 +38,7 @@ function idOf(rows: unknown[]): number {
 }
 
 async function fixture(booted: TestApp) {
-  const access = await booted.app.container.make(AccessControl)
+  const access = await booted.app.container.make('access_control.manager')
   const createUser = async () =>
     idOf(await booted.db.table(booted.names.users).returning('id').insert({ name: 'u' }))
   const createScope = async () =>
@@ -59,8 +58,8 @@ test.group('Account Kit callbacks: authorize (spec 9)', (group) => {
   let f: Awaited<ReturnType<typeof fixture>>
   group.setup(async () => {
     booted = await bootTestApp({
-      async onMembershipChanged(event) {
-        events.push(event)
+      async onMembershipChanged(change) {
+        changes.push(change)
       },
     })
     f = await fixture(booted)
@@ -211,8 +210,8 @@ test.group('Account Kit callbacks: acceptance, deletion and export (spec 9)', (g
   let f: Awaited<ReturnType<typeof fixture>>
   group.setup(async () => {
     booted = await bootTestApp({
-      async onMembershipChanged(event) {
-        events.push(event)
+      async onMembershipChanged(change) {
+        changes.push(change)
       },
     })
     f = await fixture(booted)
@@ -241,17 +240,17 @@ test.group('Account Kit callbacks: acceptance, deletion and export (spec 9)', (g
     }
   })
   group.each.setup(() => {
-    events.length = 0
+    changes.length = 0
   })
 
-  test('one address invited to two scopes: two memberships, events in scope order; a null scope adds nothing', async ({
+  test('one address invited to two scopes: two memberships, changes in scope order; a null scope adds nothing', async ({
     assert,
   }) => {
     const [a, b] = await Promise.all([f.createScope(), f.createScope()])
     const [owner, invited] = await Promise.all([f.createUser(), f.createUser()])
     await f.access.memberships.createFirstMember({ scopeId: a, userId: owner })
     await f.access.memberships.createFirstMember({ scopeId: b, userId: owner })
-    events.length = 0
+    changes.length = 0
     const [first, second] = [a, b].sort((x, y) => (String(x) < String(y) ? -1 : 1))
     await f.inTrx(async (trx) => {
       await callbacks.onInvitationAccepted(
@@ -279,10 +278,10 @@ test.group('Account Kit callbacks: acceptance, deletion and export (spec 9)', (g
       ].sort((x, y) => Number(x[0]) - Number(y[0]))
     )
     assert.deepEqual(
-      events.map((event) => [
-        event.type,
-        event.scopeId,
-        'invitationId' in event ? event.invitationId : null,
+      changes.map((change) => [
+        change.type,
+        change.scopeId,
+        'invitationId' in change ? change.invitationId : null,
       ]),
       [
         ['membership.invitation_accepted', first, 11],
@@ -307,7 +306,7 @@ test.group('Account Kit callbacks: acceptance, deletion and export (spec 9)', (g
       userId: member,
       role: 'editor',
     })
-    events.length = 0
+    changes.length = 0
     const accept = (userId: number, input: { scope: string; role: string }) =>
       codeOf(
         f.inTrx(async (trx) => {
@@ -335,7 +334,7 @@ test.group('Account Kit callbacks: acceptance, deletion and export (spec 9)', (g
     const scopesAfter = await f.countScopes()
     assert.equal(scopesAfter, scopesBefore)
     assert.lengthOf(await f.membershipRows(invited), 0)
-    assert.lengthOf(events, 0)
+    assert.lengthOf(changes, 0)
   })
 
   test('the app callback runs after the package, in the same transaction, for every acceptance', async ({
@@ -419,22 +418,22 @@ test.group('Account Kit callbacks: acceptance, deletion and export (spec 9)', (g
       'E_ACCESS_CONTROL_LAST_OWNER'
     )
     assert.lengthOf(await f.membershipRows(owner), 2)
-    events.length = 0
+    changes.length = 0
     await f.inTrx(async (trx) => {
       await callbacks.onAccountDeletingTransaction(user(member), trx)
       await trx.from(booted.names.users).where('id', member).delete()
     })
     assert.lengthOf(await f.membershipRows(member), 0)
     assert.isNotOk(await booted.db.from(booted.names.users).where('id', member).first())
-    // Removal events follow the membership rows, not scope order, so compare them sorted.
+    // Removal changes follow the membership rows, not scope order, so compare them sorted.
     const [first, second] = [a, b].sort((x, y) => (String(x) < String(y) ? -1 : 1))
     assert.deepEqual(
-      events
-        .map((event) => ({
-          type: event.type,
-          scopeId: event.scopeId,
-          actorId: 'actorId' in event ? event.actorId : undefined,
-          reason: 'reason' in event ? event.reason : undefined,
+      changes
+        .map((change) => ({
+          type: change.type,
+          scopeId: change.scopeId,
+          actorId: 'actorId' in change ? change.actorId : undefined,
+          reason: 'reason' in change ? change.reason : undefined,
         }))
         .sort((x, y) => (String(x.scopeId) < String(y.scopeId) ? -1 : 1)),
       [
@@ -579,7 +578,7 @@ test.group('Account Kit callbacks: canonical scope keys (spec 5.1)', (group) => 
   test('an invitation scope is authorised and honoured in its canonical spelling only', async ({
     assert,
   }) => {
-    const access = await booted.app.container.make(AccessControl)
+    const access = await booted.app.container.make('access_control.manager')
     const scope = '0f7b3f1e-3f5c-4f6a-9d2e-1c2b3a4d5e6f'
     await booted.db.table(booted.names.scope).insert({ id: scope, name: 's' })
     const [owner, invited] = await Promise.all([
@@ -627,7 +626,7 @@ test('string invitation authorization uses exact stored scope spelling on both c
     caseInsensitiveKeys: true,
   })
   try {
-    const access = await booted.app.container.make(AccessControl)
+    const access = await booted.app.container.make('access_control.manager')
     const owner = idOf(
       await booted.db.table(booted.names.users).returning('id').insert({ name: 'owner' })
     )

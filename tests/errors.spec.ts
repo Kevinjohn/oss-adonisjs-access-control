@@ -1,7 +1,7 @@
 import { Exception } from '@adonisjs/core/exceptions'
 import { test } from '@japa/runner'
-import { errors } from '../index.js'
-import type { AccessControlErrorCode } from '../src/types.js'
+import { errors } from '../index.ts'
+import type { AccessControlErrorCode } from '../src/types.ts'
 
 function fakeContext(i18n?: { t(key: string, data: unknown, fallback: string): string }) {
   const sent: { status?: number; headers: Record<string, string>; body?: unknown } = { headers: {} }

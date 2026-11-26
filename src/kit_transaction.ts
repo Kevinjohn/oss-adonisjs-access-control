@@ -7,7 +7,7 @@ import {
   sqlTimestamp,
   transaction,
 } from '@kevinjohn/adonisjs-account-kit/transaction'
-import type { TransactionRunner } from './types.js'
+import type { TransactionRunner } from './types.ts'
 
 /** The runner contract, as `@kevinjohn/adonisjs-account-kit/transaction` exports it. */
 export type KitRunner = TransactionRunner

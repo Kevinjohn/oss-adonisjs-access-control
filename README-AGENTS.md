@@ -51,7 +51,7 @@ database; every service method accepts a caller `trx` started by the kit's `tran
 
 ## Source map
 
-- `src/`: configuration, rules, membership service, locks, errors and payload.
+- `src/`: configuration, rules, membership service, locks, errors and client membership summary.
 - `middleware/`, `account_kit/`, `providers/`, `services/`, `commands/`, `stubs/`: exported
   subpaths, provider, container service, Ace commands and configure templates.
 

@@ -4,10 +4,10 @@ import { join, relative, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { sourceFiles } from '@adonisjs/lucid/utils'
 import type Configure from '@adonisjs/core/commands/configure'
-import { stubsRoot } from './stubs/main.js'
-import { buildMembershipMigrationSchema } from './src/migration_schema.js'
-import { planMigrations } from './src/migration_order.js'
-import type { KeyType } from './src/types.js'
+import { stubsRoot } from './stubs/main.ts'
+import { buildMembershipMigrationSchema } from './src/migration_schema.ts'
+import { planMigrations } from './src/migration_order.ts'
+import type { KeyType } from './src/types.ts'
 
 const packageName = '@kevinjohn/adonisjs-access-control'
 
@@ -15,10 +15,10 @@ function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException).code === 'ENOENT'
 }
 
-/** The released migration stubs, in publishing order, from `migrations/released.json`. */
+/** The released migration stubs, in publishing order, from `make/migration/released.json`. */
 export async function readReleasedMigrationNames(root: string): Promise<string[]> {
   const released = JSON.parse(
-    await readFile(join(root, 'migrations', 'released.json'), 'utf8')
+    await readFile(join(root, 'make', 'migration', 'released.json'), 'utf8')
   ) as Array<{ name: string }>
   return released.map((entry) => entry.name)
 }
@@ -166,7 +166,7 @@ export async function configureWith(
   const codemods = await command.createCodemods()
   codemods.overwriteExisting = false
 
-  await codemods.makeUsingStub(root, 'config.stub', {
+  await codemods.makeUsingStub(root, 'config/access_control.stub', {
     usersTable,
     userKeyType,
     scopeTable,
@@ -179,10 +179,11 @@ export async function configureWith(
       command.logger.info(`Skipped ${migrationPath}/*_${name}.ts`)
       continue
     }
-    await codemods.makeUsingStub(root, `migrations/${name}.stub`, {
+    await codemods.makeUsingStub(root, `make/migration/${name}.stub`, {
       ...schema,
       migration: {
-        destination: join(destination, filename),
+        path: command.parsedFlags['migration-path'] === undefined ? undefined : migrationPath,
+        filename,
       },
     })
   }

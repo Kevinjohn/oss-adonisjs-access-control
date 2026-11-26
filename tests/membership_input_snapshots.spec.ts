@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import { membershipFixture } from './helpers/fixture.js'
-import type { Trx } from '../src/types.js'
+import { membershipFixture } from './helpers/fixture.ts'
+import type { Trx } from '../src/types.ts'
 
 for (const operation of ['add', 'changeRole', 'setStatus', 'grant', 'acceptInvitation'] as const) {
-  test(`${operation} keeps validated input and event values after input reuse`, async ({
+  test(`${operation} keeps validated input and change values after input reuse`, async ({
     assert,
   }) => {
     const f = await membershipFixture()
@@ -15,7 +15,7 @@ for (const operation of ['add', 'changeRole', 'setStatus', 'grant', 'acceptInvit
       if (operation === 'changeRole' || operation === 'setStatus') {
         await f.memberships.add({ actor: { id: owner }, scopeId, userId: target, role: 'viewer' })
       }
-      f.events.length = 0
+      f.changes.length = 0
       const entered = Promise.withResolvers<void>()
       const release = Promise.withResolvers<void>()
       let gated = false
@@ -63,16 +63,16 @@ for (const operation of ['add', 'changeRole', 'setStatus', 'grant', 'acceptInvit
       const stored = await f.config.memberships.find(scopeId, target)
       assert.equal(stored?.role, membership.role, operation)
       assert.equal(stored?.status, membership.status, operation)
-      const [event] = f.events
-      assert.isDefined(event, operation)
-      if ('role' in event) assert.equal(event.role, membership.role, operation)
-      if ('to' in event)
+      const [change] = f.changes
+      assert.isDefined(change, operation)
+      if ('role' in change) assert.equal(change.role, membership.role, operation)
+      if ('to' in change)
         assert.equal(
-          event.to,
+          change.to,
           operation === 'setStatus' ? membership.status : membership.role,
           operation
         )
-      if ('invitationId' in event) assert.equal(event.invitationId, 77)
+      if ('invitationId' in change) assert.equal(change.invitationId, 77)
     } finally {
       await f.cleanup()
     }
@@ -97,7 +97,7 @@ test('acceptInvitation captures the recipient before its first parent lookup', a
     const storedOriginal = await f.memberships.find(scopeId, original)
     assert.equal(storedOriginal?.role, 'editor')
     assert.isNull(await f.memberships.find(scopeId, replacement))
-    assert.deepInclude(f.events[0], {
+    assert.deepInclude(f.changes[0], {
       type: 'membership.invitation_accepted',
       scopeId,
       userId: original,

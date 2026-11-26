@@ -1,19 +1,9 @@
 // Bouncer abilities (specification section 8): one per permission key, resolving the membership lazily.
 import { Bouncer } from '@adonisjs/bouncer'
 import type { BouncerAbility } from '@adonisjs/bouncer/types'
-import type { AccessControl } from './define.js'
-import type { Membership, PermissionKeyOf, UserKey } from './types.js'
+import type { AccessControl } from './define.ts'
 
-/** The subject every generated ability accepts: any user model with an `id`. */
-export interface AbilitySubject {
-  id: UserKey
-}
-
-/** A resolver read on every ability execution, never captured at construction. */
-export type MembershipResolver = () => Membership | null | undefined
-
-/** `{ 'project:write': BouncerAbility, ... }` for the keys of a permission map. */
-export type AbilityMap<P> = { [K in PermissionKeyOf<P>]: BouncerAbility<AbilitySubject> }
+import type { AbilityMap, AbilitySubject, MembershipResolver } from './ability_types.ts'
 
 /**
  * One ability per key, named by the key. Each execution resolves the membership, denies a

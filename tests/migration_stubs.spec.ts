@@ -1,23 +1,24 @@
 import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
-import { buildMembershipMigrationSchema } from '../src/migration_schema.js'
-import { renderMembershipsStub } from './helpers/schema.js'
+import { buildMembershipMigrationSchema } from '../src/migration_schema.ts'
+import { renderMembershipsStub } from './helpers/schema.ts'
 
-const directory = new URL('../stubs/migrations/', import.meta.url)
+const directory = new URL('../stubs/make/migration/', import.meta.url)
 
-test.group('migration stubs: released stubs are immutable (spec 17.1)', () => {
-  test('every released stub exists with its recorded sha256', async ({ assert }) => {
+test.group('migration stubs: released migration bodies are immutable (spec 17.1)', () => {
+  test('every released stub preserves its recorded migration body', async ({ assert }) => {
     const released = JSON.parse(
       await readFile(new URL('released.json', directory), 'utf8')
     ) as Array<{
       name: string
-      sha256: string
+      bodySha256: string
     }>
     assert.isNotEmpty(released)
-    for (const { name, sha256 } of released) {
+    for (const { name, bodySha256 } of released) {
       const content = await readFile(new URL(`${name}.stub`, directory))
-      assert.equal(createHash('sha256').update(content).digest('hex'), sha256, name)
+      const body = content.subarray(content.indexOf(0x0a) + 1)
+      assert.equal(createHash('sha256').update(body).digest('hex'), bodySha256, name)
     }
     const files = await readdir(directory)
     const stubs = files

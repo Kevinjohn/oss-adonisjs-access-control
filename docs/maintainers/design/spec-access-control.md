@@ -127,8 +127,8 @@ what this spec requires. Anything not in the manifest is not brought over.
 - `@adonisjs/assembler` is an optional peer `^8.0.0` for configure-time source transforms.
 - `tsdown.entry`: `index.ts`, `configure.ts`, `stubs/main.ts`, `src/types.ts`,
   `providers/access_control_provider.ts`, `services/main.ts`, `middleware/main.ts`,
-  `account_kit/main.ts`, `commands/main.ts`. `copy:templates` is Masquerade's
-  `copyfiles "stubs/**/*.stub" build`, so `build/stubs/` matches `stubsRoot`.
+  `account_kit/main.ts`, `commands/doctor.ts`. The build generates the Ace loader. `copy:templates` uses
+  `copyfiles --up=1 "stubs/**/*.stub" build/stubs`, so `build/stubs/` matches `stubsRoot`.
 - `test:mysql` = `cross-env DB_CLIENT=mysql2 pnpm quick:test`; `test:built-exports` =
   `cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts`.
 - `c8` block in `package.json` with `check-coverage: true` and `statements`, `lines`, `branches`,
@@ -158,7 +158,7 @@ what this spec requires. Anything not in the manifest is not brought over.
   `services/main.ts`, `stubs/`, `src/` (implementation; `src/types.ts` and `src/errors.ts` for public
   types and errors), a top-level folder **only** when it backs a `package.json` export, `bin/` (`.ts`
   via ts-exec; `.sh` allowed), `bin/helpers/`, flat `tests/`, `tests/helpers/`, `tests/fixtures/`,
-  `tests/tooling/`, `tests/types/`, `examples/`, `docs/`. No `scripts/` folder.
+  `tests/tooling/`, `examples/`, `docs/`. No `scripts/` folder.
 - TypeScript files and folders are `snake_case`; Markdown under `docs/` is kebab-case, as in the
   siblings.
 
@@ -167,13 +167,13 @@ what this spec requires. Anything not in the manifest is not brought over.
 | Subpath                     | File                                   | Contents                                                                                                                                                                                             |
 | --------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `.`                         | `index.ts`                             | `defineAccessControl` (also `defineConfig`), `AccessControl`, errors, `configure` (from `configure.ts`) and `stubsRoot` (from `stubs/main.ts`); `node ace configure` reads both from the root export |
-| `./types`                   | `src/types.ts`                         | type-only public types (`Role`, `PermissionKeyOf`, `ClientPayload`, …)                                                                                                                               |
+| `./types`                   | `src/types.ts`                         | type-only public types (`Role`, `PermissionKeyOf`, `ClientMembershipSummary`, …)                                                                                                                     |
 | `./access_control_provider` | `providers/access_control_provider.ts` | service provider (sibling naming: `./account_kit_provider`, `./masquerade_provider`)                                                                                                                 |
 | `./services/main`           | `services/main.ts`                     | container-resolved `AccessControl` singleton                                                                                                                                                         |
 | `./middleware`              | `middleware/main.ts`                   | default export `ScopeMiddleware` class; `scopeMiddleware(options)`                                                                                                                                   |
 | `./scope_middleware`        | `middleware/main.ts`                   | equivalent middleware subpath, same exports and class identity                                                                                                                                       |
 | `./account-kit`             | `account_kit/main.ts`                  | `accessControlKitCallbacks` (Masquerade's subpath name)                                                                                                                                              |
-| `./commands`                | `commands/main.ts`                     | Ace commands: `access-control:doctor` (17.2)                                                                                                                                                         |
+| `./commands`                | `build/commands/main.js` (generated)   | Ace commands: `access-control:doctor` (17.2)                                                                                                                                                         |
 
 ```
 index.ts
@@ -190,10 +190,10 @@ src/memberships.ts             membership service
 src/locks.ts                   lock process
 src/pagination.ts              cursor encode/decode
 src/abilities.ts               Bouncer ability factory
-src/payload.ts                 client payload
+src/client_membership.ts                 client membership summary
 stubs/main.ts                  export const stubsRoot = import.meta.dirname
-stubs/config.stub
-stubs/migrations/access_control_create_memberships.stub
+stubs/config/access_control.stub
+stubs/make/migration/access_control_create_memberships.stub
 bin/                           check, pg.sh, release_check.sh, test.ts, test_consumer.ts
 tests/                         flat specs; tests/helpers/ shared fixtures
 examples/consumer/             packed-consumer app used by test:consumer
@@ -298,7 +298,7 @@ export default defineAccessControl({
     members: { list: 'admin', manage: 'admin' },
     invitations: { manage: 'admin' },
   },
-  onMembershipChanged: async (event, trx) => {},
+  onMembershipChanged: async (change, trx) => {},
 })
 ```
 
@@ -336,7 +336,7 @@ export interface AccessControlConfig<
    * It must not lock or write other users' rows or Account Kit tables, which sit earlier in the
    * lock order (4.2); writing app tables is fine.
    */
-  onMembershipChanged?: (change: MembershipEvent<R[number]>, trx: Trx) => Promise<void>
+  onMembershipChanged?: (change: MembershipChange<R[number]>, trx: Trx) => Promise<void>
 }
 
 export type PermissionMap<Role extends string> = Record<string, Record<string, Role>> & {
@@ -350,7 +350,7 @@ export type PermissionKeyOf<P> = {
 }[keyof P & string]
 ```
 
-- **Permission keys use a colon: `resource:action` [decided].** The Bouncer test build showed Edge's
+- **Permission keys use a colon: `resource:operation` [decided].** The Bouncer test build showed Edge's
   `@can('project.write')` splits on `.` and looks up a `project` policy, throwing
   `Invalid bouncer policy "'project'"`; `project:write` works in Edge, `allows` and `authorize`.
   (Spike, section 13.)
@@ -457,7 +457,7 @@ trx)` (section 5.3).
 
 ## 4. Database
 
-### 4.1 Migration stub (`stubs/migrations/access_control_create_memberships.stub`)
+### 4.1 Migration stub (`stubs/make/migration/access_control_create_memberships.stub`)
 
 Placeholders filled by `configure`: `{{ membershipsTable }}`, `{{ usersTable }}`, `{{ userKeyType }}`,
 `{{ scopeTable }}`, `{{ scopeKeyType }}`.
@@ -558,7 +558,7 @@ lock order above is unchanged.
 
 ## 5. Membership service (`src/memberships.ts`)
 
-Resolved from the container as `AccessControl` (`app.container.make(AccessControl)`); exposes
+Resolved from the container as `access_control.manager` (`app.container.make('access_control.manager')`); exposes
 `memberships` plus the pure rules.
 
 ### 5.1 Types
@@ -581,7 +581,7 @@ export interface Actor {
   id: UserKey
 }
 
-export type MembershipEvent<Role extends string> =
+export type MembershipChange<Role extends string> =
   | { type: 'membership.added'; scopeId: ScopeKey; userId: UserKey; actorId: UserKey; role: Role }
   | { type: 'membership.first_member'; scopeId: ScopeKey; userId: UserKey; role: Role }
   | {
@@ -866,7 +866,7 @@ Behaviour:
 - All `authorize.*` callbacks only read (through `context.trx` when given, never `forUpdate`); they
   never lock rows inside the kit's transaction.
 - The callbacks are created in `config/account_kit.ts`, before providers boot, so they resolve
-  `AccessControl` lazily on every call (`app.container.make(AccessControl)`), never at creation.
+  `AccessControl` lazily on every call (`app.container.make('access_control.manager')`), never at creation.
 - Admission is checked with `AccountAdmission.isAdmitted(userId, trx)` (`src/admission/service.ts:99`)
   when `app.container.hasBinding('account_admission')` is true at call time **[repo]**
   `src/admission/provider.ts`, unless `options.admission === false`.
@@ -897,12 +897,12 @@ export default defineConfig({
 
 ---
 
-## 10. Client payload (`src/payload.ts`)
+## 10. Client membership summary (`src/client_membership.ts`)
 
 ```ts
-ac.clientPayload(membership: Membership | null): ClientPayload | null
+ac.buildClientMembership(membership: Membership | null): ClientMembershipSummary | null
 
-export interface ClientPayload<Role extends string = string, Key extends string = string> {
+export interface ClientMembershipSummary<Role extends string = string, Key extends string = string> {
   scopeId: string
   role: Role
   permissions: Key[]
@@ -912,7 +912,7 @@ export interface ClientPayload<Role extends string = string, Key extends string 
 
 - `null` in → `null` out. Suspended membership → `null`.
 - `scopeId` is always a string in the payload.
-- `./types` re-exports `ClientPayload`, plus `RoleOf<typeof config>` and `PermissionKeyOf<...>` helpers,
+- `./types` re-exports `ClientMembershipSummary`, plus `RoleOf<typeof config>` and `PermissionKeyOf<...>` helpers,
   type-only.
 
 ---
@@ -925,7 +925,7 @@ Flags are authoritative; a missing scope table prompts only in an interactive te
 
 1. Fail with a clear message if `account_kit.ts` is missing in `app.configPath()`, or `--scope-table` is missing in unattended use, or a
    table name or id type is invalid.
-2. Write `app.configPath('access_control.ts')` from `stubs/config.stub` (the 2.1 example with the flag values),
+2. Write `app.configPath('access_control.ts')` from `stubs/config/access_control.stub` (the 2.1 example with the flag values),
    always including `membershipsTable: '<value>'` (default `'memberships'`).
 3. Publish `<timestamp>_access_control_create_memberships.ts` in the selected directory (default
    `app.migrationsPath()`). New numeric prefixes must sort after existing numeric prefixes there.
@@ -946,7 +946,7 @@ Each milestone is one pull request, passes the gate, and lists its tests by name
 | M0  | Scaffold the repository from the template (section 1): every file in 1.3-1.10, empty exports, this spec moved to `docs/maintainers/design/spec-access-control.md`, requirement ledger started | `pnpm check --full` green; CI green on SQLite, PostgreSQL and MySQL; `test:built-exports` covers every subpath in 1.7; docs build |
 | M1  | `defineAccessControl`, validation (2.3), types, `src/rules.ts` (section 3)                                                                                                                    | unit tests below for 2.3 and every row of 3.1, 3.2, 3.4                                                                           |
 | M2  | Migration stub, lock process (4.2), service (section 5), errors (section 6)                                                                                                                   | requires prerequisite 0.2; DB tests below pass on SQLite, PG, MySQL                                                               |
-| M3  | Scope middleware (7), abilities (8), services/main, client payload (10)                                                                                                                       | requires prerequisite 0.3; integration tests below                                                                                |
+| M3  | Scope middleware (7), abilities (8), services/main, client membership summary (10)                                                                                                            | requires prerequisite 0.3; integration tests below                                                                                |
 | M4  | Account Kit callbacks (9)                                                                                                                                                                     | requires #768 and the transaction export; tests below                                                                             |
 | M5  | `configure` (11), `access-control:doctor` (17.2), docs (14, 17)                                                                                                                               | configure and doctor tests on a fresh app; docs reviewed                                                                          |
 
@@ -999,7 +999,7 @@ as installed in CapacityLens. **[repo]**
 - Mutation 1 (remove the subject id check): the "reused with another subject" check fails.
 - Mutation 2 (resolve the membership eagerly at construction): lazy, isolation, editor and Edge checks
   fail.
-- Type check: generated `resource:action` keys merge with app abilities in `new Bouncer<User, typeof
+- Type check: generated `resource:operation` keys merge with app abilities in `new Bouncer<User, typeof
 all>`; an unknown key (`project:delete`) fails to compile (`@ts-expect-error` removed → `tsc` exit 2).
 - Edge's `bouncer.can('project.write')` throws `Invalid bouncer policy "'project'"` because it splits on
   `.`; this is why keys use `:`.
@@ -1045,13 +1045,14 @@ fixtures. Section 17 (change over time) was added after this review and has not 
 
 ### 17.1 The package's own schema
 
-- **Released migration stubs are immutable.** Once a version ships, its stubs never change. Schema
+- **Released migration bodies are immutable.** A template destination directive may move the
+  generated file during configure. Schema
   changes ship as **new, additive** stubs.
 - Every stub has a stable name: `access_control_create_memberships` for v0.1 (the package prefix
   keeps the published file name clear of an app's own `create_memberships` migration); later ones
   `access_control_<YYYYMMDD>_<change>` (e.g. `access_control_20270115_add_membership_note`).
-- `stubs/migrations/released.json` records `{ name, sha256 }` for every released stub.
-  `tests/migration_stubs.spec.ts` fails if a listed stub's hash changes or a listed stub is deleted.
+- `stubs/make/migration/released.json` records `{ name, bodySha256 }` for every released stub.
+  `tests/migration_stubs.spec.ts` fails if a listed stub's body hash changes or a listed stub is deleted.
   Adding a stub to a release adds its entry in the release PR.
 - `configure` publishes every stub whose stable name is not already present (matched by file-name
   suffix in the selected migration directory) and never rewrites an existing file. Re-running `configure` after
@@ -1108,7 +1109,7 @@ prints `{ checks: [{ name, ok, count, sampleIds }] }`. No writes, no locks.
 - Semver. While on `0.x`: a **patch** never breaks; a **minor** may break only with a `### Changed`
   entry marked **Breaking** and an `### Upgrading` section in the changelog giving exact steps.
 - Public API for this purpose: exports and their signatures, config keys, permission-key format,
-  error codes, `MembershipEvent` types, client payload shape, migration stub names and columns,
+  error codes, `MembershipChange` types, client membership summary shape, migration stub names and columns,
   `configure` flags, doctor exit codes and JSON shape.
 - Account Kit upgrades: the peer is an exact version, so a kit release that this package adopts is a
   package release; update the dev-dependency tarball URL, version and checksum together (1.11).

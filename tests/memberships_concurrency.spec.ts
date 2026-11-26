@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
+import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.ts'
 
 const actor = (id: number | string) => ({ id })
 
@@ -21,7 +21,7 @@ test.group('memberships: concurrent operations serialise on the locks (spec 4.2)
     ])
     assert.sameMembers(results, ['resolved', 'E_ACCESS_CONTROL_SCOPE_NOT_EMPTY'])
     assert.lengthOf(await f.rows(s), 1)
-    assert.lengthOf(f.events, 1)
+    assert.lengthOf(f.changes, 1)
   })
 
   test('concurrent remove of two admins by each other: at most one succeeds', async ({

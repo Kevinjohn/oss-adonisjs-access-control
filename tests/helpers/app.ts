@@ -7,11 +7,11 @@ import { IgnitorFactory } from '@adonisjs/core/factories'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import type { Database } from '@adonisjs/lucid/database'
 import type { ApplicationService } from '@adonisjs/core/types'
-import { defineAccessControl } from '../../index.js'
-import type { KeyType, MembershipEvent, PermissionMap, Trx } from '../../src/types.js'
-import { connectionConfig, testClient, testEngine } from './database.js'
-import { createSchema, dropSchema, type SchemaNames } from './schema.js'
-import { permissions, roles, type Role } from './fixture.js'
+import { defineAccessControl } from '../../index.ts'
+import type { KeyType, MembershipChange, PermissionMap, Trx } from '../../src/types.ts'
+import { connectionConfig, testClient, testEngine } from './database.ts'
+import { createSchema, dropSchema, type SchemaNames } from './schema.ts'
+import { permissions, roles, type Role } from './fixture.ts'
 
 export interface TestApp {
   app: ApplicationService
@@ -25,7 +25,7 @@ export async function bootTestApp(
   options: {
     accessControl?: unknown
     withProvider?: boolean
-    onMembershipChanged?: (event: MembershipEvent<string>, trx: Trx) => Promise<void>
+    onMembershipChanged?: (change: MembershipChange<string>, trx: Trx) => Promise<void>
     permissions?: PermissionMap<Role>
     /** Key types of the users and scope tables; default integer. */
     keyTypes?: { users: KeyType; scope: KeyType }

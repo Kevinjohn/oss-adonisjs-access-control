@@ -1,10 +1,10 @@
 import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
 import type { AccountUser } from '@kevinjohn/adonisjs-account-kit'
-import { AccessControl, defineConfig, errors } from '../index.js'
-import { accessControlKitCallbacks } from '../account_kit/main.js'
-import { loadRunner } from '../src/kit_transaction.js'
-import { bootTestApp } from './helpers/app.js'
+import { defineConfig, errors } from '../index.ts'
+import { accessControlKitCallbacks } from '../account_kit/main.ts'
+import { loadRunner } from '../src/kit_transaction.ts'
+import { bootTestApp } from './helpers/app.ts'
 
 test('app-owned membership rows reject invalid status and required timestamps, including Account Kit export', async ({
   assert,
@@ -13,12 +13,12 @@ test('app-owned membership rows reject invalid status and required timestamps, i
   const { db, names } = fixture
   const tableName = `${names.memberships}_app`
   try {
-    const original = await fixture.app.container.make(AccessControl)
+    const original = await fixture.app.container.make('access_control.manager')
     const access = defineConfig({ ...original.config, membershipsTable: tableName }).attach(
       db,
       await loadRunner()
     )
-    fixture.app.container.bindValue(AccessControl, access)
+    fixture.app.container.bindValue('access_control.manager', access)
     await db.connection().schema.createTable(tableName, (table) => {
       table.increments('id')
       table.integer('scope_id')

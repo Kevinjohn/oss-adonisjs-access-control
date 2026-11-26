@@ -3,11 +3,11 @@
   "entryPoints": [
     "index.ts",
     "src/types.ts",
+    "src/memberships.ts",
     "providers/access_control_provider.ts",
     "services/main.ts",
     "middleware/main.ts",
-    "account_kit/main.ts",
-    "commands/main.ts"
+    "account_kit/main.ts"
   ],
   "out": "docs/reference/api",
   "plugin": ["typedoc-plugin-markdown"],

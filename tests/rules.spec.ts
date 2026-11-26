@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { defineAccessControl } from '../index.js'
+import { defineAccessControl } from '../index.ts'
 
 const withOwner = defineAccessControl({
   roles: ['viewer', 'editor', 'admin', 'owner'],

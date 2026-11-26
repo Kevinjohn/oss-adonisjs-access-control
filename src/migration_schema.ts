@@ -1,10 +1,10 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
-import { isSqlIdentifier } from './identifiers.js'
-import type { KeyType } from './types.js'
+import { isSqlIdentifier } from './identifiers.ts'
+import type { KeyType } from './types.ts'
 
 const keyTypes: readonly KeyType[] = ['integer', 'string', 'uuid']
 
-/** The values `configure` and the tests put into `stubs/migrations/access_control_create_memberships.stub`. */
+/** The values `configure` and the tests put into `stubs/make/migration/access_control_create_memberships.stub`. */
 export interface MembershipsMigrationSchema {
   membershipsTable: string
   usersTable: string

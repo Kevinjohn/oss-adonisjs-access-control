@@ -1,6 +1,6 @@
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { test } from '@japa/runner'
-import { defineAccessControl } from '../index.js'
+import { defineAccessControl } from '../index.ts'
 
 const base = {
   roles: ['viewer', 'editor', 'admin', 'owner'],
@@ -116,7 +116,7 @@ test.group('defineAccessControl: boot validation (spec 2.3)', () => {
     )
   })
 
-  test('2.3.3 rejects a resource or action name that fails the pattern', ({ assert }) => {
+  test('2.3.3 rejects a resource or operation name that fails the pattern', ({ assert }) => {
     assertInvalidConfig(
       assert,
       invalid({ permissions: { ...base.permissions, 'my-project': { read: 'viewer' } } }),
@@ -125,7 +125,7 @@ test.group('defineAccessControl: boot validation (spec 2.3)', () => {
     assertInvalidConfig(
       assert,
       invalid({ permissions: { ...base.permissions, project: { 'read:all': 'viewer' } } }),
-      /action name "read:all"/
+      /operation name "read:all"/
     )
     assertInvalidConfig(
       assert,

@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
-import { locksRows } from './helpers/database.js'
-import { defineAccessControl } from '../index.js'
-import { isCanonicalKey } from '../src/keys.js'
-import { haveSameKeys } from '../src/locks.js'
-import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
+import { locksRows } from './helpers/database.ts'
+import { defineAccessControl } from '../index.ts'
+import { isCanonicalKey } from '../src/keys.ts'
+import { haveSameKeys } from '../src/locks.ts'
+import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.ts'
 
 const actor = (id: number | string) => ({ id })
 
@@ -354,7 +354,7 @@ test.group('keys: case-insensitive string keys (MySQL default collation)', () =>
       })
       assert.deepEqual(calls, [])
       assert.deepEqual(
-        f.events.map((event) => ('userId' in event ? [event.scopeId, event.userId] : null)),
+        f.changes.map((change) => ('userId' in change ? [change.scopeId, change.userId] : null)),
         [
           [scope, owner],
           [scope, other],

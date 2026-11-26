@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { loadRunner } from '../src/kit_transaction.js'
-import { testDatabase } from './helpers/database.js'
-import { createLockRow, LOCK_TABLE } from './helpers/schema.js'
+import { loadRunner } from '../src/kit_transaction.ts'
+import { testDatabase } from './helpers/database.ts'
+import { createLockRow, LOCK_TABLE } from './helpers/schema.ts'
 
 test.group('kit transaction bridge (spec 0.2)', () => {
   test('is the kit export, resolved once', async ({ assert }) => {

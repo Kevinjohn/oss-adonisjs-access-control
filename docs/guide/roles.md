@@ -69,7 +69,7 @@ the request and the Bouncer abilities return false. Renaming or removing a role,
 [changing roles guide](changing-roles.md) gives the steps and the doctor command that verifies
 them.
 
-For an active membership with a historical role, `clientPayload` still returns that stored role
+For an active membership with a historical role, `buildClientMembership` still returns that stored role
 as a string. Its `permissions` and `assignableRoles` arrays are empty. Consumers should handle a
 role outside the current configured tuple while the data migration is pending.
 

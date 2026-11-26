@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { defineAccessControl } from '../index.js'
-import type { Membership } from '../src/types.js'
+import { defineAccessControl } from '../index.ts'
+import type { Membership } from '../src/types.ts'
 
 const config = defineAccessControl({
   roles: ['viewer', 'editor', 'admin', 'owner'],
@@ -20,22 +20,15 @@ function membership(role: string, status: 'active' | 'suspended' = 'active'): Me
   return { scopeId: 42, userId: 7, role, status, createdAt: now, updatedAt: now }
 }
 
-test.group('client payload (spec 10)', () => {
+test.group('client membership summary (spec 10)', () => {
   test('null in, null out; suspended is null', ({ assert }) => {
-    assert.isNull(config.clientPayload(null))
-    assert.isNull(config.clientPayload(undefined))
-    assert.isNull(config.clientPayload(membership('owner', 'suspended')))
     assert.isNull(config.buildClientMembership(null))
     assert.isNull(config.buildClientMembership(undefined))
     assert.isNull(config.buildClientMembership(membership('owner', 'suspended')))
   })
 
-  test('an editor payload has a string scopeId, its keys and no assignable roles', ({ assert }) => {
-    assert.deepEqual(
-      config.buildClientMembership(membership('editor')),
-      config.clientPayload(membership('editor'))
-    )
-    assert.deepEqual(config.clientPayload(membership('editor')), {
+  test('an editor summary has a string scopeId, its keys and no assignable roles', ({ assert }) => {
+    assert.deepEqual(config.buildClientMembership(membership('editor')), {
       scopeId: '42',
       role: 'editor',
       permissions: ['project:read', 'project:write'],
@@ -43,8 +36,8 @@ test.group('client payload (spec 10)', () => {
     })
   })
 
-  test('an admin payload lists assignable roles below the owner', ({ assert }) => {
-    assert.deepEqual(config.clientPayload(membership('admin')), {
+  test('an admin summary lists assignable roles below the owner', ({ assert }) => {
+    assert.deepEqual(config.buildClientMembership(membership('admin')), {
       scopeId: '42',
       role: 'admin',
       permissions: [
@@ -57,7 +50,7 @@ test.group('client payload (spec 10)', () => {
       ],
       assignableRoles: ['viewer', 'editor', 'admin'],
     })
-    assert.deepEqual(config.clientPayload({ ...membership('ghost'), scopeId: 'abc' }), {
+    assert.deepEqual(config.buildClientMembership({ ...membership('ghost'), scopeId: 'abc' }), {
       scopeId: 'abc',
       role: 'ghost',
       permissions: [],

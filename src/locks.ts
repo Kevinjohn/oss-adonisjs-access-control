@@ -1,6 +1,6 @@
 // The lock process (specification 4.2): user rows ascending, then scope rows ascending.
-import { E_ACCESS_CONTROL_SCOPE_NOT_FOUND } from './errors.js'
-import type { ScopeKey, TransactionRunner, Trx, UserKey } from './types.js'
+import { E_ACCESS_CONTROL_SCOPE_NOT_FOUND } from './errors.ts'
+import type { ScopeKey, TransactionRunner, Trx, UserKey } from './types.ts'
 
 /** Unique keys in code-unit order of `String(key)`, so integer keys sort as strings. */
 export function sortUniqueKeys<K extends ScopeKey | UserKey>(keys: Iterable<K>): K[] {

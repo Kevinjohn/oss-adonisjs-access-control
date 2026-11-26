@@ -1,11 +1,11 @@
 // The membership service over a fresh schema on the client under test.
 import { randomUUID } from 'node:crypto'
-import { defineAccessControl } from '../../index.js'
-import { loadRunner } from '../../src/kit_transaction.js'
-import type { KitRunner } from '../../src/kit_transaction.js'
-import type { KeyType, MembershipEvent, ScopeKey, Trx, UserKey } from '../../src/types.js'
-import { testDatabase, type TestDatabase } from './database.js'
-import { createSchema, dropSchema, type SchemaNames } from './schema.js'
+import { defineAccessControl } from '../../index.ts'
+import { loadRunner } from '../../src/kit_transaction.ts'
+import type { KitRunner } from '../../src/kit_transaction.ts'
+import type { KeyType, MembershipChange, ScopeKey, Trx, UserKey } from '../../src/types.ts'
+import { testDatabase, type TestDatabase } from './database.ts'
+import { createSchema, dropSchema, type SchemaNames } from './schema.ts'
 
 export const roles = ['viewer', 'editor', 'admin', 'owner'] as const
 export type Role = (typeof roles)[number]
@@ -25,7 +25,7 @@ export interface FixtureOptions {
   sqliteBusyTimeout?: number
   /** String keys compared case-insensitively: SQLite `NOCASE`; MySQL's default collation already is. */
   caseInsensitiveKeys?: boolean
-  onMembershipChanged?: (event: MembershipEvent<Role>, trx: Trx) => Promise<void>
+  onMembershipChanged?: (change: MembershipChange<Role>, trx: Trx) => Promise<void>
 }
 
 let counter = 0
@@ -52,7 +52,7 @@ export async function membershipFixture(options: FixtureOptions = {}) {
     await database.cleanup()
     throw error
   }
-  const events: MembershipEvent<Role>[] = []
+  const changes: MembershipChange<Role>[] = []
   const config = defineAccessControl({
     roles: [...roles],
     ...(options.owner === false ? {} : { ownerRole: 'owner' }),
@@ -60,9 +60,9 @@ export async function membershipFixture(options: FixtureOptions = {}) {
     scope: { table: names.scope, keyType: scopeKeyType },
     membershipsTable: names.memberships,
     permissions,
-    async onMembershipChanged(event, trx) {
-      events.push(event)
-      await options.onMembershipChanged?.(event, trx)
+    async onMembershipChanged(change, trx) {
+      changes.push(change)
+      await options.onMembershipChanged?.(change, trx)
     },
   })
   const runner: KitRunner = await loadRunner()
@@ -89,7 +89,7 @@ export async function membershipFixture(options: FixtureOptions = {}) {
     names,
     config,
     memberships: config.memberships,
-    events,
+    changes,
     runner,
     createUser: (): Promise<UserKey> => createRow(names.users, userKeyType),
     createScope: (): Promise<ScopeKey> => createRow(names.scope, scopeKeyType),

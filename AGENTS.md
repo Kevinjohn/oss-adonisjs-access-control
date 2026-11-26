@@ -81,7 +81,7 @@ providers/<name>_provider.ts
 commands/                   Ace commands
 services/main.ts            container service
 middleware/main.ts          scope middleware (exported subpath)
-account_kit/main.ts         Account Kit callbacks (exported subpath)
+account_kit/main.ts         Account Kit callbacks entry point (implementation in src/)
 stubs/                      configure templates
 src/                        implementation; src/types.ts and src/errors.ts for public types and errors
 bin/                        package scripts (.ts via ts-exec; .sh allowed)
@@ -90,7 +90,6 @@ tests/                      flat Japa specs
 tests/helpers/              shared test helpers
 tests/fixtures/             static fixtures
 tests/tooling/              specs for bin/
-tests/types/                type-level tests (.ts, not .spec.ts), where they exist
 examples/consumer/          packed-consumer app used by test:consumer
 docs/                       user and maintainer documentation
 ```

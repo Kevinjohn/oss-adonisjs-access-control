@@ -6,8 +6,8 @@ import {
   planChangedChecks,
   type ChangedFile,
   type PlannedCheckStep,
-} from '../../bin/check_changed_plan.js'
-import { repoRoot } from '../helpers/tracked_markdown.js'
+} from '../../bin/check_changed_plan.ts'
+import { repoRoot } from '../helpers/tracked_markdown.ts'
 
 const changed = (...paths: string[]): ChangedFile[] =>
   paths.map((path) => ({ path, deleted: false }))
@@ -66,7 +66,7 @@ test('the docs workflow inputs build the docs and require a clean tree', ({ asse
     'src/rules.ts',
     'index.ts',
     'account_kit/main.ts',
-    'stubs/config.stub',
+    'stubs/config/access_control.stub',
   ]) {
     assert.deepInclude(
       planChangedChecks(changed(path)).find((step) => step.label === 'docs build'),
@@ -127,7 +127,7 @@ test('database code notes the PostgreSQL and MySQL suites', ({ assert }) => {
     'src/locks.ts',
     'src/migration_schema.ts',
     'src/doctor.ts',
-    'stubs/migrations/access_control_create_memberships.stub',
+    'stubs/make/migration/access_control_create_memberships.stub',
     'tests/helpers/schema.ts',
   ])
     assert.deepInclude(planChangedChecks(changed(path)), note, path)
