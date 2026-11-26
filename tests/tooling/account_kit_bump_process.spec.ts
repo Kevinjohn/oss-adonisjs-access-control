@@ -11,6 +11,7 @@ import { kitReleaseUrl, type KitRelease } from '../../bin/helpers/account_kit_bu
 const run = promisify(execFile)
 const script = fileURLToPath(new URL('../../bin/bump_account_kit.ts', import.meta.url))
 const loader = fileURLToPath(import.meta.resolve('@poppinss/ts-exec'))
+const loaderEnv = { ...process.env, TS_EXEC_PWD: fileURLToPath(new URL('../..', import.meta.url)) }
 const from: KitRelease = {
   version: '0.3.3',
   url: kitReleaseUrl('0.3.3'),
@@ -58,6 +59,7 @@ test('bump command finishes a journaled partial write after manifest reached tar
     await writeFile(join(root, 'package.json'), plan.files[0].after)
     const result = await run(process.execPath, ['--import', loader, script, to.version], {
       cwd: root,
+      env: loaderEnv,
     })
     assert.include(result.stdout, 'Rewrote 2 files.')
     assert.include(await readFile(join(root, 'README.md'), 'utf8'), to.version)
@@ -98,7 +100,7 @@ test('bump command preserves a failed leftover scan', async ({ assert }) => {
     try {
       await run(process.execPath, ['--import', loader, script, to.version], {
         cwd: root,
-        env: { ...process.env, PATH: `${shim}:${process.env.PATH}` },
+        env: { ...loaderEnv, PATH: `${shim}:${process.env.PATH}` },
       })
     } catch (error) {
       failure = error as typeof failure
@@ -109,6 +111,7 @@ test('bump command preserves a failed leftover scan', async ({ assert }) => {
     assert.ok(await readFile(join(root, 'tmp/account-kit-bump-plan.json'), 'utf8'))
     const retry = await run(process.execPath, ['--import', loader, script, to.version], {
       cwd: root,
+      env: loaderEnv,
     })
     assert.include(retry.stdout, 'Account Kit 0.3.3 -> 0.3.4')
     await assert.rejects(() => readFile(join(root, 'tmp/account-kit-bump-plan.json')), /ENOENT/)
