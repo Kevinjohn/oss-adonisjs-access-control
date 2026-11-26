@@ -1,7 +1,7 @@
 import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
-import { errors } from '../index.js'
-import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
+import { errors } from '../index.ts'
+import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.ts'
 
 test.group('memberships: ordinary operations (spec 5.2)', (group) => {
   let f: MembershipFixture
@@ -27,7 +27,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     await f.memberships.add({ actor: actor(owner), scopeId: scope, userId: admin, role: 'admin' })
     await f.memberships.add({ actor: actor(owner), scopeId: scope, userId: editor, role: 'editor' })
     await f.memberships.add({ actor: actor(owner), scopeId: scope, userId: viewer, role: 'viewer' })
-    f.events.length = 0
+    f.changes.length = 0
     return () => f.cleanup()
   })
 
@@ -105,7 +105,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       { name: 'InvalidArgumentsException', message: /authorize requires a transaction/ }
     )
     assert.deepEqual(
-      f.events.map((event) => event.type),
+      f.changes.map((change) => change.type),
       ['membership.status_changed']
     )
   })
@@ -125,7 +125,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     })
     assert.isTrue(membership.createdAt.isValid)
     assert.equal(membership.createdAt.toMillis(), membership.updatedAt.toMillis())
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       {
         type: 'membership.added',
         scopeId: scope,
@@ -179,7 +179,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       ),
       'E_ACCESS_CONTROL_INVALID_INPUT'
     )
-    assert.lengthOf(f.events, 0)
+    assert.lengthOf(f.changes, 0)
   })
 
   test('add: a suspended actor is FORBIDDEN', async ({ assert }) => {
@@ -249,7 +249,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       role: 'editor',
     })
     assert.deepInclude(changed, { userId: viewer, role: 'editor' })
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       {
         type: 'membership.role_changed',
         scopeId: scope,
@@ -267,7 +267,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       role: 'editor',
     })
     assert.equal(same.updatedAt.toMillis(), before!.updatedAt.toMillis())
-    assert.lengthOf(f.events, 1)
+    assert.lengthOf(f.changes, 1)
 
     const change = (who: number | string, userId: number | string, role: string) =>
       codeOf(f.memberships.changeRole({ actor: actor(who), scopeId: scope, userId, role }))
@@ -278,7 +278,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     assert.equal(await change(admin, viewer, 'owner'), 'E_ACCESS_CONTROL_OWNER_PROTECTED')
     assert.equal(await change(admin, viewer, 'ceo'), 'E_ACCESS_CONTROL_UNKNOWN_ROLE')
     assert.equal(await change(owner, viewer, 'admin'), 'resolved')
-    assert.lengthOf(f.events, 2)
+    assert.lengthOf(f.changes, 2)
   })
 
   test('changeRole: a stored role outside the tuple denies with UNKNOWN_ROLE', async ({
@@ -320,7 +320,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       status: 'suspended',
     })
     assert.equal(suspended.status, 'suspended')
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       {
         type: 'membership.status_changed',
         scopeId: scope,
@@ -336,7 +336,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       userId: editor,
       status: 'suspended',
     })
-    assert.lengthOf(f.events, 1)
+    assert.lengthOf(f.changes, 1)
     const reactivated = await f.memberships.setStatus({
       actor: actor(admin),
       scopeId: scope,
@@ -344,7 +344,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       status: 'active',
     })
     assert.equal(reactivated.status, 'active')
-    assert.lengthOf(f.events, 2)
+    assert.lengthOf(f.changes, 2)
 
     const set = (who: number | string, userId: number | string, status: string) =>
       codeOf(
@@ -365,7 +365,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
   test('remove: happy path and errors', async ({ assert }) => {
     await f.memberships.remove({ actor: actor(admin), scopeId: scope, userId: viewer })
     assert.isNull(await f.memberships.find(scope, viewer))
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       {
         type: 'membership.removed',
         scopeId: scope,
@@ -402,7 +402,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
   }) => {
     await f.memberships.leave({ scopeId: scope, userId: viewer })
     assert.isNull(await f.memberships.find(scope, viewer))
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       { type: 'membership.left', scopeId: scope, userId: viewer, role: 'viewer' },
     ])
     await f.memberships.setStatus({
@@ -434,7 +434,7 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
     await f.memberships.transferOwnership({ actor: actor(owner), scopeId: scope, toUserId: editor })
     assert.equal((await f.memberships.find(scope, owner))!.role, 'admin')
     assert.equal((await f.memberships.find(scope, editor))!.role, 'owner')
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       {
         type: 'membership.ownership_transferred',
         scopeId: scope,
@@ -449,8 +449,8 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
 
   test('transferOwnership: a failure mid-way rolls back both role writes', async ({ assert }) => {
     const failing = await membershipFixture({
-      async onMembershipChanged(event) {
-        if (event.type === 'membership.ownership_transferred') throw new Error('audit log down')
+      async onMembershipChanged(change) {
+        if (change.type === 'membership.ownership_transferred') throw new Error('audit log down')
       },
     })
     try {
@@ -502,8 +502,8 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
 
   test('onMembershipChanged throwing rolls back the write', async ({ assert }) => {
     const failing = await membershipFixture({
-      async onMembershipChanged(event) {
-        if (event.type === 'membership.added')
+      async onMembershipChanged(change) {
+        if (change.type === 'membership.added')
           throw new errors.E_ACCESS_CONTROL_INVALID_INPUT('nope')
       },
     })
@@ -629,6 +629,6 @@ test.group('memberships: ordinary operations (spec 5.2)', (group) => {
       })
       .catch(() => {})
     assert.isNull(await f.memberships.find(scope, outsider))
-    assert.lengthOf(f.events, 1)
+    assert.lengthOf(f.changes, 1)
   })
 })

@@ -5,9 +5,9 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { basename, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { consumerArtifact } from './helpers/consumer_artifact.js'
-import { ConsumerCommandError, ConsumerProcessRunner } from './helpers/consumer_process.js'
-import { selectRegistryVersion } from './helpers/registry_version.js'
+import { consumerArtifact } from './helpers/consumer_artifact.ts'
+import { ConsumerCommandError, ConsumerProcessRunner } from './helpers/consumer_process.ts'
+import { selectRegistryVersion } from './helpers/registry_version.ts'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const args = new Map(
@@ -93,7 +93,7 @@ const rootProbe = `
   assert.equal(api.defineConfig, api.defineAccessControl)
   assert.equal(typeof api.stubsRoot, 'string')
   await access(join(api.stubsRoot, 'main.js'))
-  await access(join(api.stubsRoot, 'migrations', 'released.json'))
+  await access(join(api.stubsRoot, 'make', 'migration', 'released.json'))
   const commands = await import('@kevinjohn/adonisjs-access-control/commands')
   const metadata = await commands.getMetaData()
   assert.deepEqual(metadata.map((c) => c.commandName), ['access-control:doctor'])

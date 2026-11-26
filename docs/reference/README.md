@@ -17,7 +17,7 @@ This reference describes the current release. Its provider entry is
 | `@kevinjohn/adonisjs-access-control/middleware`              | Scope middleware: resolves the current request's membership                                                                 | <a href="/oss-adonisjs-access-control/reference/api/middleware/main/">Middleware reference</a>                 |
 | `@kevinjohn/adonisjs-access-control/scope_middleware`        | Alias of the `middleware` subpath: the same class and factory                                                               | <a href="/oss-adonisjs-access-control/reference/api/middleware/main/">Middleware reference</a>                 |
 | `@kevinjohn/adonisjs-access-control/account-kit`             | Account Kit callbacks: invitations, acceptance, account deletion and export                                                 | <a href="/oss-adonisjs-access-control/reference/api/account_kit/main/">Account Kit reference</a>               |
-| `@kevinjohn/adonisjs-access-control/commands`                | Ace command discovery loader                                                                                                | <a href="/oss-adonisjs-access-control/reference/api/commands/main/">Commands reference</a>                     |
+| `@kevinjohn/adonisjs-access-control/commands`                | Ace command discovery loader                                                                                                | `node ace access-control:doctor --help`                                                                        |
 
 The exports above are the complete supported surface. The root exports `defineConfig` and its
 alias `defineAccessControl`, `AccessControl`, the `errors`

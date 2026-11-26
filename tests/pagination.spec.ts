@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { decodeCursor, encodeCursor } from '../src/pagination.js'
+import { decodeCursor, encodeCursor } from '../src/pagination.ts'
 
 test.group('pagination: membership cursors', () => {
   test('round-trips created_at and id', ({ assert }) => {

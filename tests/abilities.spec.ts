@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
 import { Bouncer } from '@adonisjs/bouncer'
 import { DateTime } from 'luxon'
-import { defineAccessControl } from '../index.js'
-import type { Membership } from '../src/types.js'
+import { defineAccessControl } from '../index.ts'
+import type { Membership } from '../src/types.ts'
 
 const config = defineAccessControl({
   roles: ['viewer', 'editor', 'admin', 'owner'],

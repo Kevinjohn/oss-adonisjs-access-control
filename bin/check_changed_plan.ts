@@ -53,7 +53,7 @@ const isEslintIgnored = (path: string) => /^(stubs|examples|tmp)\//.test(path)
 const isLintable = (path: string) =>
   (/\.[cm]?[jt]sx?$/.test(path) && !isEslintIgnored(path)) || dependencyFiles.includes(path)
 const isDatabaseCode = (path: string) =>
-  /^(src\/(memberships|locks|kit_transaction|pagination|migration_schema|doctor)\.ts|stubs\/migrations\/.*|tests\/helpers\/schema\.ts)$/.test(
+  /^(src\/(memberships|locks|kit_transaction|pagination|migration_schema|doctor)\.ts|stubs\/make\/migration\/.*|tests\/helpers\/schema\.ts)$/.test(
     path
   )
 

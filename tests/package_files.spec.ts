@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { packedFiles } from './helpers/packed_files.js'
+import { packedFiles } from './helpers/packed_files.ts'
 
 const rootFiles = [
   'package.json',
@@ -21,7 +21,10 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.deepEqual(unexpected, [])
     for (const path of rootFiles) assert.include(files, path)
     assert.include(files, 'build/index.js')
-    assert.include(files, 'build/stubs/migrations/access_control_create_memberships.stub')
-    assert.include(files, 'build/stubs/migrations/released.json')
+    assert.include(files, 'build/commands/commands.json')
+    assert.include(files, 'build/commands/main.d.ts')
+    assert.include(files, 'build/stubs/config/access_control.stub')
+    assert.include(files, 'build/stubs/make/migration/access_control_create_memberships.stub')
+    assert.include(files, 'build/stubs/make/migration/released.json')
   })
 }

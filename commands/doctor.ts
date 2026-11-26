@@ -1,6 +1,5 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { AccessControl } from '../src/define.js'
-import { readAccountKitVersions, runDoctor } from '../src/doctor.js'
+import { readAccountKitVersions, runDoctor } from '../src/doctor.ts'
 
 /**
  * `node ace access-control:doctor [--scope=<id>] [--json]`: read-only checks of the memberships
@@ -28,7 +27,7 @@ export default class AccessControlDoctor extends BaseCommand {
 
   async run(): Promise<void> {
     try {
-      const access = await this.app.container.make(AccessControl)
+      const access = await this.app.container.make('access_control.manager')
       const db = await this.app.container.make('lucid.db')
       const report = await runDoctor({
         access,

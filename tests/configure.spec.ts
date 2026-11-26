@@ -14,16 +14,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { test } from '@japa/runner'
+import { FileSystem } from '@japa/file-system'
 import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import Configure from '@adonisjs/core/commands/configure'
 import { IgnitorFactory } from '@adonisjs/core/factories'
-import { configureWith } from '../configure.js'
-import { stubsRoot } from '../stubs/main.js'
-import { renderMembershipsStub } from './helpers/schema.js'
-import { testDatabase } from './helpers/database.js'
+import { configureWith } from '../configure.ts'
+import { stubsRoot } from '../stubs/main.ts'
+import { renderMembershipsStub } from './helpers/schema.ts'
+import { testDatabase } from './helpers/database.ts'
 import { sourceFiles } from '@adonisjs/lucid/utils'
 import type { BaseSchema } from '@adonisjs/lucid/schema'
-import { planMigrations } from '../src/migration_order.js'
+import { planMigrations } from '../src/migration_order.ts'
 
 const packageName = '@kevinjohn/adonisjs-access-control'
 const kernelSource = [
@@ -50,23 +51,23 @@ async function freshApp(
   } = {}
 ) {
   const root = await mkdtemp(join(tmpdir(), 'access_control_configure_'))
+  const fs = new FileSystem(root)
   const configPath = options.configPath ?? 'config'
   const migrationPath = options.migrationPath ?? 'database/migrations'
   const directories = { config: configPath, migrations: migrationPath }
-  await writeFile(
-    join(root, 'package.json'),
+  await fs.create(
+    'package.json',
     '{"type":"module","devDependencies":{"@adonisjs/assembler":"8.6.0"}}'
   )
-  await writeFile(join(root, 'tsconfig.json'), '{}')
-  await writeFile(
-    join(root, 'adonisrc.ts'),
+  await fs.createJson('tsconfig.json', {})
+  await fs.create(
+    'adonisrc.ts',
     `import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ commands: [], providers: [], directories: ${JSON.stringify(directories)} })\n`
   )
-  await mkdir(join(root, 'start'))
-  await writeFile(join(root, 'start', 'kernel.ts'), kernelSource)
-  await mkdir(join(root, configPath), { recursive: true })
+  await fs.create('start/kernel.ts', kernelSource)
+  await fs.mkdir(configPath, { recursive: true })
   if (options.accountKit !== false)
-    await writeFile(join(root, configPath, 'account_kit.ts'), 'export default {}\n')
+    await fs.create(join(configPath, 'account_kit.ts'), 'export default {}\n')
   await symlink(
     fileURLToPath(new URL('../node_modules', import.meta.url)),
     join(root, 'node_modules')
@@ -90,7 +91,7 @@ async function freshApp(
       },
     })
     .create(pathToFileURL(`${root}/`), { importer })
-  const read = (path: string) => readFile(join(root, path), 'utf8')
+  const read = (path: string) => fs.contents(path)
   const migrations = async () => {
     try {
       const files = await readdir(join(root, migrationPath))
@@ -116,7 +117,7 @@ async function freshApp(
       await app.terminate()
     }
   }
-  return { root, read, migrations, run, cleanup: () => rm(root, { recursive: true, force: true }) }
+  return { root, read, migrations, run, cleanup: () => fs.cleanup() }
 }
 
 test.group('configure (spec 11)', (group) => {
@@ -299,15 +300,15 @@ test.group('configure (spec 11)', (group) => {
       await rename(join(directory, original), join(directory, 'prior', original))
       await writeFile(join(directory, '1795000000000_create_users_table.ts'), '// app-owned\n')
       await writeFile(
-        join(extended, 'migrations', 'released.json'),
+        join(extended, 'make', 'migration', 'released.json'),
         JSON.stringify([
           { name: 'access_control_create_memberships' },
           { name: 'add_membership_notes' },
         ])
       )
       await writeFile(
-        join(extended, 'migrations', 'add_membership_notes.stub'),
-        '{{{ exports({ to: migration.destination }) }}}\n// notes for {{ membershipsTable }}\n'
+        join(extended, 'make', 'migration', 'add_membership_notes.stub'),
+        '{{{ exports({ to: migration.path ? app.makePath(migration.path, migration.filename) : app.migrationsPath(migration.filename) }) }}}\n// notes for {{ membershipsTable }}\n'
       )
       const second = await app.run('--scope-table=teams')
       assert.equal(second.exitCode, 0, second.logs.join('\n'))
@@ -456,7 +457,7 @@ test.group('configure (spec 11)', (group) => {
     try {
       await cp(stubsRoot, extended, { recursive: true })
       await writeFile(
-        join(extended, 'migrations', 'released.json'),
+        join(extended, 'make', 'migration', 'released.json'),
         JSON.stringify([
           { name: 'access_control_create_memberships' },
           { name: 'add_membership_notes' },
@@ -589,13 +590,16 @@ test.group('configure (spec 11)', (group) => {
     try {
       await cp(stubsRoot, extended, { recursive: true })
       const released = JSON.parse(
-        await readFile(join(extended, 'migrations', 'released.json'), 'utf8')
+        await readFile(join(extended, 'make', 'migration', 'released.json'), 'utf8')
       )
-      released.push({ name: 'add_membership_notes', sha256: 'unchecked' })
-      await writeFile(join(extended, 'migrations', 'released.json'), JSON.stringify(released))
+      released.push({ name: 'add_membership_notes', bodySha256: 'unchecked' })
       await writeFile(
-        join(extended, 'migrations', 'add_membership_notes.stub'),
-        '{{{ exports({ to: migration.destination }) }}}\nexport default class {}\n'
+        join(extended, 'make', 'migration', 'released.json'),
+        JSON.stringify(released)
+      )
+      await writeFile(
+        join(extended, 'make', 'migration', 'add_membership_notes.stub'),
+        '{{{ exports({ to: migration.path ? app.makePath(migration.path, migration.filename) : app.migrationsPath(migration.filename) }) }}}\nexport default class {}\n'
       )
       const first = await app.run('--scope-table=teams')
       assert.equal(first.exitCode, 0)

@@ -11,12 +11,24 @@
    outside edits while it runs. A rerun checks complete file contents before resuming;
    it does not merge manual edits into planned files. An Access Control version bump does not select
    a new Account Kit release automatically.
-3. If the release adds a migration stub, add its `{ name, sha256 }` entry to
-   `stubs/migrations/released.json` and a `### Migrations` subsection to the changelog.
+3. If the release adds a migration stub, add its `{ name, bodySha256 }` entry to
+   `stubs/make/migration/released.json` and a `### Migrations` subsection to the changelog. Hash the exact bytes after the first line
+   (the stub destination directive), including the following blank line.
 4. Merge the PR once its review is complete and every check on its head has passed.
 5. The owner runs Actions → release → Run workflow (on `main`). Publishing and tagging stay owner
    actions.
 
 Nothing else is manual. The release is a GitHub prerelease with the tarball attached; its notes
-carry the install command and the SHA-256. `bash bin/release_check.sh` runs the same gate locally.
+carry the install command and the SHA-256. `pnpm release` runs the same gate locally.
 After publication, follow the release verification steps in [verification](verification.md).
+
+## Adopting the next Account Kit transaction API
+
+The current adapter in `src/kit_transaction.ts` targets the published Account Kit 0.8.0
+`/transaction` functions. When adopting the release that introduces `TransactionManager`,
+change the adapter and its callers to use a manager bound to the Lucid database for transaction
+execution and row locking. Supply an explicit timestamp to `sqlTimestamp(trx, at)` at the current
+timestamp call sites so they retain their existing sampling behavior. Update the exact peer, the
+dev archive, lockfiles and packed consumer together. Exercise nested transactions, SQLite write
+serialization and the PostgreSQL and MySQL row-locking paths with the new release. The current
+checks cover the released 0.8.0 contract.

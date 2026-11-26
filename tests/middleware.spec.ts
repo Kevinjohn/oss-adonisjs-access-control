@@ -2,9 +2,9 @@ import { test } from '@japa/runner'
 import { Bouncer } from '@adonisjs/bouncer'
 import { HttpContextFactory } from '@adonisjs/core/factories/http'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccessControl } from '../index.js'
-import ScopeMiddleware, { scopeMiddleware } from '../middleware/main.js'
-import { membershipFixture, type MembershipFixture } from './helpers/fixture.js'
+import type { AccessControl } from '../index.ts'
+import ScopeMiddleware, { scopeMiddleware } from '../middleware/main.ts'
+import { membershipFixture, type MembershipFixture } from './helpers/fixture.ts'
 
 /** A request context with the package bound, an optional user and the route's `scopeId`. */
 function context(
@@ -13,7 +13,7 @@ function context(
   scopeId: unknown
 ): HttpContext {
   const ctx = new HttpContextFactory().create()
-  ctx.containerResolver.bindValue(AccessControl, f.config as unknown as AccessControl)
+  ctx.containerResolver.bindValue('access_control.manager', f.config as unknown as AccessControl)
   ;(ctx as { auth?: unknown }).auth = { user }
   ctx.params = { scopeId }
   return ctx
@@ -173,7 +173,7 @@ test.group('scope middleware (spec 7)', (group) => {
     assert.isFalse(await bouncer.allows('project:write'))
     assert.deepEqual(await run(named, ctx), { next: true })
     assert.isTrue(await bouncer.allows('project:write'))
-    assert.deepEqual(f.config.clientPayload(ctx.membership), {
+    assert.deepEqual(f.config.buildClientMembership(ctx.membership), {
       scopeId: String(scope),
       role: 'owner',
       permissions: [...f.config.permissionKeys],

@@ -1,14 +1,15 @@
 import type { Database } from '@adonisjs/lucid/database'
 import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
-import { MembershipService } from './memberships.js'
-import { createAbilities, type AbilityMap, type MembershipResolver } from './abilities.js'
-import { buildClientPayload } from './payload.js'
-import { sqlIdentifierPattern } from './identifiers.js'
-import * as rules from './rules.js'
-import type { RoleMatrix } from './rules.js'
+import { MembershipService } from './memberships.ts'
+import { createAbilities } from './abilities.ts'
+import type { AbilityMap, MembershipResolver } from './ability_types.ts'
+import { buildClientMembershipSummary } from './client_membership.ts'
+import { sqlIdentifierPattern } from './identifiers.ts'
+import * as rules from './rules.ts'
+import type { RoleMatrix } from './rules.ts'
 import type {
   AccessControlConfig,
-  ClientPayload,
+  ClientMembershipSummary,
   KeyType,
   Membership,
   PermissionKeyOf,
@@ -17,7 +18,7 @@ import type {
   RuleResult,
   ScopeKey,
   TransactionRunner,
-} from './types.js'
+} from './types.ts'
 
 const rolePattern = /^[a-z][a-z0-9_-]*$/
 const namePattern = /^[a-z][a-zA-Z0-9]*$/
@@ -57,23 +58,23 @@ function requireRoleMatrix(config: AccessControlConfig<any, any>): RoleMatrix {
   if (typeof permissions !== 'object' || permissions === null)
     throw createInvalidConfigError('permissions must be an object of resources')
   const minimumRoleByPermission = new Map<string, string>()
-  for (const [resource, actions] of Object.entries(permissions as Record<string, unknown>)) {
+  for (const [resource, operations] of Object.entries(permissions as Record<string, unknown>)) {
     if (!namePattern.test(resource))
       throw createInvalidConfigError(
         `resource name ${JSON.stringify(resource)} must match ^[a-z][a-zA-Z0-9]*$`
       )
-    if (typeof actions !== 'object' || actions === null)
-      throw createInvalidConfigError(`resource "${resource}" must map actions to roles`)
-    for (const [action, role] of Object.entries(actions as Record<string, unknown>)) {
-      if (!namePattern.test(action))
+    if (typeof operations !== 'object' || operations === null)
+      throw createInvalidConfigError(`resource "${resource}" must map operations to roles`)
+    for (const [operation, role] of Object.entries(operations as Record<string, unknown>)) {
+      if (!namePattern.test(operation))
         throw createInvalidConfigError(
-          `action name ${JSON.stringify(action)} must match ^[a-z][a-zA-Z0-9]*$`
+          `operation name ${JSON.stringify(operation)} must match ^[a-z][a-zA-Z0-9]*$`
         )
       if (typeof role !== 'string' || !roles.includes(role))
         throw createInvalidConfigError(
-          `permission ${resource}:${action} names ${JSON.stringify(role)}, not a role`
+          `permission ${resource}:${operation} names ${JSON.stringify(role)}, not a role`
         )
-      minimumRoleByPermission.set(`${resource}:${action}`, role)
+      minimumRoleByPermission.set(`${resource}:${operation}`, role)
     }
   }
   for (const key of reservedKeys)
@@ -99,10 +100,9 @@ function requireRoleMatrix(config: AccessControlConfig<any, any>): RoleMatrix {
 }
 
 function deepFreeze<T>(value: T): T {
-  if (typeof value === 'object' && value !== null && !Object.isFrozen(value)) {
-    Object.freeze(value)
-    for (const nested of Object.values(value)) deepFreeze(nested)
-  }
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value
+  Object.freeze(value)
+  for (const nested of Object.values(value)) deepFreeze(nested)
   return value
 }
 
@@ -149,7 +149,10 @@ export class AccessControl<
       users: { ...config.users },
       scope: { ...config.scope },
       permissions: Object.fromEntries(
-        Object.entries(config.permissions).map(([resource, actions]) => [resource, { ...actions }])
+        Object.entries(config.permissions).map(([resource, operations]) => [
+          resource,
+          { ...operations },
+        ])
       ) as P,
       membershipsTable: config.membershipsTable ?? 'memberships',
     }) as ResolvedAccessControlConfig<R, P>
@@ -220,25 +223,11 @@ export class AccessControl<
    */
   buildClientMembership(
     membership: Membership | null | undefined
-  ): ClientPayload<R[number], PermissionKeyOf<P>> | null {
-    return buildClientPayload(this, membership) as ClientPayload<
+  ): ClientMembershipSummary<R[number], PermissionKeyOf<P>> | null {
+    return buildClientMembershipSummary(this, membership) as ClientMembershipSummary<
       R[number],
       PermissionKeyOf<P>
     > | null
-  }
-
-  /**
-   * Alias of `buildClientMembership`, returning null when there is no membership.
-   *
-   * @example
-   * ```ts
-   * const summary = access.clientPayload(ctx.membership)
-   * ```
-   */
-  clientPayload(
-    membership: Membership | null | undefined
-  ): ClientPayload<R[number], PermissionKeyOf<P>> | null {
-    return this.buildClientMembership(membership)
   }
 
   /**

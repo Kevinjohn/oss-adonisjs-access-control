@@ -1,6 +1,6 @@
 // The opaque cursor for paging a scope's members, shaped like Account Kit's invitation cursor.
 import { DateTime } from 'luxon'
-import { E_ACCESS_CONTROL_INVALID_INPUT } from './errors.js'
+import { E_ACCESS_CONTROL_INVALID_INPUT } from './errors.ts'
 
 const MAX_CURSOR_LENGTH = 512
 

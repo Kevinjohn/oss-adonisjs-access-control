@@ -1,5 +1,5 @@
 // Pure rules (specification section 3). No AdonisJS imports; exposed on the AccessControl instance.
-import type { RuleResult, ScopeKey } from './types.js'
+import type { RuleResult, ScopeKey } from './types.ts'
 
 /** The role tuple, owner role and lowest role per permission key, as validated by `define.ts`. */
 export interface RoleMatrix {

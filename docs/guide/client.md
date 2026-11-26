@@ -29,8 +29,6 @@ router
   membership or a suspended membership. The protected example route instead refuses these
   requests with `E_ACCESS_CONTROL_FORBIDDEN` (403) in the scope middleware, before the handler.
 
-`clientPayload` remains a supported alias of `buildClientMembership`.
-
 The summary contains the scope, role, permissions and assignable roles. The illustrative URL
 describes access, not the authentication session; existing applications own compatibility for
 their own route paths. The summary describes the moment it was built. Decide on the server on
@@ -42,13 +40,16 @@ Import the shapes type-only, so the frontend bundle carries no server code:
 
 ```ts
 import type {
-  ClientPayload,
+  ClientMembershipSummary,
   PermissionKeyOf,
   RoleOf,
 } from '@kevinjohn/adonisjs-access-control/types'
 import type config from '#config/access_control'
 
-type Payload = ClientPayload<RoleOf<typeof config>, PermissionKeyOf<typeof config>>
+type MembershipSummary = ClientMembershipSummary<
+  RoleOf<typeof config>,
+  PermissionKeyOf<typeof config>
+>
 ```
 
 A renamed permission key is a code change on the server and a matching change in every client

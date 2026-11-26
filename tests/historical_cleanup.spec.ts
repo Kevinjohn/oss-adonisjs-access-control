@@ -1,12 +1,12 @@
 import { test } from '@japa/runner'
-import { membershipFixture } from './helpers/fixture.js'
+import { membershipFixture } from './helpers/fixture.ts'
 
 test('cleanup hooks receive historical stored role strings', async ({ assert }) => {
   const seen: string[] = []
   const fixture = await membershipFixture({
-    async onMembershipChanged(event) {
-      if (event.type === 'membership.left' || event.type === 'membership.removed') {
-        seen.push(event.role)
+    async onMembershipChanged(change) {
+      if (change.type === 'membership.left' || change.type === 'membership.removed') {
+        seen.push(change.role)
       }
     },
   })

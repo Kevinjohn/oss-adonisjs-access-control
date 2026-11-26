@@ -3,36 +3,13 @@ import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { Database } from '@adonisjs/lucid/database'
-import type { AccessControl } from './define.js'
-import { requireValidKey } from './keys.js'
-import { readTimestamp } from './kit_transaction.js'
-import { inspectMembershipConstraints } from './membership_constraints.js'
-import { readPackageManifest } from './package_root.js'
-import { resolveStoredParentId } from './stored_keys.js'
+import { requireValidKey } from './keys.ts'
+import { readTimestamp } from './kit_transaction.ts'
+import { inspectMembershipConstraints } from './membership_constraints.ts'
+import { readPackageManifest } from './package_root.ts'
+import { resolveStoredParentId } from './stored_keys.ts'
 
-/** One doctor check: `ok` when `count` is zero; `sampleIds` holds up to 20 row ids. */
-export interface DoctorCheck {
-  name: string
-  ok: boolean
-  count: number
-  /** Up to 20 ids of the rows found; for `memberships_table`, the missing column names. */
-  sampleIds: string[]
-}
-
-/** The doctor result, printed as JSON with `--json`. */
-export interface DoctorReport {
-  checks: DoctorCheck[]
-}
-
-/** Input of `runDoctor`. */
-export interface DoctorInput {
-  access: AccessControl
-  db: Database
-  /** Restrict the row checks to one scope. */
-  scope?: unknown
-  /** The installed and expected Account Kit versions; omitted to skip the version check. */
-  accountKit?: { installed: string | null; expected: string }
-}
+import type { DoctorCheck, DoctorInput, DoctorReport } from './doctor_types.ts'
 
 const sampleLimit = 20
 const timestampBatchSize = 1000

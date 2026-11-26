@@ -1,8 +1,8 @@
 /**
  * Public entry point. `node ace configure` reads `configure` and `stubsRoot` from here.
  */
-export { configure } from './configure.js'
-export { stubsRoot } from './stubs/main.js'
-export { defineAccessControl, defineConfig, AccessControl } from './src/define.js'
-export * as errors from './src/errors.js'
-export type * from './src/types.js'
+export { configure } from './configure.ts'
+export { stubsRoot } from './stubs/main.ts'
+export { defineAccessControl, defineConfig, AccessControl } from './src/define.ts'
+export * as errors from './src/errors.ts'
+export type * from './src/types.ts'

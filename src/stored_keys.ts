@@ -1,5 +1,5 @@
 import type { QueryClientContract } from '@adonisjs/lucid/types/database'
-import type { KeyType, ScopeKey, UserKey } from './types.js'
+import type { KeyType, ScopeKey, UserKey } from './types.ts'
 
 /** Reads the exact spelling of a matching string parent key under the column's collation. */
 export async function readStoredParentId(

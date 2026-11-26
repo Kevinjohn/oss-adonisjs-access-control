@@ -1,6 +1,6 @@
 import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
-import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.js'
+import { codeOf, membershipFixture, type MembershipFixture } from './helpers/fixture.ts'
 
 const actor = (id: number | string) => ({ id })
 
@@ -20,7 +20,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     )
     const first = await f.memberships.createFirstMember({ scopeId: scope, userId: a })
     assert.deepInclude(first, { role: 'owner', status: 'active' })
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       { type: 'membership.first_member', scopeId: scope, userId: a, role: 'owner' },
     ])
     assert.equal(
@@ -69,7 +69,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     const scope = await f.createScope()
     const [o, u] = await Promise.all([f.createUser(), f.createUser()])
     await f.memberships.createFirstMember({ scopeId: scope, userId: o })
-    f.events.length = 0
+    f.changes.length = 0
     await rejects(
       f.memberships.acceptInvitation({
         scopeId: scope,
@@ -89,7 +89,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
       })
     )
     assert.deepInclude(accepted, { userId: u, role: 'editor', status: 'active' })
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       {
         type: 'membership.invitation_accepted',
         scopeId: scope,
@@ -133,7 +133,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     const scope = await f.createScope()
     const [o, u] = await Promise.all([f.createUser(), f.createUser()])
     await f.memberships.createFirstMember({ scopeId: scope, userId: o })
-    f.events.length = 0
+    f.changes.length = 0
     await rejects(f.memberships.grant({ scopeId: scope, userId: u, role: 'editor' } as never), {
       name: 'InvalidArgumentsException',
       message: /grant requires a transaction/,
@@ -156,12 +156,12 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
       await inTrx({ scopeId: 999_999, userId: u, role: 'editor' }),
       'E_ACCESS_CONTROL_SCOPE_NOT_FOUND'
     )
-    assert.deepEqual(f.events, [])
+    assert.deepEqual(f.changes, [])
     const granted = await f.runner.transaction(f.db, (trx) =>
       f.memberships.grant({ scopeId: scope, userId: u, role: 'editor', trx })
     )
     assert.deepInclude(granted, { scopeId: scope, userId: u, role: 'editor', status: 'active' })
-    assert.deepEqual(f.events.at(-1), {
+    assert.deepEqual(f.changes.at(-1), {
       type: 'membership.granted',
       scopeId: scope,
       userId: u,
@@ -188,7 +188,8 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     const callbackError = new Error('hook')
     let callerTrx: unknown
     const g = await membershipFixture({
-      onMembershipChanged: async (_change, trx) => {
+      onMembershipChanged: async (change, trx) => {
+        assert.equal(change.type, 'membership.granted')
         assert.strictEqual(trx, callerTrx)
         throw callbackError
       },
@@ -338,7 +339,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     await f.memberships.createFirstMember({ scopeId: s1, userId: o })
     await f.memberships.createFirstMember({ scopeId: s2, userId: u })
     await f.memberships.add({ actor: actor(o), scopeId: s1, userId: u, role: 'editor' })
-    f.events.length = 0
+    f.changes.length = 0
     assert.equal(
       await codeOf(
         f.runner.transaction(f.db, (trx) =>
@@ -349,13 +350,13 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     )
     assert.lengthOf(await f.memberships.listForUser(u), 2)
     await f.db.from(f.names.memberships).where({ scope_id: s2, user_id: u }).delete()
-    f.events.length = 0
+    f.changes.length = 0
     await f.runner.transaction(f.db, async (trx) => {
       await f.memberships.prepareAccountDeletion({ userId: u, trx })
       await trx.from(f.names.users).where('id', u).delete()
     })
     assert.deepEqual(await f.memberships.listForUser(u), [])
-    assert.deepEqual(f.events, [
+    assert.deepEqual(f.changes, [
       {
         type: 'membership.removed',
         scopeId: s1,
@@ -374,7 +375,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     await f.runner.transaction(f.db, (trx) =>
       f.memberships.prepareAccountDeletion({ userId: nobody, trx })
     )
-    assert.lengthOf(f.events, 1)
+    assert.lengthOf(f.changes, 1)
   })
 
   test('deleting a scope or user row with memberships present fails on the RESTRICT key', async ({
@@ -396,14 +397,14 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     await f.memberships.createFirstMember({ scopeId: s, userId: o })
     await f.memberships.add({ actor: actor(o), scopeId: s, userId: a, role: 'admin' })
     await f.memberships.add({ actor: actor(o), scopeId: s, userId: b, role: 'viewer' })
-    f.events.length = 0
+    f.changes.length = 0
     await f.runner.transaction(f.db, async (trx) => {
       await f.memberships.removeAllForScope({ scopeId: s, actor: actor(o), trx })
       await trx.from(f.names.scope).where('id', s).delete()
     })
     assert.isNotOk(await f.db.from(f.names.scope).where('id', s).first())
     assert.deepEqual(
-      f.events.map((e) => [
+      f.changes.map((e) => [
         e.type,
         'userId' in e ? e.userId : null,
         'reason' in e ? e.reason : null,
@@ -429,7 +430,7 @@ test.group('memberships: trusted operations (spec 5.3 to 5.6)', (group) => {
     await f.runner.transaction(f.db, (trx) =>
       f.memberships.removeAllForScope({ scopeId: empty, trx })
     )
-    assert.lengthOf(f.events, 3)
+    assert.lengthOf(f.changes, 3)
   })
 
   test('removeAllForScope: a member set that changes before the lock is a CONFLICT', async ({

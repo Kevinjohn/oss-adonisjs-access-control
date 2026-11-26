@@ -32,7 +32,7 @@ router
   .group(() => {
     router.get('/teams/:scopeId/project', async ({ bouncer, membership }) => {
       return {
-        membership: accessControl.clientPayload(membership),
+        membership: accessControl.buildClientMembership(membership),
         canWrite: await bouncer.allows('project:write'),
         canArchive: await bouncer.allows('project:archive'),
         canViewDashboard: await bouncer.allows('viewDashboard'),

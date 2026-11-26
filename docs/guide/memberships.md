@@ -126,7 +126,7 @@ Change types: `membership.added`, `membership.first_member`, `membership.invitat
 `membership.granted`, `membership.role_changed`, `membership.status_changed`, `membership.removed`
 (with `reason`: `removed`, `scope_deleted` or `account_deleted`), `membership.left` and
 `membership.ownership_transferred`. The callback receives one change record per write; the
-`MembershipEvent<Role>` union in `@kevinjohn/adonisjs-access-control/types` describes each
+`MembershipChange<Role>` union in `@kevinjohn/adonisjs-access-control/types` describes each
 record's fields.
 
 ## Transactions and locks

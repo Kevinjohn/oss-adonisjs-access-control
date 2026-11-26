@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Breaking: replace `access.clientPayload(membership)` with
+  `access.buildClientMembership(membership)`. Import `ClientMembershipSummary` in place of
+  `ClientPayload`. The returned fields and their values are unchanged.
+- Breaking: import `MembershipChange<Role>` in place of `MembershipEvent<Role>` from `/types`.
+  Keep the `onMembershipChanged(change, trx)` callback and its existing discriminants.
+- Breaking: replace direct container lookups by the `AccessControl` class or the
+  `access_control` alias with `await app.container.make('access_control.manager')`. This applies
+  to test bindings as well. The default import from `/services/main` resolves the named singleton.
+- Breaking: `/commands` exports the generated Ace loader. Keep the subpath in `adonisrc.ts`
+  and run the doctor with `node ace access-control:doctor` instead of importing its class.
+- Configure templates follow their destination folders under `stubsRoot`. Tools that use
+  those templates directly should switch to `config/access_control.stub` and `make/migration/`.
+  The migration destination directive uses the app's migrations path and honours an explicit
+  `--migration-path`. The emitted migration body and stable name stay byte-for-byte identical.
+  Existing applications can keep their published migrations.
+- `accessControlKitCallbacks()` returns a class instance with enumerable, independently callable
+  config properties. Consumers can keep destructuring or spreading those properties into
+  Account Kit 0.8.0 configuration.
+
 ## 0.4.1 - 2026-11-25
 
 - Require Account Kit `0.8.0` exactly and use it in the packed consumer fixture.

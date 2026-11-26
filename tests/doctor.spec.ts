@@ -5,14 +5,14 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { test } from '@japa/runner'
 import { Kernel, ListLoader } from '@adonisjs/core/ace'
-import AccessControlDoctor from '../commands/doctor.js'
-import { AccessControl, defineAccessControl } from '../index.js'
-import { readAccountKitVersions, runDoctor, type DoctorReport } from '../src/doctor.js'
-import { sqlTimestamp } from '../src/kit_transaction.js'
-import { bootTestApp, type TestApp } from './helpers/app.js'
-import { testEngine } from './helpers/database.js'
-import { createParentTable } from './helpers/schema.js'
-import { permissions, roles } from './helpers/fixture.js'
+import AccessControlDoctor from '../commands/doctor.ts'
+import { type AccessControl, defineAccessControl } from '../index.ts'
+import { readAccountKitVersions, runDoctor } from '../src/doctor.ts'
+import { sqlTimestamp } from '../src/kit_transaction.ts'
+import { bootTestApp, type TestApp } from './helpers/app.ts'
+import { testEngine } from './helpers/database.ts'
+import { createParentTable } from './helpers/schema.ts'
+import { permissions, roles } from './helpers/fixture.ts'
 
 function idOf(rows: unknown[]): number {
   const [row] = rows
@@ -33,7 +33,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
   let access: AccessControl
   group.setup(async () => {
     booted = await bootTestApp()
-    access = await booted.app.container.make(AccessControl)
+    access = await booted.app.container.make('access_control.manager')
     return () => booted.close()
   })
 
@@ -105,7 +105,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
     assert,
   }) => {
     const fixture = await bootTestApp()
-    const original = await fixture.app.container.make(AccessControl)
+    const original = await fixture.app.container.make('access_control.manager')
     const { db, names } = fixture
     const tableName = `${names.memberships}_app`
     try {
@@ -137,7 +137,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
               .onDelete(variant === 'cascade' ? 'CASCADE' : 'RESTRICT')
         })
         const adopted = defineAccessControl({ ...original.config, membershipsTable: tableName })
-        fixture.app.container.bindValue(AccessControl, adopted as AccessControl)
+        fixture.app.container.bindValue('access_control.manager', adopted as AccessControl)
         const expected = {
           equivalent: [],
           no_unique: ['memberships_unique_scope_user'],
@@ -599,10 +599,10 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
   }) => {
     const fixture = await bootTestApp()
     try {
-      const original = await fixture.app.container.make(AccessControl)
+      const original = await fixture.app.container.make('access_control.manager')
       const commandFor = async (table: string) => {
         const configured = defineAccessControl({ ...original.config, membershipsTable: table })
-        fixture.app.container.bindValue(AccessControl, configured as AccessControl)
+        fixture.app.container.bindValue('access_control.manager', configured as AccessControl)
         const kernel = new Kernel(fixture.app)
         kernel.addLoader(new ListLoader([AccessControlDoctor]))
         kernel.ui.switchMode('raw')
@@ -648,7 +648,7 @@ if (testEngine === 'sqlite') {
         })
         try {
           const { db, names } = fixture
-          const access = await fixture.app.container.make(AccessControl)
+          const access = await fixture.app.container.make('access_control.manager')
           const stored = 'West'
           const alternate = 'west'
           const unrelated = 'East'
@@ -702,3 +702,5 @@ if (testEngine === 'sqlite') {
     }
   })
 }
+
+import type { DoctorReport } from '../src/types.ts'

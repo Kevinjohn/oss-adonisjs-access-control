@@ -67,8 +67,8 @@ The _Tested against_ table in `README.md` mirrors `.github/workflows/checks.yml`
 
 ## Code layout
 
-- `src/` holds the configuration, rules, membership service, locks, errors and payload.
-- `middleware/` and `account_kit/` hold the exported scope middleware and Account Kit callbacks.
+- `src/` holds the configuration, rules, membership service, locks, errors and client membership summaries.
+- `middleware/` and `account_kit/` hold the exported scope middleware and Account Kit entry point.
 - `providers/`, `services/`, `commands/` and `stubs/` hold the provider, container service, Ace
   commands and configure templates.
 - `tests/` mirrors the source. Shared fixtures live in `tests/helpers/`.
@@ -97,7 +97,7 @@ working plans belong in the local, gitignored `plans/` directory; do not commit 
 - Only lock in the order of specification section 4.2. Ascending means code-unit order of
   `String(key)`.
 - The reserved keys `members:list`, `members:manage` and `invitations:manage` are always present.
-- Released migration stubs are immutable (specification section 17.1).
+- Released migration bodies are immutable (specification section 17.1).
 - Error codes are `E_ACCESS_CONTROL_*` with the response shape from specification section 6.
 
 ### Documentation examples from the example apps

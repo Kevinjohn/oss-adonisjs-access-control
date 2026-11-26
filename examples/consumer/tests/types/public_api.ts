@@ -4,7 +4,7 @@ import type {
   AccessControlKitCallbacks,
   ScopeMiddlewareOptions,
   DoctorReport,
-  MembershipEvent,
+  MembershipChange,
   PermissionKeyOf,
   RoleOf,
 } from '@kevinjohn/adonisjs-access-control/types'
@@ -36,7 +36,7 @@ type PublicTypes = [
   DoctorReport,
   AccessControlKitCallbacks,
   AccessControlKitCallbackOptions,
-  MembershipEvent<typeof role>,
+  MembershipChange<typeof role>,
 ]
 const checks = (types: PublicTypes) => types
 void [sameSignature, scope, role, key, badRole, badKey, rootOptions, checks]

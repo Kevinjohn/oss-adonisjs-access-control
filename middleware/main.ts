@@ -1,19 +1,16 @@
 // The scope middleware (specification section 7): resolves the request's membership.
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { AccessControl } from '../src/define.js'
 import {
   E_ACCESS_CONTROL_FORBIDDEN,
   E_ACCESS_CONTROL_INVALID_INPUT,
   E_ACCESS_CONTROL_UNKNOWN_ROLE,
-} from '../src/errors.js'
-import type { Membership } from '../src/types.js'
+} from '../src/errors.ts'
+import type { Membership } from '../src/types.ts'
 
-/** Options accepted by the named middleware and by `scopeMiddleware()`. */
-export interface ScopeMiddlewareOptions {
-  /** Where the scope key comes from. Default: `(ctx) => ctx.params.scopeId`. */
-  resolveScope?: (ctx: HttpContext) => unknown
-}
+import type { ScopeMiddlewareOptions } from '../src/scope_middleware_types.ts'
+
+export type { ScopeMiddlewareOptions } from '../src/scope_middleware_types.ts'
 
 declare module '@adonisjs/core/http' {
   export interface HttpContext {
@@ -46,7 +43,7 @@ function readAuthenticatedUser(ctx: HttpContext): { id: unknown } | null {
 export default class ScopeMiddleware {
   /** Resolves the membership for `ctx.auth.user` in the route's scope or refuses with 403. */
   async handle(ctx: HttpContext, next: NextFn, options: ScopeMiddlewareOptions = {}) {
-    const access = await ctx.containerResolver.make(AccessControl)
+    const access = await ctx.containerResolver.make('access_control.manager')
     const user = readAuthenticatedUser(ctx)
     if (!user) throw new E_ACCESS_CONTROL_FORBIDDEN()
     const scopeId = options.resolveScope ? options.resolveScope(ctx) : ctx.params?.scopeId

@@ -2,12 +2,11 @@ import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '@kevinjohn/adonisjs-account-kit'
 import type { AccountUser, UsersAdapter } from '@kevinjohn/adonisjs-account-kit'
 import { DateTime } from 'luxon'
-import { AccessControl } from '../index.js'
-import { accessControlKitCallbacks } from '../account_kit/main.js'
-import { loadRunner } from '../src/kit_transaction.js'
-import { bootTestApp } from './helpers/app.js'
-import { testEngine } from './helpers/database.js'
-import { codeOf } from './helpers/fixture.js'
+import { accessControlKitCallbacks } from '../account_kit/main.ts'
+import { loadRunner } from '../src/kit_transaction.ts'
+import { bootTestApp } from './helpers/app.ts'
+import { testEngine } from './helpers/database.ts'
+import { codeOf } from './helpers/fixture.ts'
 
 function tokenOf(url: string): string {
   return decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
@@ -20,10 +19,10 @@ test('Kit accepts canonical batches in stored scope order and rolls back a late 
   const booted = await bootTestApp({
     keyTypes: { users: 'integer', scope: 'string' },
     caseInsensitiveKeys: true,
-    async onMembershipChanged(event, trx) {
-      if (event.type === 'membership.invitation_accepted') {
-        await trx.table('invitation_event_probe').insert({ scope_id: String(event.scopeId) })
-        transactionalEvents.push(String(event.scopeId))
+    async onMembershipChanged(change, trx) {
+      if (change.type === 'membership.invitation_accepted') {
+        await trx.table('invitation_event_probe').insert({ scope_id: String(change.scopeId) })
+        transactionalEvents.push(String(change.scopeId))
       }
     },
   })
@@ -50,7 +49,7 @@ test('Kit accepts canonical batches in stored scope order and rolls back a late 
       table.timestamp('updated_at', { useTz: true, precision: 3 }).notNullable()
       table.unique(['email', 'scope'])
     })
-    const access = await booted.app.container.make(AccessControl)
+    const access = await booted.app.container.make('access_control.manager')
     const runner = await loadRunner()
     const locks: string[] = []
     access.attach(db, {

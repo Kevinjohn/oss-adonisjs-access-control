@@ -4,9 +4,9 @@ As a client application using team-aware controls, I want to send effective memb
 
 **Status:** Current
 **Access:** Host derives the client membership summary from effective account membership; the summary is presentational and does not authorize requests.
-**Entry:** Host controller calls `accessControl.buildClientMembership(membership)` or its alias `clientPayload`.
+**Entry:** Host controller calls `accessControl.buildClientMembership(membership)`.
 **Documentation:** [client.md](../docs/guide/client.md)
-**Source:** [src/payload.ts](../src/payload.ts)
+**Source:** [src/client_membership.ts](../src/client_membership.ts)
 **Coverage:** [`tests/payload.spec.ts`](../tests/payload.spec.ts)
 
 ## Acceptance criteria
@@ -37,12 +37,12 @@ Scope: package behaviour; the host owns team records, page rendering, route plac
 ```mermaid
 flowchart TD
     R["Scoped request runs ScopeMiddleware.handle"] -->|Refused| X["Return forbidden for missing or ineligible membership"]
-    R -->|Allowed| A["AccessControl.buildClientMembership or clientPayload"]
+    R -->|Allowed| A["AccessControl.buildClientMembership"]
     S["Standalone host supplies a membership or null"] --> A
-    A --> B["buildClientPayload checks active membership"]
+    A --> B["buildClientMembershipSummary checks active membership"]
     B --> C{"Present and active?"}
     C -->|No| D["return null"]
     C -->|Yes| E["return string scopeId, stored role, permissionsFor(role) and assignableRoles(role)"]
 ```
 
-**Code references:** [scope route](US-ACCESS-02-enter-scoped-route.md), [instance methods](../src/define.ts), [payload](../src/payload.ts), [client guide](../docs/guide/client.md)
+**Code references:** [scope route](US-ACCESS-02-enter-scoped-route.md), [instance methods](../src/define.ts), [client membership summary](../src/client_membership.ts), [client guide](../docs/guide/client.md)

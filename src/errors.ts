@@ -1,6 +1,6 @@
 import { Exception } from '@adonisjs/core/exceptions'
 import type { HttpContext } from '@adonisjs/core/http'
-import type { AccessControlErrorCode } from './types.js'
+import type { AccessControlErrorCode } from './types.ts'
 
 /** Shared HTTP handling for the package's concrete exceptions. */
 abstract class AccessControlException extends Exception {

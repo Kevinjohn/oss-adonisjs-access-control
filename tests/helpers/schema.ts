@@ -1,13 +1,13 @@
 // Creates the kit's lock row, a users table, a scope table and the package's memberships table.
-import { testEngine } from './database.js'
+import { testEngine } from './database.ts'
 import { readFile, writeFile, mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
 import type { BaseSchema } from '@adonisjs/lucid/schema'
-import { buildMembershipMigrationSchema } from '../../src/migration_schema.js'
-import type { KeyType } from '../../src/types.js'
+import { buildMembershipMigrationSchema } from '../../src/migration_schema.ts'
+import type { KeyType } from '../../src/types.ts'
 
 export interface SchemaNames {
   users: string
@@ -52,7 +52,7 @@ export async function createParentTable(
 }
 
 const stubPath = new URL(
-  '../../stubs/migrations/access_control_create_memberships.stub',
+  '../../stubs/make/migration/access_control_create_memberships.stub',
   import.meta.url
 )
 

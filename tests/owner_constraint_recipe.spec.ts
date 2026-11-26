@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
-import { testEngine } from './helpers/database.js'
-import { membershipFixture } from './helpers/fixture.js'
-import { sqlTimestamp } from '../src/kit_transaction.js'
+import { testEngine } from './helpers/database.ts'
+import { membershipFixture } from './helpers/fixture.ts'
+import { sqlTimestamp } from '../src/kit_transaction.ts'
 
 // #region active_owner_constraint
 import { BaseSchema } from '@adonisjs/lucid/schema'

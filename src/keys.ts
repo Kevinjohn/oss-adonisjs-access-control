@@ -1,6 +1,6 @@
 // Normalises scope and user keys per the configured key type (specification 5.1).
-import { E_ACCESS_CONTROL_INVALID_INPUT } from './errors.js'
-import type { KeyType } from './types.js'
+import { E_ACCESS_CONTROL_INVALID_INPUT } from './errors.ts'
+import type { KeyType } from './types.ts'
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const integerPattern = /^[1-9][0-9]*$/

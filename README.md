@@ -12,7 +12,7 @@ Access Control adds team memberships and a ranked role matrix to an AdonisJS 7 a
 on Account Kit. It sits between identity (Account Kit) and record-level rules (your Bouncer
 policies).
 
-- Roles and `resource:action` permission keys declared in code, checked at compile time.
+- Roles and `resource:operation` permission keys declared in code, checked at compile time.
 - Memberships per team with a role and a status, with the management rules enforced in one
   locking process on every database.
 - Optional owner role with atomic ownership transfer.
@@ -23,7 +23,10 @@ policies).
 
 Access Control requires Node.js 24+, AdonisJS 7 and Account Kit 0.8.0 (exact), the release with
 the `./transaction` export, scoped invitations and `ctx.auth.user` left set by its middleware.
-Install the `0.4.1` release from GitHub:
+For a registry-published package, `node ace add @kevinjohn/adonisjs-access-control --package-manager=pnpm`
+would install and configure it. Access Control ships as a GitHub release archive, and Ace uses
+the add argument as the module name for its configure step. Install the archive with pnpm, then
+configure it by package name.
 
 ```sh
 pnpm add https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/download/v0.4.1/kevinjohn-adonisjs-access-control-0.4.1.tgz
@@ -33,10 +36,19 @@ node ace configure @kevinjohn/adonisjs-access-control --scope-table=teams
 The release asset is `kevinjohn-adonisjs-access-control-0.4.1.tgz`; verify it against the SHA-256
 in the [release notes](https://github.com/Kevinjohn/oss-adonisjs-access-control/releases/tag/v0.4.1).
 
-## Quick start
+## What configure changes
+
+Configure writes `config/access_control.ts`, publishes the memberships migration and registers
+the provider and the Ace command loader in `adonisrc.ts`. It also registers the named `scope`
+middleware in `start/kernel.ts`. The command prints the remaining Bouncer and Account Kit wiring
+steps. It skips existing configuration and migration files.
+
+## Configuration
 
 ```ts
 // config/access_control.ts (written by configure)
+import { defineAccessControl } from '@kevinjohn/adonisjs-access-control'
+
 export default defineAccessControl({
   roles: ['viewer', 'editor', 'admin', 'owner'],
   ownerRole: 'owner',
@@ -48,6 +60,11 @@ export default defineAccessControl({
     invitations: { manage: 'admin' },
   },
 })
+```
+
+## Usage
+
+```ts
 // start/routes.ts: Account Kit's middleware (credential revision, active account or admission)
 // runs before `scope`; `middleware.auth()` alone skips those checks.
 router
@@ -64,17 +81,6 @@ Bouncer from `#config/access_control`, not from `services/main`, so permission k
 The [getting started guide](docs/guide/getting-started.md) walks from install to this route and
 the first member; the [setup guide](docs/guide/setup.md) covers the two manual steps (the Bouncer
 initializer and the Account Kit callbacks) and `node ace access-control:doctor`.
-
-## Tested against
-
-|                         | Every pull request | Weekly and before each release          |
-| ----------------------- | ------------------ | --------------------------------------- |
-| Node.js                 | 24                 | 24                                      |
-| AdonisJS core           | locked version     | lowest supported (7.0.0) and latest 7.x |
-| Lucid                   | locked version     | lowest supported and latest 22.x        |
-| SQLite (better-sqlite3) | yes                | yes                                     |
-| PostgreSQL 16           | yes                | yes                                     |
-| MySQL 8.4               | yes                | no                                      |
 
 ## Documentation
 
@@ -104,6 +110,17 @@ if (error instanceof errors.E_ACCESS_CONTROL_FORBIDDEN) {
 AdonisJS renders uncaught package exceptions with their HTTP status and
 `{ errors: [{ code, message }] }`. See the [error reference](docs/reference/errors.md) for codes
 and translation keys.
+
+## Tested against
+
+|                         | Every pull request | Weekly and before each release          |
+| ----------------------- | ------------------ | --------------------------------------- |
+| Node.js                 | 24                 | 24                                      |
+| AdonisJS core           | locked version     | lowest supported (7.0.0) and latest 7.x |
+| Lucid                   | locked version     | lowest supported and latest 22.x        |
+| SQLite (better-sqlite3) | yes                | yes                                     |
+| PostgreSQL 16           | yes                | yes                                     |
+| MySQL 8.4               | yes                | no                                      |
 
 ## User stories
 

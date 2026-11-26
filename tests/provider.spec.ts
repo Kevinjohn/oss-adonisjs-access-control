@@ -1,20 +1,19 @@
 import { test } from '@japa/runner'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { AccessControl, defineAccessControl } from '../index.js'
-import { bootTestApp } from './helpers/app.js'
+import { AccessControl, defineAccessControl } from '../index.ts'
+import { bootTestApp } from './helpers/app.ts'
 import { rejects } from 'node:assert/strict'
 import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
 
 test.group('provider and service (spec 1.7, 5)', () => {
-  test('binds the configured AccessControl with the database attached, under its alias too', async ({
+  test('binds the configured AccessControl with the database attached, under the dotted name', async ({
     assert,
   }) => {
     const booted = await bootTestApp()
     try {
-      const access = await booted.app.container.make(AccessControl)
+      const access = await booted.app.container.make('access_control.manager')
       assert.instanceOf(access, AccessControl)
-      assert.strictEqual(await booted.app.container.make('access_control'), access)
       assert.strictEqual(booted.app.config.get('access_control'), access)
       const scope = await booted.db
         .table(booted.names.scope)
@@ -38,7 +37,7 @@ test.group('provider and service (spec 1.7, 5)', () => {
     const booted = await bootTestApp()
     try {
       const { default: service } = await import('../services/main.js')
-      assert.strictEqual(service, await booted.app.container.make(AccessControl))
+      assert.strictEqual(service, await booted.app.container.make('access_control.manager'))
     } finally {
       await booted.close()
     }
@@ -70,7 +69,7 @@ test.group('provider and service (spec 1.7, 5)', () => {
     const booted = await bootTestApp({ accessControl: undefined })
     try {
       assert.isUndefined(booted.app.config.get('access_control'))
-      await rejects(booted.app.container.make(AccessControl), InvalidArgumentsException)
+      await rejects(booted.app.container.make('access_control.manager'), InvalidArgumentsException)
     } finally {
       await booted.close()
     }
