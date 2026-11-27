@@ -4,9 +4,9 @@
 permission keys. Everything else derives from it, and the types follow the declaration.
 
 ```ts
-import { defineAccessControl } from '@kevinjohn/adonisjs-access-control'
+import { defineConfig } from '@kevinjohn/adonisjs-access-control'
 
-export default defineAccessControl({
+export default defineConfig({
   roles: ['viewer', 'editor', 'admin', 'owner'],
   ownerRole: 'owner',
   users: { table: 'users', keyType: 'integer' },
@@ -27,7 +27,7 @@ export default defineAccessControl({
 of equal or lower rank and may assign roles of equal or lower rank. Role names are lower-case
 identifiers of up to 32 characters (`^[a-z][a-z0-9_-]*$`), unique within the tuple.
 
-`defineAccessControl` copies and freezes the resolved configuration. The caller's input object
+`defineConfig` copies and freezes the resolved configuration. The caller's input object
 remains writable, but `config` on the returned instance exposes readonly roles, table settings
 and permission entries.
 

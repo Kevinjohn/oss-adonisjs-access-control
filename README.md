@@ -47,9 +47,9 @@ steps. It skips existing configuration and migration files.
 
 ```ts
 // config/access_control.ts (written by configure)
-import { defineAccessControl } from '@kevinjohn/adonisjs-access-control'
+import { defineConfig } from '@kevinjohn/adonisjs-access-control'
 
-export default defineAccessControl({
+export default defineConfig({
   roles: ['viewer', 'editor', 'admin', 'owner'],
   ownerRole: 'owner',
   users: { table: 'users', keyType: 'integer' },

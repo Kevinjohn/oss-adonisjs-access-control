@@ -1,12 +1,12 @@
 {{{ exports({ to: app.configPath('access_control.ts') }) }}}
-import { defineAccessControl } from '@kevinjohn/adonisjs-access-control'
+import { defineConfig } from '@kevinjohn/adonisjs-access-control'
 
 /**
  * Roles from lowest to highest; the owner role, when set, is the last one. Each permission key
  * names the lowest role allowed. The keys members:list, members:manage and invitations:manage
  * are required. Renaming or removing a role needs a data migration; see the roles guide.
  */
-export default defineAccessControl({
+export default defineConfig({
   roles: ['viewer', 'editor', 'admin', 'owner'],
   ownerRole: 'owner',
   users: { table: '{{{ usersTable }}}', keyType: '{{{ userKeyType }}}' },
