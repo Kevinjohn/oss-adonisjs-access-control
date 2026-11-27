@@ -55,7 +55,7 @@ name, renaming or removing that role is a data migration
 ([changing roles](changing-roles.md)).
 
 ```ts
-export default defineAccessControl({
+export default defineConfig({
   roles: ['viewer', 'editor', 'admin', 'owner'],
   ownerRole: 'owner',
   users: { table: 'users', keyType: 'integer' },

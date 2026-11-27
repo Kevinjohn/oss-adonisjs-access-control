@@ -1,7 +1,7 @@
-import { defineAccessControl } from '@kevinjohn/adonisjs-access-control'
+import { defineConfig } from '@kevinjohn/adonisjs-access-control'
 
 /** Roles, lowest first; the owner is last. Permission values are the lowest role allowed. */
-export default defineAccessControl({
+export default defineConfig({
   roles: ['viewer', 'editor', 'admin', 'owner'],
   ownerRole: 'owner',
   users: { table: 'users', keyType: 'integer' },

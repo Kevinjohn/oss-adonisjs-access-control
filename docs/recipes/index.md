@@ -85,7 +85,7 @@ The check runs in its own transaction immediately before the kit operation.
 ## Audit every change
 
 ```ts
-export default defineAccessControl({
+export default defineConfig({
   // ...
   onMembershipChanged: async (change, trx) => {
     await trx
@@ -176,10 +176,10 @@ export function can(role: Role, key: PermissionKey): boolean {
 
 ```ts
 // config/access_control.ts
-import { defineAccessControl } from '@kevinjohn/adonisjs-access-control'
+import { defineConfig } from '@kevinjohn/adonisjs-access-control'
 import { permissions, roles } from '@app/shared/access'
 
-export default defineAccessControl({
+export default defineConfig({
   roles,
   ownerRole: 'owner',
   users: { table: 'users', keyType: 'string' },
