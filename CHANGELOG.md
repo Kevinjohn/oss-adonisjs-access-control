@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `node ace configure` writes `config/access_control.ts` with `defineConfig`, and the docs use it.
+  `defineAccessControl` remains a supported alias, so existing config files need no change.
 - Declare `@kevinjohn/adonisjs-account-kit` as a `^0.8.0` caret peer range instead of an exact pin,
   and update `access-control:doctor` to accept compatible `0.8.x` patch releases while continuing to
   reject other minors and prereleases.
