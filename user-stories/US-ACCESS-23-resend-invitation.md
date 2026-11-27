@@ -6,7 +6,7 @@ As an active member authorized to manage invitations, I want to resend a pending
 **Access:** Inviter must be admitted if enabled, active in canonical invitation scope, have `invitations:manage`, and be permitted to manage the invitation’s role.
 **Entry:** Account Kit `invitations.resend` invokes `authorize.manageInvitation` and then `authorize.invite` for the invitation's role and scope, from the Access Control callbacks. Kit runs both in a preflight and again inside the write transaction.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
-**Source:** [account_kit/main.ts](../account_kit/main.ts)
+**Source:** [src/account_kit/main.ts](../src/account_kit/main.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
 
 ## Acceptance criteria
@@ -49,4 +49,4 @@ flowchart TD
     G -->|Follow-up fails| H["Error propagates; rotation remains committed"]
 ```
 
-**Code references:** [manageInvitation and invite callbacks](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit resend](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).
+**Code references:** [manageInvitation and invite callbacks](../src/account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit resend](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).

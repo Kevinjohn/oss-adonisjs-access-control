@@ -55,7 +55,7 @@ flowchart TD
     D -->|Yes| F["Actual persistence and response"]
 ```
 
-**Code references:** [Entry](../src/define.ts), [Handler](../middleware/main.ts)
+**Code references:** [Entry](../src/define.ts), [Handler](../src/middleware/main.ts)
 ````
 
 ## Actions without input fields

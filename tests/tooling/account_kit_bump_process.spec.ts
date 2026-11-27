@@ -44,7 +44,7 @@ test('bump command finishes a journaled partial write after manifest reached tar
       JSON.stringify(
         {
           version: '0.1.8',
-          peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version },
+          peerDependencies: { '@kevinjohn/adonisjs-account-kit': `^${from.version}` },
           devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url },
         },
         null,
@@ -78,7 +78,7 @@ test('bump command preserves a failed leftover scan', async ({ assert }) => {
       JSON.stringify(
         {
           version: '0.1.8',
-          peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version },
+          peerDependencies: { '@kevinjohn/adonisjs-account-kit': `^${from.version}` },
           devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url },
         },
         null,

@@ -130,7 +130,7 @@ test('release gate accepts only the release tarball of the declared Account Kit 
   assert,
 }) => {
   const changelog = '# Changelog\n\n## Unreleased\n\n## 9.9.9 - 2026-01-01\n\n- A\n'
-  const peerDependencies = { '@kevinjohn/adonisjs-account-kit': '0.3.2' }
+  const peerDependencies = { '@kevinjohn/adonisjs-account-kit': '^0.3.2' }
   for (const pin of [
     'github:Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce',
     'Kevinjohn/oss-adonisjs-account-kit#17e7a02b9abe408b8d2e78c9be9924bd8a0c36ce',
@@ -155,6 +155,12 @@ test('release gate accepts only the release tarball of the declared Account Kit 
     devDependencies: { '@kevinjohn/adonisjs-account-kit': kitRelease('0.3.2') },
   })
   assert.equal(release.status, 0, release.stderr)
+  const exactPeer = await releaseCheck(changelog, {
+    peerDependencies: { '@kevinjohn/adonisjs-account-kit': '0.3.2' },
+    devDependencies: { '@kevinjohn/adonisjs-account-kit': kitRelease('0.3.2') },
+  })
+  assert.notEqual(exactPeer.status, 0)
+  assert.include(exactPeer.stderr, 'must be a caret semver range')
 }).timeout(60_000)
 
 test('checksum failures never publish notes or successful ready outputs', async ({ assert }) => {

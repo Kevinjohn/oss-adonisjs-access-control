@@ -6,7 +6,7 @@ As an active member authorized to manage invitations, I want to revoke a pending
 **Access:** Inviter must be admitted if enabled, active in canonical invitation scope, have `invitations:manage`, and be permitted to manage the invitation’s role.
 **Entry:** `invitations.revoke({ actorId, invitationId })` invokes `authorize.manageInvitation` from Access Control callback.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
-**Source:** [account_kit/main.ts](../account_kit/main.ts)
+**Source:** [src/account_kit/main.ts](../src/account_kit/main.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
 
 ## Acceptance criteria
@@ -41,4 +41,4 @@ flowchart TD
     G -->|Follow-up fails| H["Error propagates; deletion remains committed"]
 ```
 
-**Code references:** [manageInvitation callback](../account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit revoke](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).
+**Code references:** [manageInvitation callback](../src/account_kit/main.ts), [invitation rules](../docs/guide/account-kit.md), [Account Kit revoke](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).

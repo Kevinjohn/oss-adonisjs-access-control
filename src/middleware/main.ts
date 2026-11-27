@@ -5,12 +5,12 @@ import {
   E_ACCESS_CONTROL_FORBIDDEN,
   E_ACCESS_CONTROL_INVALID_INPUT,
   E_ACCESS_CONTROL_UNKNOWN_ROLE,
-} from '../src/errors.ts'
-import type { Membership } from '../src/types.ts'
+} from '../errors.ts'
+import type { Membership } from '../types.ts'
 
-import type { ScopeMiddlewareOptions } from '../src/scope_middleware_types.ts'
+import type { ScopeMiddlewareOptions } from '../scope_middleware_types.ts'
 
-export type { ScopeMiddlewareOptions } from '../src/scope_middleware_types.ts'
+export type { ScopeMiddlewareOptions } from '../scope_middleware_types.ts'
 
 declare module '@adonisjs/core/http' {
   export interface HttpContext {

@@ -7,7 +7,7 @@ import { test } from '@japa/runner'
 import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import AccessControlDoctor from '../commands/doctor.ts'
 import { type AccessControl, defineAccessControl } from '../index.ts'
-import { readAccountKitVersions, runDoctor } from '../src/doctor.ts'
+import { matchesAccountKitVersion, readAccountKitVersions, runDoctor } from '../src/doctor.ts'
 import { sqlTimestamp } from '../src/kit_transaction.ts'
 import { bootTestApp, type TestApp } from './helpers/app.ts'
 import { testEngine } from './helpers/database.ts'
@@ -27,6 +27,29 @@ async function runCommand(fixture: TestApp, ...args: string[]) {
   const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map((log) => log.message)
   return { exitCode: command.exitCode, logs }
 }
+
+test('matchesAccountKitVersion accepts compatible caret patches and refuses other minors or prereleases', ({
+  assert,
+}) => {
+  assert.isFalse(matchesAccountKitVersion(null, '^0.2.0'))
+  assert.isTrue(matchesAccountKitVersion('0.2.0', '0.2.0'))
+  assert.isFalse(matchesAccountKitVersion('0.1.0', '0.2.0'))
+  assert.isFalse(matchesAccountKitVersion('0.2.0-rc.1', '^0.2.0'))
+  assert.isFalse(matchesAccountKitVersion('0.2.0', '^invalid'))
+
+  assert.isTrue(matchesAccountKitVersion('0.2.0', '^0.2.0'))
+  assert.isTrue(matchesAccountKitVersion('0.2.1', '^0.2.0'))
+  assert.isFalse(matchesAccountKitVersion('0.3.0', '^0.2.0'))
+  assert.isFalse(matchesAccountKitVersion('0.1.9', '^0.2.0'))
+
+  assert.isTrue(matchesAccountKitVersion('1.2.3', '^1.2.3'))
+  assert.isTrue(matchesAccountKitVersion('1.3.0', '^1.2.3'))
+  assert.isFalse(matchesAccountKitVersion('1.2.2', '^1.2.3'))
+  assert.isFalse(matchesAccountKitVersion('2.0.0', '^1.2.3'))
+
+  assert.isTrue(matchesAccountKitVersion('0.0.1', '^0.0.1'))
+  assert.isFalse(matchesAccountKitVersion('0.0.2', '^0.0.1'))
+})
 
 test.group('access-control:doctor (spec 17.2)', (group) => {
   let booted: TestApp
@@ -512,8 +535,20 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
         'created_at',
         'updated_at',
       ])
+      const patchMatch = await runDoctor({
+        access,
+        db: booted.db,
+        accountKit: { installed: '0.2.1', expected: '^0.2.0' },
+      })
+      assert.equal(patchMatch.checks.find((c) => c.name === 'account_kit_version')?.ok, true)
+      const minorMismatch = await runDoctor({
+        access,
+        db: booted.db,
+        accountKit: { installed: '0.3.0', expected: '^0.2.0' },
+      })
+      assert.equal(minorMismatch.checks.find((c) => c.name === 'account_kit_version')?.ok, false)
       const versions = readAccountKitVersions()
-      assert.equal(versions.expected, '0.8.0')
+      assert.equal(versions.expected, '^0.8.0')
       assert.equal(versions.installed, '0.8.0')
     } finally {
       await booted.db.connection().schema.dropTableIfExists(emptyUsers)
@@ -528,7 +563,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       readAccountKitVersions(() => {
         throw notFound
       }),
-      { installed: null, expected: '0.8.0' }
+      { installed: null, expected: '^0.8.0' }
     )
     const other = Object.assign(new Error('bad exports'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' })
     assert.throws(
@@ -551,7 +586,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       await writeFile(manifest, '{"name":"@kevinjohn/adonisjs-account-kit","version":"0.3.3"}')
       assert.deepEqual(
         readAccountKitVersions(() => entry),
-        { installed: '0.3.3', expected: '0.8.0' }
+        { installed: '0.3.3', expected: '^0.8.0' }
       )
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -574,7 +609,7 @@ test.group('access-control:doctor (spec 17.2)', (group) => {
       const logs = (kernel.ui.logger.getLogs() as Array<{ message: string }>).map((l) => l.message)
       return { exitCode: command.exitCode, logs }
     }
-    const missing = await run(() => ({ installed: null, expected: '0.8.0' }))
+    const missing = await run(() => ({ installed: null, expected: '^0.8.0' }))
     assert.equal(missing.exitCode, 1)
     assert.isTrue(missing.logs.some((line) => line.includes('account_kit_version: 1')))
     const unreadable = await run(() => {

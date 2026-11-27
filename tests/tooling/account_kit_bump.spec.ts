@@ -45,14 +45,14 @@ test.group('Account Kit owned fields', () => {
       {
         version: '0.1.8',
         devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url, 'other': '0.3.3' },
-        peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version },
+        peerDependencies: { '@kevinjohn/adonisjs-account-kit': `^${from.version}` },
       },
       null,
       2
     )
     const result = JSON.parse(projectKitFile('package.json', manifest, from, to))
     assert.equal(result.devDependencies['@kevinjohn/adonisjs-account-kit'], to.url)
-    assert.equal(result.peerDependencies['@kevinjohn/adonisjs-account-kit'], to.version)
+    assert.equal(result.peerDependencies['@kevinjohn/adonisjs-account-kit'], `^${to.version}`)
     assert.equal(result.devDependencies.other, '0.3.3')
   })
 
@@ -82,12 +82,14 @@ test.group('Account Kit owned fields', () => {
   })
 
   test('keeps deliberately stale installed fixture and unrelated hashes', ({ assert }) => {
-    const source = `assert.equal(versions.expected, '${from.version}')\nassert.equal(versions.installed, '${from.version}')\n{ installed: '0.3.2', expected: '${from.version}' }\nconst hash = '${from.sha256}'`
+    const source = `assert.equal(versions.expected, '^${from.version}')\nassert.equal(versions.installed, '${from.version}')\n{ installed: '0.3.2', expected: '^${from.version}' }\nconst hash = '${from.sha256}'`
     const prefixed = `const versions = readAccountKitVersions()\n${source}`
     const rewritten = projectKitFile('tests/doctor.spec.ts', prefixed, from, to)
     assert.include(rewritten, "installed: '0.3.2'")
     assert.include(rewritten, `const hash = '${from.sha256}'`)
-    assert.include(rewritten, `versions.expected, '${to.version}'`)
+    assert.include(rewritten, `versions.expected, '^${to.version}'`)
+    assert.include(rewritten, `versions.installed, '${to.version}'`)
+    assert.include(rewritten, `expected: '^${to.version}'`)
   })
 })
 
@@ -108,7 +110,7 @@ test.group('Account Kit bump plan', () => {
         JSON.stringify(
           {
             version: '0.1.8',
-            peerDependencies: { '@kevinjohn/adonisjs-account-kit': from.version },
+            peerDependencies: { '@kevinjohn/adonisjs-account-kit': `^${from.version}` },
             devDependencies: { '@kevinjohn/adonisjs-account-kit': from.url },
           },
           null,

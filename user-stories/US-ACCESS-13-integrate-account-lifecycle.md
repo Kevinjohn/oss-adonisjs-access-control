@@ -6,7 +6,7 @@ As an application integrator, I want to export membership data with account reco
 **Access:** Account Kit data export must be enabled and the account holder must satisfy its proof check. Access Control callback adds the user’s membership rows using the supplied Kit transaction.
 **Entry:** Host wires `exportAccountData` from `accessControlKitCallbacks()` into Account Kit and calls `accountData.export({ actorId, currentPassword?, recentProof? })`.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
-**Source:** [account_kit/main.ts](../account_kit/main.ts)
+**Source:** [src/account_kit/main.ts](../src/account_kit/main.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
 
 ## Acceptance criteria
@@ -36,4 +36,4 @@ flowchart TD
     B --> X["Invalid stored status or timestamps: INVALID_CONFIG"]
 ```
 
-**Code references:** [callbacks](../account_kit/main.ts), [lifecycle methods](../src/memberships.ts), [Account Kit export](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/account_export.ts).
+**Code references:** [callbacks](../src/account_kit/main.ts), [lifecycle methods](../src/memberships.ts), [Account Kit export](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/account_export.ts).

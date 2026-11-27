@@ -53,4 +53,4 @@ flowchart TD
     G --> J["After commit, scope middleware requires active status on later requests"]
 ```
 
-**Code references:** [setStatus](../src/memberships.ts), [scope middleware](../middleware/main.ts)
+**Code references:** [setStatus](../src/memberships.ts), [scope middleware](../src/middleware/main.ts)

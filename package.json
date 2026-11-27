@@ -27,9 +27,9 @@
     "./types": "./build/src/types.js",
     "./access_control_provider": "./build/providers/access_control_provider.js",
     "./services/main": "./build/services/main.js",
-    "./middleware": "./build/middleware/main.js",
-    "./scope_middleware": "./build/middleware/main.js",
-    "./account-kit": "./build/account_kit/main.js",
+    "./middleware": "./build/src/middleware/main.js",
+    "./scope_middleware": "./build/src/middleware/main.js",
+    "./account-kit": "./build/src/account_kit/main.js",
     "./commands": "./build/commands/main.js"
   },
   "scripts": {
@@ -120,7 +120,7 @@
     "@adonisjs/bouncer": "^4.0.0",
     "@adonisjs/core": "^7.0.0",
     "@adonisjs/lucid": "^22.4.2",
-    "@kevinjohn/adonisjs-account-kit": "0.8.0",
+    "@kevinjohn/adonisjs-account-kit": "^0.8.0",
     "luxon": "^3.4.4",
     "typescript": "^5.9.3 || ^6.0.3"
   },
@@ -140,8 +140,8 @@
       "./src/types.ts",
       "./providers/access_control_provider.ts",
       "./services/main.ts",
-      "./middleware/main.ts",
-      "./account_kit/main.ts",
+      "./src/middleware/main.ts",
+      "./src/account_kit/main.ts",
       "./commands/doctor.ts"
     ],
     "outDir": "./build",

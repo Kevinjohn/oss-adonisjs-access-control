@@ -20,8 +20,7 @@ export function projectKitFile(
   const isGuide = path === 'docs/guide/setup.md' || path === 'docs/guide/getting-started.md'
   const isStory = path === 'user-stories/US-ACCESS-28-attach-without-provider.md'
   const isDoctor = path === 'tests/doctor.spec.ts'
-  const isProvenance =
-    /^(?:src|account_kit|tests)\//.test(path) && !path.startsWith('tests/tooling/')
+  const isProvenance = /^(?:src|tests)\//.test(path) && !path.startsWith('tests/tooling/')
   if (!isKitBumpPath(path)) return text
 
   const allowed = (field: string, value: string, source: string, target: string): string => {
@@ -46,15 +45,15 @@ export function projectKitFile(
     for (const section of sections) {
       const value = (manifest[section] as Record<string, string> | undefined)?.[kitPackage]
       if (value === undefined) continue
-      const source = section === 'peerDependencies' ? from.version : from.url
-      const target = section === 'peerDependencies' ? to.version : to.url
+      const source = section === 'peerDependencies' ? `^${from.version}` : from.url
+      const target = section === 'peerDependencies' ? `^${to.version}` : to.url
       allowed(`${section}.${kitPackage}`, value, source, target)
     }
     result = result.replace(
       new RegExp(`("${peerKey}"\\s*:\\s*")([^"]+)(")`, 'g'),
       (_whole, prefix: string, value: string, suffix: string) => {
-        if (value === from.version || value === to.version)
-          return `${prefix}${allowed('peer', value, from.version, to.version)}${suffix}`
+        if (value === `^${from.version}` || value === `^${to.version}`)
+          return `${prefix}${allowed('peer', value, `^${from.version}`, `^${to.version}`)}${suffix}`
         return `${prefix}${allowed('tarball', value, from.url, to.url)}${suffix}`
       }
     )
@@ -104,11 +103,16 @@ export function projectKitFile(
       }
     )
     if (blockCount !== 1) throw new Error(`${path}: missing Account Kit package resolution`)
-    const peer = new RegExp(`(^\\s{6}'${peerKey}': )(${version})$`, 'gm')
+    const peer = new RegExp(`(^\\s{6}'${peerKey}': )(\\^?${version})$`, 'gm')
     let peerCount = 0
     result = result.replace(peer, (_whole, prefix: string, value: string) => {
       peerCount++
-      return prefix + allowed('Access Control peer', value, from.version, to.version)
+      const caret = value.startsWith('^') ? '^' : ''
+      return (
+        prefix +
+        caret +
+        allowed('Access Control peer', value.slice(caret.length), from.version, to.version)
+      )
     })
     if (!peerCount && path !== 'pnpm-lock.yaml')
       throw new Error(`${path}: missing Access Control Kit peer`)
@@ -143,14 +147,19 @@ export function projectKitFile(
       const prefix = result.slice(0, firstLive)
       let live = result.slice(firstLive)
       live = live.replace(
-        /(versions\.(?:expected|installed), ')(\d+\.\d+\.\d+)(')/g,
+        /(versions\.expected, ')(\^?\d+\.\d+\.\d+)(')/g,
         (_whole, a: string, value: string, b: string) =>
-          `${a}${allowed('doctor expected/installed', value, from.version, to.version)}${b}`
+          `${a}${allowed('doctor expected', value, `^${from.version}`, `^${to.version}`)}${b}`
       )
       live = live.replace(
-        /(expected: ')(\d+\.\d+\.\d+)(')/g,
+        /(versions\.installed, ')(\d+\.\d+\.\d+)(')/g,
         (_whole, a: string, value: string, b: string) =>
-          `${a}${allowed('doctor expected', value, from.version, to.version)}${b}`
+          `${a}${allowed('doctor installed', value, from.version, to.version)}${b}`
+      )
+      live = live.replace(
+        /(expected: ')(\^?\d+\.\d+\.\d+)(')/g,
+        (_whole, a: string, value: string, b: string) =>
+          `${a}${allowed('doctor expected', value, `^${from.version}`, `^${to.version}`)}${b}`
       )
       result = prefix + live
     }
@@ -187,6 +196,6 @@ export function isKitBumpPath(path: string): boolean {
     path === 'docs/guide/getting-started.md' ||
     path === 'user-stories/US-ACCESS-28-attach-without-provider.md' ||
     path === 'tests/doctor.spec.ts' ||
-    (/^(?:src|account_kit|tests)\//.test(path) && !path.startsWith('tests/tooling/'))
+    (/^(?:src|tests)\//.test(path) && !path.startsWith('tests/tooling/'))
   )
 }

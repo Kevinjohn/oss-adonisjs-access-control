@@ -14,17 +14,17 @@ reports a count and up to 20 sample ids, never names or emails. `--scope` limits
 one scope. When the database accepts an equivalent spelling of a string scope ID, the doctor
 uses the stored spelling, just as a membership lookup does. `--json` prints `{ "checks": [{ "name", "ok", "count", "sampleIds" }] }`.
 
-| Check                    | Finds                                                                                  |
-| ------------------------ | -------------------------------------------------------------------------------------- |
-| `memberships_table`      | A missing table, or missing columns (listed in `sampleIds`).                           |
-| `unknown_role`           | Memberships whose role is null or not in `roles`.                                      |
-| `unknown_status`         | Memberships whose status is null, or neither `active` nor `suspended`.                 |
-| `invalid_timestamp`      | Memberships whose `created_at` or `updated_at` is null or unreadable.                  |
-| `scope_without_owner`    | With `ownerRole` set: scopes that have members but no active owner.                    |
-| `scope_with_many_owners` | With `ownerRole` set: scopes with more than one active owner.                          |
-| `orphan_scope`           | Memberships whose scope row is gone (possible only without the foreign keys).          |
-| `orphan_user`            | Memberships whose user row is gone.                                                    |
-| `account_kit_version`    | The installed Account Kit version differs from the exact version this package expects. |
+| Check                    | Finds                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `memberships_table`      | A missing table, or missing columns (listed in `sampleIds`).                            |
+| `unknown_role`           | Memberships whose role is null or not in `roles`.                                       |
+| `unknown_status`         | Memberships whose status is null, or neither `active` nor `suspended`.                  |
+| `invalid_timestamp`      | Memberships whose `created_at` or `updated_at` is null or unreadable.                   |
+| `scope_without_owner`    | With `ownerRole` set: scopes that have members but no active owner.                     |
+| `scope_with_many_owners` | With `ownerRole` set: scopes with more than one active owner.                           |
+| `orphan_scope`           | Memberships whose scope row is gone (possible only without the foreign keys).           |
+| `orphan_user`            | Memberships whose user row is gone.                                                     |
+| `account_kit_version`    | The installed Account Kit version does not satisfy the peer range this package expects. |
 
 Exit code 0 when every check is clean, 1 when a check finds rows, 2 when a check could not run
 (for example a malformed `--scope`). The command writes nothing and takes no locks.
@@ -47,7 +47,7 @@ node ace access-control:doctor --json
 ```
 
 Fail the job on any non-zero exit code. 1 means a check found rows, including
-`account_kit_version` when the installed Account Kit is not the exact version this release
+`account_kit_version` when the installed Account Kit does not satisfy the peer range this release
 expects; 2 means a check could not run, for example an unreachable database. `--json` prints the
 report on one line for a log or an artefact; when the doctor cannot run it prints an error line
 instead. Rows are reported as ids only, never names or emails.

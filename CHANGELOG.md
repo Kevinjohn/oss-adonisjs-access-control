@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Declare `@kevinjohn/adonisjs-account-kit` as a `^0.8.0` caret peer range instead of an exact pin,
+  and update `access-control:doctor` to accept compatible `0.8.x` patch releases while continuing to
+  reject other minors and prereleases.
+- Move the `/account-kit` and `/middleware` subpath entrypoints under `src/` (preserving all public
+  export keys), declare `tableName` explicitly in the consumer migration, and retire the resolved
+  convention departures.
+
 - The packed consumer disables migration rollbacks in production on its SQLite and PostgreSQL connections.
 
 - Releases reuse the successful `checks.yml` push or manual run for the exact commit on `main` before

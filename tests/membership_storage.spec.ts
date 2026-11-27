@@ -2,7 +2,7 @@ import { rejects } from 'node:assert/strict'
 import { test } from '@japa/runner'
 import type { AccountUser } from '@kevinjohn/adonisjs-account-kit'
 import { defineConfig, errors } from '../index.ts'
-import { accessControlKitCallbacks } from '../account_kit/main.ts'
+import { accessControlKitCallbacks } from '../src/account_kit/main.ts'
 import { loadRunner } from '../src/kit_transaction.ts'
 import { bootTestApp } from './helpers/app.ts'
 

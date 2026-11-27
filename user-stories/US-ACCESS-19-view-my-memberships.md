@@ -38,4 +38,4 @@ flowchart TD
     D --> E["host renders choices; scope route independently authorizes"]
 ```
 
-**Code references:** [listForUser](../src/memberships.ts), [scope middleware](../middleware/main.ts)
+**Code references:** [listForUser](../src/memberships.ts), [scope middleware](../src/middleware/main.ts)

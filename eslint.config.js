@@ -22,14 +22,7 @@ export default [
     },
   },
   {
-    files: [
-      'src/**/*.ts',
-      'middleware/**/*.ts',
-      'account_kit/**/*.ts',
-      'services/**/*.ts',
-      'providers/**/*.ts',
-      'commands/**/*.ts',
-    ],
+    files: ['src/**/*.ts', 'services/**/*.ts', 'providers/**/*.ts', 'commands/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',

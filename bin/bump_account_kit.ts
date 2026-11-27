@@ -2,7 +2,7 @@
  * Moves this repository to another Account Kit release: `pnpm bump:account-kit 0.3.5`.
  *
  * It downloads the current and target release tarballs, then rewrites every tracked reference:
- * release URLs and tarball names, the exact peer, lockfile integrity and versions, the release
+ * release URLs and tarball names, the caret peer, lockfile integrity and versions, the release
  * SHA-256 and source commit, and version mentions in code and docs. `CHANGELOG.md` and the
  * requirement ledger's pin history stay as written; the script lists the lines that still name the
  * old version so they can be updated by hand.
@@ -69,9 +69,10 @@ if (!target || !/^\d+\.\d+\.\d+$/.test(target)) {
 const topLevel = await git(['rev-parse', '--show-toplevel'])
 const root = topLevel.trim()
 const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-const current: unknown = manifest.peerDependencies?.[kitPackage]
-if (typeof current !== 'string' || !/^\d+\.\d+\.\d+$/.test(current))
-  throw new Error(`package.json does not pin ${kitPackage} to an exact version.`)
+const peer: unknown = manifest.peerDependencies?.[kitPackage]
+if (typeof peer !== 'string' || !/^\^\d+\.\d+\.\d+$/.test(peer))
+  throw new Error(`package.json does not declare ${kitPackage} as a caret peer range.`)
+const current = peer.slice(1)
 if (manifest.version === current || manifest.version === target)
   throw new Error(
     `This package's own version ${manifest.version} matches an Account Kit version; rewrite by hand.`
