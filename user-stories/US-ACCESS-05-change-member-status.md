@@ -21,7 +21,7 @@ As an active scope manager, I want to suspend or restore a membership so that sc
 
 - Supported statuses are `active` and `suspended`.
 - Self, owner, unknown-role and rank restrictions refuse the change. A target who is not a member is refused with `NOT_A_MEMBER`, and a scope row that does not exist with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404).
-- A no-op status update emits no event; a change emits `membership.status_changed`. Suspended users are denied by scope middleware.
+- A no-op status update calls no change callback; a change calls the optional change callback with `membership.status_changed`. Suspended users are denied by scope middleware.
 
 ## User flow
 
@@ -46,8 +46,8 @@ flowchart TD
     C --> D{"Allowed?"}
     D -->|No| E["throw rule error"]
     D -->|Yes| F{"Status changed?"}
-    F -->|No| H["Return existing membership without write or event"]
-    F -->|Yes| I["Update and emit membership.status_changed"]
+    F -->|No| H["Return existing membership without write or callback"]
+    F -->|Yes| I["Update and invoke optional onMembershipChanged with membership.status_changed"]
     H --> G["Runner commits if trx omitted; otherwise caller owns commit"]
     I --> G
     G --> J["After commit, scope middleware requires active status on later requests"]

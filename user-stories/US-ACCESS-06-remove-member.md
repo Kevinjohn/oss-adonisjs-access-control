@@ -20,7 +20,7 @@ As an active scope manager, I want to remove a member from a scope so that a rem
 
 - Removing self is refused; use `leave` for that action.
 - Owner and higher-ranked targets are protected. A target who is not a member is refused with `NOT_A_MEMBER`, and a scope row that does not exist with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404).
-- Successful removal deletes the membership and emits `membership.removed` with reason `removed`; scope/application records are not deleted.
+- Successful removal deletes the membership and calls the optional change callback with `membership.removed` with reason `removed`; scope/application records are not deleted.
 
 ## User flow
 
@@ -42,7 +42,7 @@ flowchart TD
     C --> D["decideManagement checks self, owner and rank"]
     D --> E{"Allowed?"}
     E -->|No| F["throw rule error"]
-    E -->|Yes| G["delete membership; emit removed event; runner commits only if trx omitted"]
+    E -->|Yes| G["delete membership; invoke optional onMembershipChanged with membership.removed; runner commits only if trx omitted"]
 ```
 
 **Code references:** [remove](../src/memberships.ts), [rules](../src/rules.ts)

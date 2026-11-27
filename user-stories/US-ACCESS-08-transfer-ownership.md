@@ -13,7 +13,7 @@ As an active scope owner, I want to transfer scope ownership so that a scope con
 
 - Transfer is unavailable if no owner role is configured.
 - Actor must be the active owner; target must be a different active member. A scope row that does not exist is refused with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404) when the scope is locked, before the actor is checked.
-- The target becomes owner and prior owner is demoted to highest non-owner role in same transaction; event records transfer.
+- The target becomes owner and prior owner is demoted to highest non-owner role in same transaction; the optional change callback receives the transfer.
 
 ## User flow
 
@@ -36,7 +36,7 @@ flowchart TD
     B --> C["require active owner, then distinct target ID, then existing active target"]
     C --> D{"Checks pass?"}
     D -->|No| E["throw domain error"]
-    D -->|Yes| F["demote prior owner, promote target, emit membership.ownership_transferred"]
+    D -->|Yes| F["demote prior owner, promote target, invoke optional onMembershipChanged with membership.ownership_transferred"]
     F --> G["runner commits if trx omitted; otherwise caller owns commit"]
 ```
 

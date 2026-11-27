@@ -39,4 +39,4 @@ flowchart TD
     C -->|Yes| E["Return typed active membership or raise unknown role"]
 ```
 
-**Code references:** [getMembership, find and findActive](../src/memberships.ts#L428), [stored key resolution](../src/stored_keys.ts).
+**Code references:** [getMembership, find and findActive](../src/memberships.ts#L324), [stored key resolution](../src/stored_keys.ts).

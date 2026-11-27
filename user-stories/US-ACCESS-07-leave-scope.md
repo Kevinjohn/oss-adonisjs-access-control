@@ -14,7 +14,7 @@ As a scope member, I want to leave a scope so that members can leave without nee
 - Leave is a self-action and takes no actor authorization; caller must pass authenticated user ID from host, never raw request identity.
 - Suspended membership may leave.
 - Missing scope and missing membership both raise `E_ACCESS_CONTROL_NOT_A_MEMBER`.
-- Owner cannot leave and receives owner-protected error. Successful leave deletes membership and emits `membership.left`.
+- Owner cannot leave and receives owner-protected error. Successful leave deletes membership and calls the optional change callback with `membership.left`.
 
 ## User flow
 
@@ -37,7 +37,7 @@ flowchart TD
     C -->|Missing membership| X
     C --> D{"Owner role?"}
     D -->|Yes| E["throw OWNER_PROTECTED"]
-    D -->|No| F["delete membership and emit membership.left inside trx"]
+    D -->|No| F["delete membership and invoke optional onMembershipChanged with membership.left inside trx"]
 ```
 
 **Code references:** [leave](../src/memberships.ts), [management rules](../docs/guide/rules.md)

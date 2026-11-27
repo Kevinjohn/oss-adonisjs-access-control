@@ -34,7 +34,7 @@ flowchart TD
     B --> C["check user exists and not already member"]
     C --> D{"All checks pass?"}
     D -->|No| E["throw domain error"]
-    D -->|Yes| F["insert active membership and emit granted event"]
+    D -->|Yes| F["insert active membership and invoke optional onMembershipChanged with membership.granted"]
     F --> G["caller commits surrounding transaction"]
 ```
 

@@ -13,7 +13,7 @@ As an application operator or trusted scope-creation callback, I want to bootstr
 
 - Scope must have no existing memberships; occupied scopes refuse with `E_ACCESS_CONTROL_SCOPE_NOT_EMPTY`. Lock or storage failures propagate rather than becoming an occupied-scope refusal.
 - With `ownerRole`, first member must take that role; without it, host must supply a role with `members:manage`.
-- Method inserts membership and emits `membership.first_member` inside `#run(input.trx)`: when `trx` is omitted, the configured runner owns transaction commit/rollback; when supplied, it reuses the caller transaction. Host derives IDs from trusted context.
+- Method inserts membership and calls the optional change callback with `membership.first_member` inside `#run(input.trx)`: when `trx` is omitted, the configured runner owns transaction commit/rollback; when supplied, it reuses the caller transaction. Host derives IDs from trusted context.
 
 ## User flow
 
@@ -36,7 +36,7 @@ flowchart TD
     B --> C["reuse input.trx or open runner transaction; resolve stored keys; lock user then scope"]
     C --> D{"Scope empty?"}
     D -->|No| E["throw SCOPE_NOT_EMPTY error"]
-    D -->|Yes| F["insert membership and emit first_member; storage failures propagate"]
+    D -->|Yes| F["insert membership and invoke optional onMembershipChanged with membership.first_member; storage failures propagate"]
     F --> G["runner commits if trx omitted; otherwise caller commits"]
 ```
 

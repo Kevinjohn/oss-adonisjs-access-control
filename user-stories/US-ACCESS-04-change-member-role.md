@@ -20,8 +20,8 @@ As an active scope manager, I want to change a member role so that a member’s 
 | `trx`     | Optional transaction | Omitted: the runner opens and commits one. Supplied: the caller owns commit and rollback.                            |
 
 - Role change is refused for unknown roles, self, owner target, higher-ranked target or rank above actor; a target who is not a member is refused with `NOT_A_MEMBER`, and a scope row that does not exist with `E_ACCESS_CONTROL_SCOPE_NOT_FOUND` (404).
-- No-op role change does not write or emit an event.
-- Successful change writes new role and emits `membership.role_changed` transactionally.
+- No-op role change does not write or call the change callback.
+- Successful change writes new role and calls the optional change callback with `membership.role_changed` transactionally.
 
 ## User flow
 
@@ -44,8 +44,8 @@ flowchart TD
     C --> D{"Allowed?"}
     D -->|No| E["throw rule error"]
     D -->|Yes| F{"Role changed?"}
-    F -->|No| G["return without write/event"]
-    F -->|Yes| H["update role; emit membership.role_changed; runner commits only if trx omitted"]
+    F -->|No| G["return without write or callback"]
+    F -->|Yes| H["update role; invoke optional onMembershipChanged with membership.role_changed; runner commits only if trx omitted"]
 ```
 
 **Code references:** [changeRole](../src/memberships.ts), [decideAssignment](../src/rules.ts)
