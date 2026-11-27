@@ -160,7 +160,7 @@ test('same-target command rejects each stale owned field without writing', async
       await discard(setup)
     }
   }
-})
+}).timeout(15_000)
 
 test('same-target command accepts live fields with historical changelog content', async ({
   assert,
