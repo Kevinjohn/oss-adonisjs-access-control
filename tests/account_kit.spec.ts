@@ -2,7 +2,7 @@
 import { test } from '@japa/runner'
 import type { AccountUser, Invitation, Trx } from '@kevinjohn/adonisjs-account-kit'
 import { withInvitationEvidence } from '@kevinjohn/adonisjs-account-kit/admission'
-import { accessControlKitCallbacks } from '../account_kit/main.ts'
+import { accessControlKitCallbacks } from '../src/account_kit/main.ts'
 import type { MembershipChange } from '../src/types.ts'
 import { bootTestApp, type TestApp } from './helpers/app.ts'
 import { codeOf, permissions } from './helpers/fixture.ts'

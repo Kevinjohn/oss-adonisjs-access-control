@@ -3,7 +3,7 @@ import { Bouncer } from '@adonisjs/bouncer'
 import { HttpContextFactory } from '@adonisjs/core/factories/http'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccessControl } from '../index.ts'
-import ScopeMiddleware, { scopeMiddleware } from '../middleware/main.ts'
+import ScopeMiddleware, { scopeMiddleware } from '../src/middleware/main.ts'
 import { membershipFixture, type MembershipFixture } from './helpers/fixture.ts'
 
 /** A request context with the package bound, an optional user and the route's `scopeId`. */

@@ -6,8 +6,8 @@
     "src/memberships.ts",
     "providers/access_control_provider.ts",
     "services/main.ts",
-    "middleware/main.ts",
-    "account_kit/main.ts"
+    "src/middleware/main.ts",
+    "src/account_kit/main.ts"
   ],
   "out": "docs/reference/api",
   "plugin": ["typedoc-plugin-markdown"],

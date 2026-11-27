@@ -5,14 +5,17 @@
 set -euo pipefail
 VERSION=$(node -p "require('./package.json').version")
 # The package is tested against its Account Kit dev dependency, so that must be the release
-# tarball of the exact peer version it declares: never a git pin, a local path or another release.
+# tarball of the base version the caret peer declares: never a git pin, a local path or another release.
 KIT_NAME='@kevinjohn/adonisjs-account-kit'
 KIT=$(node -p "(require('./package.json').devDependencies || {})['$KIT_NAME'] || ''")
 PEER=$(node -p "(require('./package.json').peerDependencies || {})['$KIT_NAME'] || ''")
 if [ -n "$KIT$PEER" ]; then
-  RELEASE="https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v$PEER/kevinjohn-adonisjs-account-kit-$PEER.tgz"
+  [[ "$PEER" =~ ^\^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+    echo "Account Kit peer dependency ($PEER) must be a caret semver range (^X.Y.Z)" >&2; exit 1; }
+  PEER_VERSION=${PEER#^}
+  RELEASE="https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v$PEER_VERSION/kevinjohn-adonisjs-account-kit-$PEER_VERSION.tgz"
   [ "$KIT" = "$RELEASE" ] || {
-    echo "Account Kit dev dependency ($KIT) is not the v$PEER release tarball the peer declares" >&2; exit 1; }
+    echo "Account Kit dev dependency ($KIT) is not the v$PEER_VERSION release tarball the peer declares" >&2; exit 1; }
 fi
 if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
   echo "tag v$VERSION already exists" >&2; exit 1; fi

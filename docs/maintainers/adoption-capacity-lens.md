@@ -43,7 +43,7 @@ them.
 | Role changes for suspended members                    | `changeRole` checks that the target exists, not that it is active (`src/memberships.ts`, `changeRole`).                                    | Refuses a non-active target before the call.                                               |
 | A state condition answered as invalid input           | `transferOwnership` to a member who is not active throws `INVALID_INPUT` (`src/memberships.ts`, `transferOwnership`).                      | Checks the target first; treats `INVALID_INPUT` as a reported server fault.                |
 | A browser-safe `can`                                  | `can` lives on the `AccessControl` instance, whose root import carries server code; the browser gets `clientPayload` or type-only imports. | Evaluates the shared declaration with its own pure `can(role, key)`.                       |
-| Single-company applications with unscoped invitations | The Account Kit callbacks refuse and ignore invitations without a scope (`account_kit/main.ts`).                                           | Writes its own `authorize` and `onInvitationAccepted`, resolving the installation's scope. |
+| Single-company applications with unscoped invitations | The Account Kit callbacks refuse and ignore invitations without a scope (`src/account_kit/main.ts`).                                       | Writes its own `authorize` and `onInvitationAccepted`, resolving the installation's scope. |
 
 None of these is a defect against the [specification](design/spec-access-control.md); each is a
 candidate for a future change, to be agreed in an issue first.

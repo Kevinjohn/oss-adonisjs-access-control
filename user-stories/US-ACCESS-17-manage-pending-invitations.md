@@ -6,7 +6,7 @@ As an active member allowed to manage invitations, I want to list pending invita
 **Access:** Actor must be admitted when admission checks are on, active in the canonical current scope, and have `invitations:manage`.
 **Entry:** Account Kit `invitations.list({ actorId, scope, limit?, cursor? })` invokes `accessControlKitCallbacks().authorize.listInvitations`.
 **Documentation:** [account-kit.md](../docs/guide/account-kit.md)
-**Source:** [account_kit/main.ts](../account_kit/main.ts)
+**Source:** [src/account_kit/main.ts](../src/account_kit/main.ts)
 **Coverage:** [`tests/account_kit.spec.ts`](../tests/account_kit.spec.ts)
 
 ## Acceptance criteria
@@ -38,4 +38,4 @@ flowchart TD
     E -->|Yes| G["Kit queries unexpired scoped rows and returns items and nextCursor"]
 ```
 
-**Code references:** [callbacks](../account_kit/main.ts), [membership rules](../docs/guide/rules.md), [Account Kit invitation listing](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).
+**Code references:** [callbacks](../src/account_kit/main.ts), [membership rules](../docs/guide/rules.md), [Account Kit invitation listing](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d01b742c5416b747b300402c1669f5aaf6bba290/src/invitation_management.ts).

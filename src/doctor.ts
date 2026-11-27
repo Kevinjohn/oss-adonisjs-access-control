@@ -191,21 +191,46 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorReport> {
   return { checks }
 }
 
+function parseSemver(version: string): [number, number, number] | null {
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/)
+  if (!match) return null
+  return [Number(match[1]), Number(match[2]), Number(match[3])]
+}
+
+/** Whether an installed Account Kit version satisfies the declared peer range. */
+export function matchesAccountKitVersion(installed: string | null, expected: string): boolean {
+  if (installed === null) return false
+  if (!expected.startsWith('^')) return installed === expected
+  const floor = parseSemver(expected.slice(1))
+  const actual = parseSemver(installed)
+  if (!floor || !actual) return false
+  const [eMajor, eMinor, ePatch] = floor
+  const [iMajor, iMinor, iPatch] = actual
+  if (eMajor > 0) {
+    return iMajor === eMajor && (iMinor > eMinor || (iMinor === eMinor && iPatch >= ePatch))
+  }
+  if (eMinor > 0) {
+    return iMajor === 0 && iMinor === eMinor && iPatch >= ePatch
+  }
+  return iMajor === 0 && iMinor === 0 && iPatch === ePatch
+}
+
 async function checkAccountKitVersion(input: DoctorInput): Promise<DoctorCheck[]> {
   if (input.accountKit === undefined) return []
   const { installed, expected } = input.accountKit
+  const ok = matchesAccountKitVersion(installed, expected)
   return [
     {
       name: 'account_kit_version',
-      ok: installed === expected,
-      count: installed === expected ? 0 : 1,
+      ok,
+      count: ok ? 0 : 1,
       sampleIds: [],
     },
   ]
 }
 
 /**
- * The installed Account Kit version next to this package, and the exact version it expects.
+ * The installed Account Kit version next to this package, and the peer version range it expects.
  * `installed` is `null` when Account Kit is not installed, which the doctor reports as a mismatch.
  * A manifest that is installed but cannot be read, or has no version, throws: the check could not
  * run.

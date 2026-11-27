@@ -54,17 +54,17 @@ after `access-control:`.
 2 when a check could not run. Exit 2 prints `access-control: the doctor could not run:` and the
 reason: an unreachable database, or a `--scope` value that is not a valid key.
 
-| Check                    | Cause                                                                    | Fix                                                                                                               |
-| ------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `memberships_table`      | The table is missing, or the columns in `sampleIds` are.                 | Run the published migration, or check `membershipsTable` names the table the migration created.                   |
-| `unknown_role`           | Rows store a role that is not in `roles`, usually after a rename.        | Rewrite the stored names with a data migration ([changing roles](changing-roles.md#rename-a-role)).               |
-| `unknown_status`         | Rows hold a status other than `active` or `suspended`.                   | Fix the rows; the package writes only those two values.                                                           |
-| `invalid_timestamp`      | Rows hold a null or unreadable `created_at` or `updated_at`.             | Backfill the values and make both columns non-nullable; every read of such a row fails.                           |
-| `scope_without_owner`    | With `ownerRole` set, a scope with members has no active owner.          | Assign one owner per scope ([turn the owner role on](changing-roles.md#turn-the-owner-role-on-later)).            |
-| `scope_with_many_owners` | With `ownerRole` set, a scope has more than one active owner.            | Demote all but one with a data migration; the package never creates a second owner itself.                        |
-| `orphan_scope`           | Memberships point at a scope row that is gone.                           | Delete the rows, and delete scopes through [`removeAllForScope`](../recipes/index.md#delete-a-team) from now on.  |
-| `orphan_user`            | Memberships point at a user row that is gone.                            | Delete the rows, and wire the [account deletion callback](account-kit.md#account-deletion-and-export).            |
-| `account_kit_version`    | The installed Account Kit is not the exact version this release expects. | Install the Account Kit release named in the [setup guide](setup.md), or the Access Control release that matches. |
+| Check                    | Cause                                                                                   | Fix                                                                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `memberships_table`      | The table is missing, or the columns in `sampleIds` are.                                | Run the published migration, or check `membershipsTable` names the table the migration created.                               |
+| `unknown_role`           | Rows store a role that is not in `roles`, usually after a rename.                       | Rewrite the stored names with a data migration ([changing roles](changing-roles.md#rename-a-role)).                           |
+| `unknown_status`         | Rows hold a status other than `active` or `suspended`.                                  | Fix the rows; the package writes only those two values.                                                                       |
+| `invalid_timestamp`      | Rows hold a null or unreadable `created_at` or `updated_at`.                            | Backfill the values and make both columns non-nullable; every read of such a row fails.                                       |
+| `scope_without_owner`    | With `ownerRole` set, a scope with members has no active owner.                         | Assign one owner per scope ([turn the owner role on](changing-roles.md#turn-the-owner-role-on-later)).                        |
+| `scope_with_many_owners` | With `ownerRole` set, a scope has more than one active owner.                           | Demote all but one with a data migration; the package never creates a second owner itself.                                    |
+| `orphan_scope`           | Memberships point at a scope row that is gone.                                          | Delete the rows, and delete scopes through [`removeAllForScope`](../recipes/index.md#delete-a-team) from now on.              |
+| `orphan_user`            | Memberships point at a user row that is gone.                                           | Delete the rows, and wire the [account deletion callback](account-kit.md#account-deletion-and-export).                        |
+| `account_kit_version`    | The installed Account Kit version does not satisfy the peer range this release expects. | Install a compatible Account Kit release as named in the [setup guide](setup.md), or the Access Control release that matches. |
 
 On MySQL the role and status checks compare exact bytes, as the package does at runtime, so
 `EDITOR` is reported even though MySQL's default collation treats it as `editor`.

@@ -21,7 +21,7 @@ policies).
 
 ## Install
 
-Access Control requires Node.js 24+, AdonisJS 7 and Account Kit 0.8.0 (exact), the release with
+Access Control requires Node.js 24+, AdonisJS 7 and Account Kit 0.8.0 (`^0.8.0` peer range), the release with
 the `./transaction` export, scoped invitations and `ctx.auth.user` left set by its middleware.
 For a registry-published package, `node ace add @kevinjohn/adonisjs-access-control --package-manager=pnpm`
 would install and configure it. Access Control ships as a GitHub release archive, and Ace uses

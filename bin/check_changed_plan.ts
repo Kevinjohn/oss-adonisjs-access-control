@@ -25,13 +25,13 @@ export type PlannedCheckStep = ChangedCheckStep | SkippedCheckStep
 
 // The docs workflow's push paths: TypeDoc reads the package source and treats warnings as errors.
 const docsInputs = [
-  /^(docs|account_kit|commands|middleware|providers|services|src|stubs)\//,
+  /^(docs|commands|providers|services|src|stubs)\//,
   /^(index|configure)\.ts$/,
   /^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig\.json|typedoc\.json)$/,
 ]
 // The compat workflow's pull request paths: the packed consumer reads these.
 const consumerInputs = [
-  /^(examples|src|providers|stubs|commands|middleware|services|account_kit)\//,
+  /^(examples|src|providers|stubs|commands|services)\//,
   /^(index|configure)\.ts$/,
   /^bin\/test_consumer\.ts$/,
   /^bin\/helpers\/consumer_.*\.ts$/,

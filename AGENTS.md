@@ -80,8 +80,8 @@ configure.ts                `node ace configure` hook
 providers/<name>_provider.ts
 commands/                   Ace commands
 services/main.ts            container service
-middleware/main.ts          scope middleware (exported subpath)
-account_kit/main.ts         Account Kit callbacks entry point (implementation in src/)
+src/middleware/main.ts      scope middleware (exported subpath)
+src/account_kit/main.ts     Account Kit callbacks entry point
 stubs/                      configure templates
 src/                        implementation; src/types.ts and src/errors.ts for public types and errors
 bin/                        package scripts (.ts via ts-exec; .sh allowed)

@@ -10,7 +10,7 @@ Use these notes to assess Access Control and protect its guarantees. Human overv
 
 ## Requirements
 
-Core 7, Lucid 22.4.2+, Bouncer 4, Auth 10, Luxon 3 and Account Kit 0.8.0 (exact), the release
+Core 7, Lucid 22.4.2+, Bouncer 4, Auth 10, Luxon 3 and Account Kit 0.8.0 (`^0.8.0` peer range), the release
 with the `./transaction` export, scoped invitations and `ctx.auth.user` after its middleware.
 Roles and permission keys are declared in `config/access_control.ts`.
 
@@ -51,9 +51,8 @@ database; every service method accepts a caller `trx` started by the kit's `tran
 
 ## Source map
 
-- `src/`: configuration, rules, membership service, locks, errors and client membership summary.
-- `middleware/`, `account_kit/`, `providers/`, `services/`, `commands/`, `stubs/`: exported
-  subpaths, provider, container service, Ace commands and configure templates.
+- `src/`: configuration, rules, membership service, locks, errors, client membership summary, scope middleware and Account Kit callbacks.
+- `providers/`, `services/`, `commands/`, `stubs/`: provider, container service, Ace commands and configure templates.
 
 ## Further reading
 

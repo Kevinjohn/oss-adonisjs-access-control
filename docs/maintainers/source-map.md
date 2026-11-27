@@ -9,16 +9,16 @@ The `exports` map in [package.json](../../package.json) defines supported import
 routes below are relative to the documentation site's base. Run `pnpm docs:api` to regenerate
 their Markdown sources under `docs/reference/api/`.
 
-| Public subpath              | Source                                         | Reference coverage                                      |
-| --------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
-| package root                | `index.ts`                                     | `reference/api/index/index`                             |
-| `./types`                   | `src/types.ts`                                 | `reference/api/src/types/index`                         |
-| `./access_control_provider` | `providers/access_control_provider.ts`         | `reference/api/providers/access_control_provider/index` |
-| `./services/main`           | `services/main.ts`                             | `reference/api/services/main/index`                     |
-| `./middleware`              | `middleware/main.ts`                           | `reference/api/middleware/main/index`                   |
-| `./scope_middleware`        | `middleware/main.ts` (alias of `./middleware`) | `reference/api/middleware/main/index`                   |
-| `./account-kit`             | `account_kit/main.ts`                          | `reference/api/account_kit/main/index`                  |
-| `./commands`                | generated loader in `build/commands/main.js`   | Ace loader (generated)                                  |
+| Public subpath              | Source                                             | Reference coverage                                      |
+| --------------------------- | -------------------------------------------------- | ------------------------------------------------------- |
+| package root                | `index.ts`                                         | `reference/api/index/index`                             |
+| `./types`                   | `src/types.ts`                                     | `reference/api/src/types/index`                         |
+| `./access_control_provider` | `providers/access_control_provider.ts`             | `reference/api/providers/access_control_provider/index` |
+| `./services/main`           | `services/main.ts`                                 | `reference/api/services/main/index`                     |
+| `./middleware`              | `src/middleware/main.ts`                           | `reference/api/src/middleware/main/index`               |
+| `./scope_middleware`        | `src/middleware/main.ts` (alias of `./middleware`) | `reference/api/src/middleware/main/index`               |
+| `./account-kit`             | `src/account_kit/main.ts`                          | `reference/api/src/account_kit/main/index`              |
+| `./commands`                | generated loader in `build/commands/main.js`       | Ace loader (generated)                                  |
 
 TypeDoc requires comments on classes, functions, interfaces, type aliases and variables. Comments
 should explain a contract, ordering or non-obvious constraint.
@@ -35,7 +35,7 @@ should explain a contract, ordering or non-obvious constraint.
 | Lock process and transactions   | `src/locks.ts`, `src/kit_transaction.ts`, `src/keys.ts`                                                                        | `tests/locks.spec.ts`, `tests/kit_transaction.spec.ts`, `tests/memberships_concurrency.spec.ts`                                                       | 0.2, 4.2, 4.3, 5.1 |
 | Membership service              | `src/memberships.ts`, `src/pagination.ts`                                                                                      | `tests/memberships.spec.ts`, `tests/memberships_trusted.spec.ts`, `tests/pagination.spec.ts`, `tests/membership_storage.spec.ts` (stored-row mapping) | 5                  |
 | Errors and responses            | `src/errors.ts`                                                                                                                | `tests/errors.spec.ts`                                                                                                                                | 6                  |
-| Scope middleware                | `middleware/main.ts`                                                                                                           | `tests/middleware.spec.ts`; `./scope_middleware` alias: `tests/package_exports.spec.ts` · "loads every built public export"                           | 7                  |
+| Scope middleware                | `src/middleware/main.ts`                                                                                                       | `tests/middleware.spec.ts`; `./scope_middleware` alias: `tests/package_exports.spec.ts` · "loads every built public export"                           | 7                  |
 | Bouncer abilities               | `src/abilities.ts`                                                                                                             | `tests/abilities.spec.ts`, `tests/abilities_types.spec.ts`                                                                                            | 8                  |
 | Account Kit callbacks           | `src/account_kit_callbacks.ts`                                                                                                 | `tests/account_kit.spec.ts`, `tests/account_kit_types.spec.ts`                                                                                        | 9                  |
 | Client membership summary       | `src/client_membership.ts`                                                                                                     | `tests/payload.spec.ts`                                                                                                                               | 10                 |

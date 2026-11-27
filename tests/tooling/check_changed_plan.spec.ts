@@ -65,7 +65,7 @@ test('the docs workflow inputs build the docs and require a clean tree', ({ asse
     'typedoc.json',
     'src/rules.ts',
     'index.ts',
-    'account_kit/main.ts',
+    'src/account_kit/main.ts',
     'stubs/config/access_control.stub',
   ]) {
     assert.deepInclude(
@@ -109,7 +109,7 @@ test('formatter configuration checks the whole tree', ({ assert }) => {
 })
 
 test('lint allows no warnings and skips files ESLint ignores', async ({ assert }) => {
-  assert.deepEqual(ran(planChangedChecks(changed('middleware/main.ts'))).lint, ['pnpm', 'lint'])
+  assert.deepEqual(ran(planChangedChecks(changed('src/middleware/main.ts'))).lint, ['pnpm', 'lint'])
   // The repository's own lint script carries the zero-warning limit for every caller.
   const manifest = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'))
   assert.include(manifest.scripts.lint, '--max-warnings 0')
@@ -142,7 +142,7 @@ test('consumer inputs note the packed consumer', ({ assert }) => {
 
   for (const path of [
     'examples/consumer/start/routes.ts',
-    'account_kit/main.ts',
+    'src/account_kit/main.ts',
     'bin/test_consumer.ts',
     'bin/helpers/consumer_process.ts',
     'configure.ts',

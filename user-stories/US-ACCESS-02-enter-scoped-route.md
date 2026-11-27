@@ -6,7 +6,7 @@ As an authenticated account holder, I want to enter an authorized team-scoped ro
 **Access:** Effective user from `ctx.auth.user`; must have active membership and configured role. Account Kit must precede scope where credential revision, activation or admission checks are required.
 **Entry:** Host route uses Account Kit managed-account/admission middleware, then `middleware.scope()`; Bouncer checks permission key.
 **Documentation:** [bouncer.md](../docs/guide/bouncer.md)
-**Source:** [middleware/main.ts](../middleware/main.ts)
+**Source:** [src/middleware/main.ts](../src/middleware/main.ts)
 **Coverage:** [`tests/middleware.spec.ts`](../tests/middleware.spec.ts)
 
 ## Acceptance criteria
@@ -52,4 +52,4 @@ flowchart TD
     H -->|Yes| J["App policy checks record"]
 ```
 
-**Code references:** [scope middleware](../middleware/main.ts), [active membership lookup](../src/memberships.ts#L461), [abilities](../src/abilities.ts), [guide](../docs/guide/bouncer.md)
+**Code references:** [scope middleware](../src/middleware/main.ts), [active membership lookup](../src/memberships.ts#L461), [abilities](../src/abilities.ts), [guide](../docs/guide/bouncer.md)

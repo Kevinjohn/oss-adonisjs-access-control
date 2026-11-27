@@ -126,8 +126,8 @@ what this spec requires. Anything not in the manifest is not brought over.
 - `typescript` is an optional peer `^5.9.3 || ^6.0.3`.
 - `@adonisjs/assembler` is an optional peer `^8.0.0` for configure-time source transforms.
 - `tsdown.entry`: `index.ts`, `configure.ts`, `stubs/main.ts`, `src/types.ts`,
-  `providers/access_control_provider.ts`, `services/main.ts`, `middleware/main.ts`,
-  `account_kit/main.ts`, `commands/doctor.ts`. The build generates the Ace loader. `copy:templates` uses
+  `providers/access_control_provider.ts`, `services/main.ts`, `src/middleware/main.ts`,
+  `src/account_kit/main.ts`, `commands/doctor.ts`. The build generates the Ace loader. `copy:templates` uses
   `copyfiles --up=1 "stubs/**/*.stub" build/stubs`, so `build/stubs/` matches `stubsRoot`.
 - `test:mysql` = `cross-env DB_CLIENT=mysql2 pnpm quick:test`; `test:built-exports` =
   `cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts`.
@@ -170,9 +170,9 @@ what this spec requires. Anything not in the manifest is not brought over.
 | `./types`                   | `src/types.ts`                         | type-only public types (`Role`, `PermissionKeyOf`, `ClientMembershipSummary`, …)                                                                                                                     |
 | `./access_control_provider` | `providers/access_control_provider.ts` | service provider (sibling naming: `./account_kit_provider`, `./masquerade_provider`)                                                                                                                 |
 | `./services/main`           | `services/main.ts`                     | container-resolved `AccessControl` singleton                                                                                                                                                         |
-| `./middleware`              | `middleware/main.ts`                   | default export `ScopeMiddleware` class; `scopeMiddleware(options)`                                                                                                                                   |
-| `./scope_middleware`        | `middleware/main.ts`                   | equivalent middleware subpath, same exports and class identity                                                                                                                                       |
-| `./account-kit`             | `account_kit/main.ts`                  | `accessControlKitCallbacks` (Masquerade's subpath name)                                                                                                                                              |
+| `./middleware`              | `src/middleware/main.ts`               | default export `ScopeMiddleware` class; `scopeMiddleware(options)`                                                                                                                                   |
+| `./scope_middleware`        | `src/middleware/main.ts`               | equivalent middleware subpath, same exports and class identity                                                                                                                                       |
+| `./account-kit`             | `src/account_kit/main.ts`              | `accessControlKitCallbacks` (Masquerade's subpath name)                                                                                                                                              |
 | `./commands`                | `build/commands/main.js` (generated)   | Ace commands: `access-control:doctor` (17.2)                                                                                                                                                         |
 
 ```
@@ -180,8 +180,8 @@ index.ts
 configure.ts
 providers/access_control_provider.ts
 services/main.ts
-middleware/main.ts             scope middleware (exported subpath)
-account_kit/main.ts            Account Kit callbacks (exported subpath)
+src/middleware/main.ts         scope middleware (exported subpath)
+src/account_kit/main.ts        Account Kit callbacks (exported subpath)
 src/types.ts                   public types
 src/errors.ts                  Exception classes and shared response handler
 src/define.ts                  defineAccessControl and config validation
